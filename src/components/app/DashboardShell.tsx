@@ -4,7 +4,7 @@ import { BarChart3, ChevronsUpDown, FolderKanban, LayoutGrid, LifeBuoy, LogOut, 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { LogoMark } from "@/components/ui/Logo";
+import { Wordmark } from "@/components/ui/Logo";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { Avatar } from "./Avatar";
@@ -68,9 +68,8 @@ function SidebarContent({ user, onNavigate }: { user: ShellUser; onNavigate?: ()
   const signOut = useSignOut();
   return (
     <div className="flex h-full flex-col">
-      <Link href="/dashboard" onClick={onNavigate} className="flex h-16 shrink-0 items-center gap-2.5 px-5 text-fg" aria-label="Localians dashboard">
-        <LogoMark />
-        <span className="text-[14px] font-semibold tracking-[0.18em]">LOCALIANS</span>
+      <Link href="/dashboard" onClick={onNavigate} className="flex h-16 shrink-0 items-center px-5" aria-label="Localians dashboard">
+        <Wordmark height={22} variant="theme" priority />
       </Link>
       <nav aria-label="Dashboard" className="flex-1 overflow-y-auto px-3 py-2">
         <NavLinks onNavigate={onNavigate} />

@@ -1,10 +1,14 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { ImageResponse } from "next/og";
 
 export const alt = "Localians — Your localhost. Anyone's browser.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const logo = await fs.readFile(path.join(process.cwd(), "public/images/logo/localians-logo-640.png"));
+  const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
   return new ImageResponse(
     (
       <div
@@ -23,9 +27,9 @@ export default function OpengraphImage() {
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 22, height: 22, background: "#B8FF3B", borderRadius: 5 }} />
-          <div style={{ fontSize: 28, letterSpacing: 6, fontWeight: 600 }}>LOCALIANS</div>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse renders plain <img> */}
+          <img src={logoSrc} width={290} height={48} alt="Localians" />
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 86, fontWeight: 700, letterSpacing: -3, lineHeight: 1.02 }}>Your localhost.</div>

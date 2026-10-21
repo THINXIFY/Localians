@@ -1,0 +1,7 @@
+[Unit]
+Description=Localians health check (web, gateway, disk)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/localians/monitor.env
+ExecStart=/srv/localians/bin/healthcheck.sh

@@ -1,0 +1,174 @@
+# Localians — Nginx site. Rendered by deploy/scripts/install.sh (envsubst) from this template;
+# do not edit the generated file by hand. Written for Nginx 1.24 (Ubuntu 24.04).
+#
+# Only server names listed here are handled; other sites on this server are untouched.
+# Variables: ${APP_DOMAIN} ${TUNNEL_HOST} ${PREVIEW_DOMAIN} ${APP_CERT_DIR} ${PREVIEW_CERT_DIR}
+#            ${WEB_PORT} ${GATEWAY_PORT} ${REDIRECT_DOMAINS}
+#
+# Shared-server notes (Nginx 1.24): listen options such as `http2` and IPv6 listeners apply to every
+# site on the same address:port, so this file adds neither — the other sites on this server keep
+# exactly their current TLS/ALPN behaviour. No `default_server` either: unknown hosts still go to the
+# server's existing default site.
+
+map $http_upgrade $localians_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+upstream localians_web {
+    server 127.0.0.1:${WEB_PORT};
+    keepalive 32;
+}
+
+upstream localians_gateway {
+    server 127.0.0.1:${GATEWAY_PORT};
+    keepalive 64;
+}
+
+# ---------------------------------------------------------------- HTTP: ACME + redirect to HTTPS
+server {
+    listen 80;
+    server_name ${APP_DOMAIN} ${TUNNEL_HOST} *.${PREVIEW_DOMAIN} ${REDIRECT_DOMAINS};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/localians-acme;
+        default_type text/plain;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---------------------------------------------------------------- Web app (Next.js on 127.0.0.1:4000)
+server {
+    listen 443 ssl;
+    server_name ${APP_DOMAIN};
+
+    ssl_certificate     ${APP_CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${APP_CERT_DIR}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:localians_tls:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    server_tokens off;
+    client_max_body_size 10m;
+
+    access_log /var/log/nginx/localians-web.access.log;
+    error_log  /var/log/nginx/localians-web.error.log warn;
+
+    # Server-to-server endpoints for the gateway: it calls the app on 127.0.0.1 directly, never via Nginx.
+    location ^~ /api/internal/ {
+        return 404;
+    }
+
+    # Live dashboard updates (Server-Sent Events): no buffering, streams end after ~50 s.
+    location = /api/dashboard/events {
+        proxy_pass http://localians_web;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 75s;
+    }
+
+    location / {
+        proxy_pass http://localians_web;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# ---------------------------------------------------------------- www and other aliases → the app
+server {
+    listen 443 ssl;
+    server_name ${REDIRECT_DOMAINS};
+
+    ssl_certificate     ${APP_CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${APP_CERT_DIR}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:localians_tls:10m;
+    server_tokens off;
+
+    return 301 https://${APP_DOMAIN}$request_uri;
+}
+
+# ---------------------------------------------------------------- Tunnel host (CLI connections) → gateway
+server {
+    listen 443 ssl;
+    server_name ${TUNNEL_HOST};
+
+    ssl_certificate     ${APP_CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${APP_CERT_DIR}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:localians_tls:10m;
+    server_tokens off;
+
+    access_log /var/log/nginx/localians-tunnel.access.log;
+    error_log  /var/log/nginx/localians-tunnel.error.log warn;
+
+    # The CLI sends `Upgrade: localians-tunnel/1`; after the gateway's 101 Nginx relays raw bytes.
+    # The connection lives as long as the share (the gateway pings every 20 s).
+    location / {
+        proxy_pass http://localians_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $localians_connection_upgrade;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_buffering off;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 24h;
+        proxy_send_timeout 24h;
+    }
+}
+
+# ---------------------------------------------------------------- Previews (*.${PREVIEW_DOMAIN}) → gateway
+server {
+    listen 443 ssl;
+    server_name *.${PREVIEW_DOMAIN};
+
+    ssl_certificate     ${PREVIEW_CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${PREVIEW_CERT_DIR}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:localians_tls:10m;
+    server_tokens off;
+
+    # Preview content belongs to the developer's app: no headers added here except transport security.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    # Slightly above the gateway's own limit (25 MB) so the gateway answers with its branded 413.
+    client_max_body_size 26m;
+
+    access_log /var/log/nginx/localians-preview.access.log;
+    error_log  /var/log/nginx/localians-preview.error.log warn;
+
+    location / {
+        proxy_pass http://localians_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $localians_connection_upgrade;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        # Stream both ways (uploads, server-sent events, large downloads) instead of buffering on disk.
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_connect_timeout 5s;
+        # Long-lived WebSockets (hot reload, live apps). The gateway enforces its own request timeouts.
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+    }
+}

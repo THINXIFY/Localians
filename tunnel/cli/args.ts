@@ -24,7 +24,7 @@ Global options:
   --version             Print the CLI version
 
 Examples:
-  localians share 3000
+  localians share 5173
   localians share 5173 --project client-dashboard
   localians status
 `;

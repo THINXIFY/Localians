@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DevelopedBy } from "@/components/ui/Credit";
 import { Logo } from "@/components/ui/Logo";
 import { footerColumns } from "@/lib/site";
 
@@ -37,8 +38,10 @@ export function Footer() {
         </div>
 
         <div className="mt-16 flex flex-col gap-3 border-t border-line pt-8 text-[13px] text-fg-3 sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 Localians. All rights reserved.</p>
-          <p className="font-mono text-[12px]">localhost → anywhere</p>
+          <p>
+            © 2026 Localians. All rights reserved. <span className="text-fg-2">Your localhost. Anywhere.</span>
+          </p>
+          <DevelopedBy className="text-[13px]" />
         </div>
       </div>
     </footer>

@@ -33,10 +33,10 @@ export default function TroubleshootingPage() {
       back={{ href: routes.docs, label: "Documentation" }}
     >
       <Prose>
-        <Problem id="app-not-running" title="Your local app isn't running" symptom={<>&ldquo;We couldn&apos;t find a website running on port 3000. Start your app and try again.&rdquo;</>}>
+        <Problem id="app-not-running" title="Your local app isn't running" symptom={<>&ldquo;We couldn&apos;t find a website running on port 5173. Start your app and try again.&rdquo;</>}>
           <p>
             The CLI checks your own computer before sharing. Start your dev server (for example <code className="font-mono">npm run dev</code>), wait
-            until it says it&apos;s ready, and check that <code className="font-mono">http://localhost:3000</code> opens in your browser. Then run the
+            until it says it&apos;s ready, and check that <code className="font-mono">http://localhost:5173</code> opens in your browser. Then run the
             share command again.
           </p>
         </Problem>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DeviceApproval } from "@/components/app/DeviceApproval";
 import { ToastProvider } from "@/components/app/Toast";
+import { DevelopedBy } from "@/components/ui/Credit";
 import { Logo } from "@/components/ui/Logo";
 import { findPendingDeviceAuthorization } from "@/server/cli/device";
 import { rateLimit } from "@/server/rate-limit";
@@ -44,6 +45,9 @@ export default async function CliActivatePage({ searchParams }: { searchParams: 
           </ToastProvider>
         </div>
       </main>
+      <footer className="container-x flex h-14 items-center justify-center">
+        <DevelopedBy />
+      </footer>
     </div>
   );
 }

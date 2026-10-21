@@ -1,5 +1,6 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
+import { authCookiePrefix } from "@/lib/auth-cookies";
 
 /**
  * Optimistic gate only: bounces requests that carry no session cookie at all.
@@ -8,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname + request.nextUrl.search;
-  const cookie = getSessionCookie(request, { cookiePrefix: "localians" });
+  const cookie = getSessionCookie(request, { cookiePrefix: authCookiePrefix() });
   if (!cookie) {
     const url = new URL("/login", request.url);
     url.searchParams.set("next", path);

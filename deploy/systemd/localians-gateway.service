@@ -1,0 +1,38 @@
+[Unit]
+Description=Localians tunnel gateway (127.0.0.1:4100, admin 127.0.0.1:4101)
+Documentation=https://github.com/THINXIFY/Localians/blob/main/deploy/README.md
+After=network-online.target localians-web.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=localians
+Group=localians
+WorkingDirectory=/srv/localians/current
+EnvironmentFile=/etc/localians/gateway.env
+Environment=NODE_ENV=production
+ExecStart=/opt/localians/node/bin/node tunnel/gateway/dist/gateway.js
+Restart=always
+RestartSec=2
+# Give tunnels a moment to close cleanly; CLIs reconnect automatically.
+TimeoutStopSec=15
+KillSignal=SIGTERM
+MemoryMax=768M
+# One file descriptor per visitor connection and per tunnel.
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=localians-gateway
+
+[Install]
+WantedBy=multi-user.target

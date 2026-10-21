@@ -1,0 +1,39 @@
+[Unit]
+Description=Localians web app (Next.js, 127.0.0.1:4000)
+Documentation=https://github.com/THINXIFY/Localians/blob/main/deploy/README.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=localians
+Group=localians
+WorkingDirectory=/srv/localians/current
+EnvironmentFile=/etc/localians/web.env
+Environment=NODE_ENV=production
+ExecStart=/opt/localians/node/bin/node node_modules/next/dist/bin/next start --port 4000 --hostname 127.0.0.1
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+# Resources: adjust to the VPS size.
+MemoryMax=1G
+LimitNOFILE=65536
+# Sandboxing
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# Next.js writes its runtime cache inside the release's .next directory.
+ReadWritePaths=/srv/localians/releases
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=localians-web
+
+[Install]
+WantedBy=multi-user.target

@@ -8,7 +8,7 @@ test("a new user is pointed straight at sharing, with honest empty states", asyn
   await expect(page.getByRole("heading", { name: "Your localhost. Ready to share.", level: 1 })).toBeVisible();
   const how = page.getByRole("list", { name: "How Localians works" });
   for (const title of ["What it does", "Connect your app", "Get a link", "Stop sharing"]) await expect(how.getByRole("heading", { name: title })).toBeVisible();
-  await expect(how).toContainText("localians share 3000");
+  await expect(how).toContainText("localians share 5173");
   await expect(page.getByRole("link", { name: "View My Previews" })).toHaveAttribute("href", "/dashboard/previews");
 
   // Sidebar: Share App first, then previews and projects; Connection Help is one click away.
@@ -19,6 +19,9 @@ test("a new user is pointed straight at sharing, with honest empty states", asyn
   for (const step of ["Choose your port", "Run this command", "Share your link"]) {
     await expect(page.getByRole("heading", { name: step })).toBeVisible();
   }
+  // 5173 is only the suggested starting port.
+  await expect(page.getByLabel("Port", { exact: true })).toHaveValue("5173");
+  await expect(page.getByTestId("share-command")).toHaveText(/localians share 5173 --setup [a-z2-9]{12}$/);
   await expect(page.getByText("Waiting for your local app to connect...")).toBeVisible();
   await page.getByLabel("Port", { exact: true }).fill("8080");
   await expect(page.getByTestId("share-command")).toHaveText(/localians share 8080 --setup [a-z2-9]{12}$/);

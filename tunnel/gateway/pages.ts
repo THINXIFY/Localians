@@ -1,3 +1,5 @@
+import { LOGO_DATA_URI } from "./brand";
+
 export type GatewayErrorKind =
   | "not-found"
   | "offline"
@@ -30,6 +32,6 @@ export const statusFor = (kind: GatewayErrorKind) => PAGES[kind].status;
 /** Small branded HTML page. Static text only — nothing from the request is reflected. */
 export function errorPage(kind: GatewayErrorKind) {
   const { status, title, body } = PAGES[kind];
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} · Localians</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070907;color:#f7f8f5;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:440px;padding:32px 24px}p.k{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#a7b0a4}p.k span{display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:2px;background:#b8ff3b}h1{margin:16px 0 8px;font-size:26px;line-height:1.2;letter-spacing:-.02em}p{color:#a7b0a4;margin:0}small{display:block;margin-top:24px;color:#858f84;font:12px ui-monospace,Menlo,monospace}</style></head><body><main><p class="k"><span></span>LOCALIANS</p><h1>${title}</h1><p>${body}</p><small>HTTP ${status}</small></main></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${title} · Localians</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#070907;color:#f7f8f5;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:440px;padding:32px 24px}img.brand{display:block;width:144px;height:24px}h1{margin:16px 0 8px;font-size:26px;line-height:1.2;letter-spacing:-.02em}p{color:#a7b0a4;margin:0}small{display:block;margin-top:24px;color:#858f84;font:12px ui-monospace,Menlo,monospace}</style></head><body><main><img class="brand" src="${LOGO_DATA_URI}" width="144" height="24" alt="Localians"><h1>${title}</h1><p>${body}</p><small>HTTP ${status}</small></main></body></html>`;
   return { status, html };
 }

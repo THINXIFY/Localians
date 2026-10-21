@@ -6,10 +6,11 @@ import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/Button";
 import { FRAMEWORKS, projectInputSchema, type ProjectFormValues } from "@/lib/validation/project";
 import { Field, FormError, Select, TextArea, TextInput } from "./Field";
+import { DEFAULT_LOCAL_PORT } from "@/lib/previews";
 
 type Result = { ok: true } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
-export const emptyProject: ProjectFormValues = { name: "", description: "", framework: "", defaultPort: "" };
+export const emptyProject: ProjectFormValues = { name: "", description: "", framework: "", defaultPort: String(DEFAULT_LOCAL_PORT) };
 
 export function ProjectForm({
   initialValues = emptyProject,
@@ -88,7 +89,7 @@ export function ProjectForm({
               {...register("defaultPort")}
               inputMode="numeric"
               autoComplete="off"
-              placeholder={suggestedPort ? String(suggestedPort) : "3000"}
+              placeholder={suggestedPort ? String(suggestedPort) : String(DEFAULT_LOCAL_PORT)}
               className="font-mono"
             />
           )}

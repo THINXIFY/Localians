@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/app/Primitives";
+import { DEFAULT_LOCAL_PORT } from "@/lib/previews";
 import { ShareWizard } from "@/components/app/share/ShareWizard";
 import { cliInfo } from "@/server/cli/config";
 import { getShareStatus } from "@/server/previews";
@@ -15,7 +16,7 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
   const session = await requireUser("/dashboard/share");
   const openedAt = renderTime();
   const requested = Number((await searchParams).port);
-  const initialPort = Number.isInteger(requested) && requested >= 1 && requested <= 65535 ? requested : 3000;
+  const initialPort = Number.isInteger(requested) && requested >= 1 && requested <= 65535 ? requested : DEFAULT_LOCAL_PORT;
   const [projects, status, setup, workspace] = await Promise.all([
     getProjectOptions(session.user.id),
     getShareStatus(session.user.id, new Date(openedAt)),

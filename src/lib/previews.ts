@@ -85,3 +85,10 @@ export const EVENT_TONE: Record<PreviewEventType, StatusTone> = {
   VISITORS_SIGNED_OUT: "off",
   QUOTA_EXCEEDED: "bad",
 };
+
+/**
+ * Port suggested by default in the dashboard (wizard, new projects, examples). Only a starting
+ * value: any port 1–65535 can be shared, saved project ports are never changed, and framework
+ * guidance (Next.js 3000, Angular 4200, …) stays specific.
+ */
+export const DEFAULT_LOCAL_PORT = 5173;

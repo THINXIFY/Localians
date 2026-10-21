@@ -33,7 +33,7 @@ export const projectInputSchema = z.object({
   defaultPort: z
     .string()
     .trim()
-    .refine((v) => v === "" || /^\d+$/.test(v), "Use a whole number, like 3000.")
+    .refine((v) => v === "" || /^\d+$/.test(v), "Use a whole number, like 5173.")
     .transform((v) => (v === "" ? null : Number(v)))
     .refine((v) => v === null || (v >= 1 && v <= 65535), "Ports range from 1 to 65535."),
 });

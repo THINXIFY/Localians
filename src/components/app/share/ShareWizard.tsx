@@ -29,8 +29,8 @@ type ShareStatus = { cliLoggedIn: boolean; preview: SharePreview | null };
 type ProjectOption = { id: string; name: string; slug: string; defaultPort: number | null; status: "ACTIVE" | "ARCHIVED"; accessMode: "PUBLIC" | "PASSWORD"; hasPassword: boolean };
 
 const PRESETS = [
-  { label: "Next.js / React", port: 3000 },
   { label: "Vite", port: 5173 },
+  { label: "Next.js / React", port: 3000 },
   { label: "Angular", port: 4200 },
 ] as const;
 

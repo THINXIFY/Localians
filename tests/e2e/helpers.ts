@@ -54,7 +54,8 @@ export async function createProject(page: Page, values: { name: string; descript
   await page.getByLabel("Project name").fill(values.name);
   if (values.description) await page.getByLabel("Description").fill(values.description);
   if (values.framework) await page.getByLabel("Framework").selectOption({ label: values.framework });
-  if (values.port) await page.getByLabel("Default local port").fill(values.port);
+  // The form suggests 5173; tests without a port mean "no saved port".
+  await page.getByLabel("Default local port").fill(values.port ?? "");
   await page.getByRole("button", { name: "Create project" }).click();
   // Exclude /projects/new itself: wait until the form has navigated to the created project.
   await expect(page).toHaveURL(/\/dashboard\/projects\/(?!new$)[a-z0-9]+$/);

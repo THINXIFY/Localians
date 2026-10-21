@@ -6,7 +6,7 @@ export type GatewayConfig = {
   tls: { cert: string; key: string } | null;
   /** Previews are served at `<label>.<previewDomain>`. */
   previewDomain: string;
-  /** Hostname the CLI connects to (e.g. tunnel.localians.example). */
+  /** Hostname the CLI connects to (production: tunnel.localians.com). */
   tunnelHost: string;
   /** Scheme public visitors use; `https` whenever TLS terminates here or at a fronting proxy. */
   publicProto: "http" | "https";

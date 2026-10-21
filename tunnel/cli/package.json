@@ -1,23 +1,38 @@
 {
   "name": "localians",
   "version": "0.1.0",
-  "description": "Share your localhost with a secure HTTPS preview link.",
+  "description": "Share your localhost with a secure HTTPS preview link — public or password protected.",
   "license": "UNLICENSED",
   "private": true,
   "bin": {
     "localians": "dist/localians.js"
   },
   "files": [
-    "dist"
+    "dist/localians.js",
+    "README.md"
   ],
   "engines": {
     "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/THINXIFY/Localians.git",
+    "directory": "tunnel/cli"
+  },
+  "homepage": "https://github.com/THINXIFY/Localians#readme",
+  "bugs": {
+    "url": "https://github.com/THINXIFY/Localians/issues"
   },
   "keywords": [
     "localhost",
     "tunnel",
     "preview",
     "share",
-    "dev-server"
-  ]
+    "dev-server",
+    "https",
+    "ngrok-alternative"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

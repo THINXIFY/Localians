@@ -112,3 +112,20 @@ test("project data persists across sign-out and sign-in", async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Long-lived App")).toBeVisible();
 });
+
+test("new projects suggest port 5173 but keep whatever port is entered", async ({ page }) => {
+  await createUserOnDashboard(page, "Port Default");
+  await page.goto("/dashboard/projects/new");
+  await expect(page.getByLabel("Default local port")).toHaveValue("5173");
+  await page.getByLabel("Project name").fill("Default Port App");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/projects\/(?!new$)[a-z0-9]+$/);
+  await expect(page.getByText(/localians share 5173 --project/)).toBeVisible();
+
+  // Any other port is kept as entered (and existing projects keep theirs).
+  const id = await createProject(page, { name: "Angular App", port: "4200" });
+  await page.goto(`/dashboard/projects/${id}`);
+  await expect(page.getByText(`localians share 4200 --project ${id}`)).toBeVisible();
+  await page.goto("/dashboard/share?port=8080");
+  await expect(page.getByTestId("share-command")).toHaveText(/localians share 8080 --setup /);
+});

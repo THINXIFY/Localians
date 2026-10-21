@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { OnboardingFlow } from "@/components/app/OnboardingFlow";
 import { ToastProvider } from "@/components/app/Toast";
+import { DevelopedBy } from "@/components/ui/Credit";
 import { Logo } from "@/components/ui/Logo";
 import { getUserProfile, requireUser } from "@/server/session";
 import { getCurrentWorkspace } from "@/server/workspaces";
@@ -29,6 +30,9 @@ export default async function OnboardingPage() {
           </ToastProvider>
         </div>
       </main>
+      <footer className="container-x flex h-14 items-center justify-center">
+        <DevelopedBy />
+      </footer>
     </div>
   );
 }

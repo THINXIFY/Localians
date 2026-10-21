@@ -268,3 +268,12 @@ body {
 @utility text-pretty {
   text-wrap: pretty;
 }
+
+/* Logo variants: the white-lettered wordmark on dark surfaces, the re-inked one in the light theme. */
+.brand-on-light { display: none; }
+.theme-scope[data-theme="light"] .brand-on-dark { display: none; }
+.theme-scope[data-theme="light"] .brand-on-light { display: block; }
+@media (prefers-color-scheme: light) {
+  .theme-scope[data-theme="system"] .brand-on-dark { display: none; }
+  .theme-scope[data-theme="system"] .brand-on-light { display: block; }
+}

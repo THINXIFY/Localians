@@ -189,22 +189,28 @@ the two run on different machines, expose it only on a private network.
 - **Access model:** public previews can be opened by anyone with the link while sharing is on (random URLs are not
   access control). Password-protected previews require the project password first — see "Security & reliability".
 
-## Deploying (not done yet — requires decisions and accounts)
+## Deploying
 
-Nothing has been deployed. A real internet deployment needs:
+The production runbook for a VPS (systemd + Nginx + PostgreSQL, web app on 127.0.0.1:4000) is in
+[`deploy/README.md`](deploy/README.md), with environment template [`.env.production.example`](.env.production.example).
+`docker-compose.yml` is for local development only. The summary below lists what any deployment needs.
 
-1. **Domains** — an app domain for the dashboard and, ideally, a **separate registrable domain** for previews
-   (e.g. `localians-preview.com`) so preview sites can never share cookies with the dashboard.
-2. **DNS** — a wildcard record `*.<preview domain>` and a tunnel host (e.g. `tunnel.<domain>`) pointing at the gateway.
-3. **TLS** — a wildcard certificate for `*.<preview domain>` (e.g. Let's Encrypt via DNS-01) on the gateway
-   (`GATEWAY_TLS_CERT_FILE`/`KEY_FILE`), or terminate TLS at a load balancer and set `GATEWAY_BEHIND_TLS_PROXY=1`
-   plus `GATEWAY_TRUSTED_PROXIES`.
-4. **Hosting** — the gateway on a VM/container with port 443 open (it's long-running; serverless won't work).
-   The web app anywhere Next.js runs, behind a proxy that sets `X-Forwarded-For`.
-5. **Environment** — `TUNNEL_PREVIEW_DOMAIN`, `TUNNEL_GATEWAY_URL`, matching `TUNNEL_TOKEN_SECRET` and
-   `GATEWAY_API_SECRET` on both services, `CONTROL_PLANE_URL` on the gateway, `GATEWAY_CONTROL_URL` on the web
-   app (gateway admin listener on a private network), plus Resend and GitHub credentials.
-6. **CLI** — publish the `localians` package to npm (name currently available; not published without approval).
+**Production target** (not deployed yet — DNS, certificates and server setup are pending):
+
+| Hostname | Role |
+| --- | --- |
+| `https://localians.com` (+ `www` redirect) | website, dashboard, auth, API, CLI authorization |
+| `https://tunnel.localians.com` | CLI tunnel connections |
+| `https://<label>.preview.localians.com` | preview links |
+
+The web app runs on `127.0.0.1:4000` and the gateway on `127.0.0.1:4100`/`4101`, behind Nginx on a Hostinger VPS
+(`2.25.169.72`) that also hosts other sites. DNS records, certificates (including the wildcard for previews) and the
+step-by-step setup are in [`deploy/README.md`](deploy/README.md).
+
+**Beta security note:** previews share the registrable domain `localians.com` with the dashboard. Auth cookies are
+host-only `__Host-` cookies and cross-origin requests are rejected, but previews are same-site. See the risk
+assessment in [`deploy/README.md` §8](deploy/README.md#8-security-previews-on-the-same-registrable-domain-beta), and
+move previews to a separate registrable domain before opening sharing to untrusted users.
 
 ### Scaling beyond one gateway
 

@@ -41,13 +41,13 @@ export default function GettingStartedPage() {
         <p>Open your project and start its development server the way you always do, for example:</p>
         <CodeLine>npm run dev</CodeLine>
         <p>
-          Note the port it prints. If you can open <code className="font-mono">http://localhost:3000</code> (or your port) in your browser, you&apos;re
+          Note the port it prints. If you can open <code className="font-mono">http://localhost:5173</code> (or your port) in your browser, you&apos;re
           ready.
         </p>
 
         <h2>2. Share it</h2>
         <p>Open a second terminal in the same project folder and run the command with your port:</p>
-        <CodeLine>localians share 3000</CodeLine>
+        <CodeLine>localians share 5173</CodeLine>
         <p>The first time, two quick questions are answered for you:</p>
         <ul>
           <li>

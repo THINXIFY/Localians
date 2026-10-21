@@ -37,7 +37,7 @@ export default function CliGuidePage() {
 
         <h2>localians share &lt;port&gt;</h2>
         <p>Shares the app running on <code className="font-mono">localhost:&lt;port&gt;</code>. Run it in your project folder, in a second terminal next to your dev server.</p>
-        <CodeLine>localians share 3000</CodeLine>
+        <CodeLine>localians share 5173</CodeLine>
         <ol>
           <li>Checks that something is running on that port on your computer.</li>
           <li>If this computer isn&apos;t signed in yet (or its login expired), opens your browser to approve it, then carries on.</li>
@@ -50,7 +50,7 @@ export default function CliGuidePage() {
         </p>
         <p>
           <strong>From the dashboard:</strong> the Share App page builds a command like{" "}
-          <code className="font-mono">localians share 3000 --setup k7m2xq9p4tzw</code>. The one-time code carries the project and access (public or
+          <code className="font-mono">localians share 5173 --setup k7m2xq9p4tzw</code>. The one-time code carries the project and access (public or
           password) you chose there, so the CLI asks nothing. It works once, within 30 minutes, and only for your own login.
         </p>
         <p>

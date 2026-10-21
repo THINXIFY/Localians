@@ -8,7 +8,7 @@ import { ProjectTable } from "@/components/app/ProjectTable";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatBytes, formatCount, formatDateTime, timeAgo } from "@/lib/format";
-import { EVENT_LABEL, EVENT_TONE, shareCommand } from "@/lib/previews";
+import { DEFAULT_LOCAL_PORT, EVENT_LABEL, EVENT_TONE, shareCommand } from "@/lib/previews";
 import { cliInfo } from "@/server/cli/config";
 import { getPreviewSummary, getRecentActivity, SUMMARY_WINDOW_DAYS } from "@/server/previews";
 import { getProjectCounts, getRecentProjects } from "@/server/projects";
@@ -31,7 +31,7 @@ export default async function OverviewPage() {
 
   const explainers = [
     { title: "What it does", body: "Gives the app running on your computer a temporary HTTPS link — nothing is deployed." },
-    { title: "Connect your app", body: <>Run <code className="font-mono text-[12px] text-fg">{shareCommand(3000, undefined, cli.run)}</code> in a terminal next to your app.</> },
+    { title: "Connect your app", body: <>Run <code className="font-mono text-[12px] text-fg">{shareCommand(DEFAULT_LOCAL_PORT, undefined, cli.run)}</code> in a terminal next to your app.</> },
     { title: "Get a link", body: "Copy the preview link and send it — add a password if it shouldn't be public. It works while your app and that command run." },
     { title: "Stop sharing", body: "Press Ctrl+C in that terminal, or use Stop Sharing here. The link stops working right away." },
   ];

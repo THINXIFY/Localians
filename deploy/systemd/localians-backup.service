@@ -1,0 +1,12 @@
+[Unit]
+Description=Localians database backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=localians
+Group=localians
+EnvironmentFile=/etc/localians/web.env
+ExecStart=/srv/localians/bin/backup.sh scheduled
+Nice=10
+IOSchedulingClass=idle

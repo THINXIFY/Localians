@@ -1,0 +1,50 @@
+# Continuous integration: typecheck, lint, unit + integration tests (real PostgreSQL), production build.
+# Never deploys. (Browser and real-tunnel E2E suites run locally: see README "Scripts".)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: localians
+          POSTGRES_PASSWORD: localians
+          POSTGRES_DB: localians_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U localians" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Throwaway CI-only values (not secrets): the database above lives only for this job.
+      TEST_DATABASE_URL: postgresql://localians:localians@localhost:5432/localians_test
+      DATABASE_URL: postgresql://localians:localians@localhost:5432/localians_test
+      BETTER_AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else-0123
+      BETTER_AUTH_URL: http://localhost:3001
+      NEXT_PUBLIC_SITE_URL: http://localhost:3001
+      EMAIL_TRANSPORT: console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npm run tunnel:build

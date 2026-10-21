@@ -82,8 +82,11 @@ test("new developer shares a password-protected app: Choose Port → Run Command
   await client.getByLabel("Password").fill("client-pass-123");
   await client.getByRole("button", { name: "Open preview" }).click();
   await expect(client.getByTestId("headline")).toHaveText("Sample store v1");
-  await client.getByRole("button", { name: "Clicked 0 times" }).click();
-  await expect(client.getByRole("button", { name: "Clicked 1 times" })).toBeVisible(); // JS loaded through the protected preview
+  // JS loaded through the protected preview (retry the click until the dev server has finished compiling and hydrated).
+  await expect(async () => {
+    await client.getByRole("button", { name: /Clicked \d+ times/ }).click();
+    await expect(client.getByRole("button", { name: /Clicked [1-9]\d* times/ })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 30_000 });
   await client.getByRole("button", { name: "Call API" }).click();
   await expect(client.getByTestId("api-result")).toHaveText("API says: local Next.js API route");
   await client.waitForTimeout(1500); // HMR WebSocket connects (with the access cookie)

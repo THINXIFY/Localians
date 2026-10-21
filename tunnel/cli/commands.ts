@@ -10,7 +10,7 @@ import { banner, c, EXIT, fail, formatDuration, out, row } from "./ui";
 export const VERSION = "0.1.0";
 const USER_AGENT = `localians-cli/${VERSION} (${process.platform}; node ${process.versions.node})`;
 
-/** Server URL baked in at build time (`LOCALIANS_DEFAULT_API_URL`), so `localians share 3000` needs no flags. */
+/** Server URL baked in at build time (`LOCALIANS_DEFAULT_API_URL`), so `localians share 5173` needs no flags. */
 declare const __LOCALIANS_DEFAULT_API_URL__: string | undefined;
 const DEFAULT_API_URL = typeof __LOCALIANS_DEFAULT_API_URL__ === "string" && __LOCALIANS_DEFAULT_API_URL__ ? __LOCALIANS_DEFAULT_API_URL__ : undefined;
 

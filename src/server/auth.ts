@@ -1,4 +1,5 @@
 import "server-only";
+import { authCookiePrefix, authCookiesSecure } from "@/lib/auth-cookies";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
@@ -6,6 +7,7 @@ import { prisma } from "./db";
 import { sendEmail } from "./email/send";
 import { changeEmailMessage, existingAccountMessage, resetPasswordMessage, verifyEmailMessage } from "./email/templates";
 import { createPersonalWorkspace } from "./workspaces";
+import { isDeployedProduction } from "./deployment";
 
 const baseURL = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
 
@@ -87,7 +89,8 @@ export const auth = betterAuth({
   },
 
   rateLimit: {
-    enabled: process.env.AUTH_RATE_LIMIT !== "off",
+    // Can only be switched off outside a real deployment (local tests).
+    enabled: isDeployedProduction() || process.env.AUTH_RATE_LIMIT !== "off",
     storage: "database",
     window: 60,
     max: 100,
@@ -103,7 +106,12 @@ export const auth = betterAuth({
   },
 
   advanced: {
-    cookiePrefix: "localians",
+    // Host-only auth cookies: `__Host-` names over https, never a Domain attribute (src/lib/auth-cookies.ts).
+    cookiePrefix: authCookiePrefix(),
+    // Better Auth would prepend `__Secure-` to the name; the `__Host-` prefix already implies Secure.
+    useSecureCookies: false,
+    defaultCookieAttributes: { secure: authCookiesSecure(), path: "/", sameSite: "lax", httpOnly: true },
+    crossSubDomainCookies: { enabled: false },
     // Better Auth skips origin/CSRF checks when NODE_ENV=test or TEST is set.
     // Pin them on so a stray env var can never disable CSRF protection.
     disableOriginCheck: false,

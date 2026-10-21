@@ -5,6 +5,15 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
+/**
+ * Public, absolute HTTPS URL of the email logo: email clients fetch images from the internet, so it
+ * must never be a localhost or relative URL. Defaults to the production site; EMAIL_ASSET_BASE_URL overrides.
+ */
+export function emailLogoUrl() {
+  const base = (process.env.EMAIL_ASSET_BASE_URL ?? "https://localians.com").replace(/\/+$/, "");
+  return `${base}/images/logo/localians-logo-email.png`;
+}
+
 function layout({ heading, body, cta, url, footnote }: { heading: string; body: string; cta: string; url: string; footnote: string }) {
   const safeUrl = escapeHtml(url);
   return `<!doctype html>
@@ -14,8 +23,7 @@ function layout({ heading, body, cta, url, footnote }: { heading: string; body: 
       <tr><td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#111511;border:1px solid rgba(255,255,255,0.08);border-radius:16px;">
           <tr><td style="padding:32px 32px 0;">
-            <span style="display:inline-block;width:10px;height:10px;background:#B8FF3B;border-radius:3px;margin-right:8px;"></span>
-            <span style="font-size:13px;font-weight:600;letter-spacing:0.18em;color:#F7F8F5;">LOCALIANS</span>
+            <a href="https://localians.com" style="text-decoration:none;"><img src="${escapeHtml(emailLogoUrl())}" width="180" height="30" alt="Localians" style="display:block;width:180px;height:30px;border:0;outline:none;text-decoration:none;color:#F7F8F5;font-size:16px;font-weight:600;" /></a>
           </td></tr>
           <tr><td style="padding:28px 32px 8px;">
             <h1 style="margin:0;font-size:22px;line-height:1.25;font-weight:600;color:#F7F8F5;">${escapeHtml(heading)}</h1>
@@ -27,6 +35,12 @@ function layout({ heading, body, cta, url, footnote }: { heading: string; body: 
           <tr><td style="padding:0 32px 32px;">
             <p style="margin:0;font-size:12.5px;line-height:1.6;color:#858F84;">${escapeHtml(footnote)}</p>
             <p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#858F84;word-break:break-all;">${safeUrl}</p>
+          </td></tr>
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+          <tr><td align="center" style="padding:20px 16px 0;font-size:12px;line-height:1.6;color:#858F84;">
+            <a href="https://localians.com" style="color:#A7B0A4;text-decoration:none;">Localians</a> · Your localhost. Anywhere.<br />
+            Developed by: <a href="https://thinxify.com" style="color:#A7B0A4;text-decoration:underline;">Thinxify Technologies</a>
           </td></tr>
         </table>
       </td></tr>

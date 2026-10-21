@@ -1,6 +1,7 @@
 import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isDeployedProduction } from "../deployment";
 
 export type EmailMessage = {
   to: string;
@@ -26,7 +27,8 @@ function resolveTransport(): Transport {
   if (!["resend", "console", "outbox"].includes(transport)) {
     throw new Error(`Unknown EMAIL_TRANSPORT "${transport}". Use resend, console or outbox.`);
   }
-  if (transport !== "resend" && process.env.NODE_ENV === "production" && process.env.ALLOW_TEST_EMAIL_TRANSPORT !== "1") {
+  const testOverride = process.env.ALLOW_TEST_EMAIL_TRANSPORT === "1" && !isDeployedProduction();
+  if (transport !== "resend" && (isDeployedProduction() || process.env.NODE_ENV === "production") && !testOverride) {
     throw new Error(`EMAIL_TRANSPORT=${transport} is for development and tests only. Configure Resend for production.`);
   }
   return transport;

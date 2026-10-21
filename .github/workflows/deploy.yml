@@ -1,0 +1,53 @@
+# Manual production deploy to the VPS. Runs ONLY when started by hand (Actions → Deploy → Run workflow).
+# Protect the `production` environment with required reviewers in Settings → Environments.
+#
+# Repository/environment secrets (never put credentials in this file):
+#   VPS_HOST            server address
+#   VPS_SSH_USER        localians (the deploy user)
+#   VPS_SSH_KEY         private key whose public half is in ~localians/.ssh/authorized_keys
+#   VPS_SSH_KNOWN_HOSTS output of `ssh-keyscan -t ed25519 <host>` (pins the server's host key)
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git branch, tag or commit to deploy"
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Validate ref
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          [[ "$REF" =~ ^[A-Za-z0-9._/-]{1,100}$ ]] || { echo "Invalid ref"; exit 1; }
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy (build, migrate, restart, health check, rollback on failure)
+        env:
+          REF: ${{ inputs.ref }}
+          HOST: ${{ secrets.VPS_HOST }}
+          USER_NAME: ${{ secrets.VPS_SSH_USER }}
+        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "$USER_NAME@$HOST" "/srv/localians/bin/deploy.sh '$REF'"
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -1,0 +1,14 @@
+# Localians — bootstrap site (HTTP only), used once to obtain the first certificates.
+# Replaced by localians.conf once certificates exist. Touches only Localians server names.
+server {
+    listen 80;
+    server_name ${APP_DOMAIN} ${TUNNEL_HOST} ${REDIRECT_DOMAINS};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/localians-acme;
+        default_type text/plain;
+    }
+    location / {
+        return 503 "Localians is being set up.\n";
+    }
+}

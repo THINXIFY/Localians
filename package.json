@@ -20,7 +20,10 @@
     "gateway:dev": "tsx tunnel/gateway/main.ts",
     "cli": "tsx tunnel/cli/main.ts",
     "tunnel:certs": "node scripts/dev-certs.mjs",
-    "gateway:start": "node --env-file=.env tunnel/gateway/dist/gateway.js"
+    "gateway:start": "node --env-file=.env tunnel/gateway/dist/gateway.js",
+    "start:prod": "next start --port 4000 --hostname 127.0.0.1",
+    "check:prod-env": "node scripts/check-production-env.mjs",
+    "cli:release": "node scripts/build-tunnel.mjs --release"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",

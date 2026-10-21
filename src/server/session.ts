@@ -9,7 +9,7 @@ import { prisma } from "./db";
 export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
 
 function hasSessionCookie(cookieHeader: string | null) {
-  return !!cookieHeader && /(?:^|;\s*)(?:__Secure-)?localians\.session_token=/.test(cookieHeader);
+  return !!cookieHeader && /(?:^|;\s*)(?:__Secure-|__Host-)?localians\.session_token=/.test(cookieHeader);
 }
 
 /**
