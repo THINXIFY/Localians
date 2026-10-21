@@ -17,17 +17,22 @@ if (release && !/^https:\/\/(?!localhost|127\.)[^\s"]+$/.test(defaultApiUrl)) {
 }
 if (defaultApiUrl && !/^https?:\/\/[^\s"]+$/.test(defaultApiUrl)) throw new Error(`Invalid default API URL: ${defaultApiUrl}`);
 
+const cliVersion = JSON.parse(fs.readFileSync("tunnel/cli/package.json", "utf8")).version;
+// LOCALIANS_CLI_OUTFILE lets tests build a release bundle elsewhere without replacing the development one.
+const cliOutfile = process.env.LOCALIANS_CLI_OUTFILE ?? "tunnel/cli/dist/localians.js";
+
 const common = { bundle: true, platform: "node", target: "node20", format: "cjs", legalComments: "none", logLevel: "info" };
 
 await build({
   ...common,
   entryPoints: ["tunnel/cli/main.ts"],
-  outfile: "tunnel/cli/dist/localians.js",
+  outfile: cliOutfile,
   banner: { js: "#!/usr/bin/env node" },
   minify: true,
-  define: { __LOCALIANS_DEFAULT_API_URL__: JSON.stringify(defaultApiUrl) },
+  define: { __LOCALIANS_DEFAULT_API_URL__: JSON.stringify(defaultApiUrl), __LOCALIANS_CLI_VERSION__: JSON.stringify(cliVersion) },
 });
-console.log(`CLI default server: ${defaultApiUrl || "(none — pass --api-url)"}`);
+console.log(`CLI ${cliVersion} default server: ${defaultApiUrl || "(none — pass --api-url)"}`);
+if (process.env.LOCALIANS_CLI_ONLY === "1") process.exit(0);
 
 await build({
   ...common,

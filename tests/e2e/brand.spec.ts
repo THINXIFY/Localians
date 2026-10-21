@@ -78,7 +78,7 @@ test("dashboard logo follows the theme; onboarding and the wizard show the brand
   await expect(light).toBeVisible();
 
   await page.goto("/dashboard/share");
-  await expect(page.getByRole("heading", { name: "Choose your port" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enter your port" })).toBeVisible();
   await expectImagesLoaded(page);
 
   await page.setViewportSize({ width: 390, height: 844 });

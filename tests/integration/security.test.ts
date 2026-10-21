@@ -311,10 +311,34 @@ describe("share setup codes", () => {
     await prisma.shareSetup.update({ where: { id: b.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
     await expect(api.redeemSetup(b.code, 3000)).rejects.toMatchObject({ status: 410, code: "setup_expired" });
 
-    // Neither project nor name: the CLI picks by port / creates one itself.
+    // Neither project nor name: named after the app the CLI runs in (or "My app" from an older CLI).
     const c = await createShareSetup(user.id);
     await updateShareSetup(user.id, c.id, { port: 3000, project: { kind: "new", name: "" }, access: { mode: "PUBLIC" } });
-    expect(await api.redeemSetup(c.code, 3000)).toEqual({ project: null, access: "public" });
+    expect(await api.redeemSetup(c.code, 3000, { name: "acme-storefront", framework: "NEXTJS" })).toEqual({
+      project: expect.objectContaining({ name: "acme-storefront", framework: "NEXTJS", defaultPort: 3000 }),
+      access: "public",
+    });
+    // …and the next unnamed setup on the same port reuses that project instead of creating another.
+    const d = await createShareSetup(user.id);
+    await updateShareSetup(user.id, d.id, { port: 3000, project: { kind: "new", name: "" }, access: { mode: "PUBLIC" } });
+    expect((await api.redeemSetup(d.code, 3000, { name: "something-else", framework: null })).project?.name).toBe("acme-storefront");
+  });
+
+  it("regression: an unnamed new project chosen with a password is created protected (never silently public)", async () => {
+    const { user } = await createVerifiedUser("Setup Unnamed");
+    const token = await cliLogin(user.id);
+    const api = createApi(controlPlane.url, token, "test");
+    const setup = await createShareSetup(user.id);
+    await updateShareSetup(user.id, setup.id, { port: app.port, project: { kind: "new", name: "" }, access: { mode: "PASSWORD", password: "unnamed password 1" } });
+
+    const redeemed = await api.redeemSetup(setup.code, app.port, { name: "my-portfolio", framework: "REACT_VITE" });
+    expect(redeemed.access).toBe("password");
+    expect(redeemed.project).toMatchObject({ name: "my-portfolio", defaultPort: app.port });
+    const t = await share(token, redeemed.project!.id);
+    expect(t.session.access).toBe("password");
+    expect((await publicRequest(gatewayPort, t.host, "/", { headers: { accept: "text/html" } })).status).toBe(401);
+    expect((await signIn(t.host, "unnamed password 1")).res.status).toBe(303);
+    t.agent.stop();
   });
 });
 

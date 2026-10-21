@@ -7,7 +7,9 @@ import { detectProject, findLocalAddress } from "./local";
 import { type Credentials, deleteCredentials, readCredentials, readShares, removeShare, saveCredentials, writeShare } from "./store";
 import { banner, c, EXIT, fail, formatDuration, out, row } from "./ui";
 
-export const VERSION = "0.1.0";
+/** Set from tunnel/cli/package.json at build time, so `--version` and the User-Agent always match the package. */
+declare const __LOCALIANS_CLI_VERSION__: string | undefined;
+export const VERSION = typeof __LOCALIANS_CLI_VERSION__ === "string" ? __LOCALIANS_CLI_VERSION__ : "0.0.0-dev";
 const USER_AGENT = `localians-cli/${VERSION} (${process.platform}; node ${process.versions.node})`;
 
 /** Server URL baked in at build time (`LOCALIANS_DEFAULT_API_URL`), so `localians share 5173` needs no flags. */
@@ -20,11 +22,23 @@ function resolveApiUrl(options: Options) {
   return (options.apiUrl ?? process.env.LOCALIANS_API_URL ?? readCredentials()?.apiUrl ?? DEFAULT_API_URL)?.replace(/\/+$/, "") ?? null;
 }
 
+/**
+ * How to open a URL in the default browser. On Windows `cmd /c start` would split the URL at `&` and run the rest as
+ * a command, so the URL handler is called directly instead. Only http(s) URLs are ever opened.
+ */
+export function browserCommand(url: string, platform: NodeJS.Platform = process.platform): [string, string[]] | null {
+  if (!/^https?:\/\/[^\s"'`<>|^]+$/.test(url)) return null;
+  if (platform === "win32") return ["rundll32.exe", ["url.dll,FileProtocolHandler", url]];
+  if (platform === "darwin") return ["open", [url]];
+  return ["xdg-open", [url]];
+}
+
 function openBrowser(url: string) {
-  const [cmd, args] =
-    process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] : process.platform === "darwin" ? ["open", [url]] : ["xdg-open", [url]];
+  const command = browserCommand(url);
+  if (!command) return;
+  const [cmd, args] = command;
   try {
-    spawn(cmd, args as string[], { stdio: "ignore", detached: true }).on("error", () => {}).unref();
+    spawn(cmd, args, { stdio: "ignore", detached: true, windowsHide: true }).on("error", () => {}).unref();
   } catch {
     // The URL is printed anyway.
   }
@@ -300,7 +314,7 @@ export async function share(port: number, options: Options): Promise<number> {
   let project: ApiProject | null = null;
   if (options.setup) {
     try {
-      const setup = await api.redeemSetup(options.setup, port);
+      const setup = await api.redeemSetup(options.setup, port, detectProject(process.cwd()));
       project = setup.project;
       verbose(project ? `using project "${project.name}" from the dashboard setup` : "dashboard setup: project chosen automatically");
     } catch (error) {

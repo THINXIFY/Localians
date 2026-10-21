@@ -16,7 +16,7 @@ test("a new user is pointed straight at sharing, with honest empty states", asyn
   await expect(nav.getByRole("link", { name: "Connection Help" })).toHaveAttribute("href", "/docs/troubleshooting");
   await nav.getByRole("link", { name: "Share App" }).click();
   await expect(page).toHaveURL(/\/dashboard\/share$/);
-  for (const step of ["Choose your port", "Run this command", "Share your link"]) {
+  for (const step of ["Enter your port", "Copy the command", "Share your link"]) {
     await expect(page.getByRole("heading", { name: step })).toBeVisible();
   }
   // 5173 is only the suggested starting port.

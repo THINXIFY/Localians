@@ -12,7 +12,7 @@ const nextPage = path.join(nextApp, "app/page.jsx");
 const original = fs.readFileSync(nextPage, "utf8");
 test.afterAll(() => fs.writeFileSync(nextPage, original));
 
-test("new developer shares a password-protected app: Choose Port → Run Command → Share Link", async ({ page, context, browser }) => {
+test("new developer shares a password-protected app: Enter Port → Copy Command → Share Link", async ({ page, context, browser }) => {
   fs.rmSync(path.join(configDir, "credentials.json"), { force: true }); // a computer that has never signed in
   await createUserOnDashboard(page, "First Timer");
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://localhost:3123" });
@@ -21,10 +21,14 @@ test("new developer shares a password-protected app: Choose Port → Run Command
   await expect(page.getByRole("heading", { name: "Your localhost. Ready to share.", level: 1 })).toBeVisible();
   await page.getByRole("link", { name: "Share a Local App" }).first().click();
   await expect(page).toHaveURL(/\/dashboard\/share$/);
-  for (const step of ["Choose your port", "Run this command", "Share your link"]) await expect(page.getByRole("heading", { name: step })).toBeVisible();
+  for (const step of ["Enter your port", "Copy the command", "Share your link"]) await expect(page.getByRole("heading", { name: step })).toBeVisible();
 
   // ---- 1. Choose port, name the project, protect it --------------------------------------------
   await page.getByLabel("Port", { exact: true }).fill("4310");
+  // Step 1 is just the port; project and password are optional and folded away.
+  await expect(page.getByPlaceholder("Project name (optional)")).toBeHidden();
+  await expect(page.getByTestId("share-options-summary")).toContainText("New project · Anyone with the link");
+  await page.getByText("Project & password").click();
   await page.getByPlaceholder("Project name (optional)").fill("Client Demo");
   await page.getByRole("radio", { name: "Password" }).click();
   await expect(page.getByTestId("setup-state")).toHaveText("Enter a password (8+ characters) to get the command.");
@@ -124,5 +128,48 @@ test("new developer shares a password-protected app: Choose Port → Run Command
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dashboard/share");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  expect(await runCli(["logout"]).exited).toBe(0);
+});
+
+test("beginner: port + password only, run from a subfolder — project named after the app, protected, status and stop", async ({ page, context, browser }) => {
+  fs.rmSync(path.join(configDir, "credentials.json"), { force: true });
+  await createUserOnDashboard(page, "Second Timer");
+  await page.goto("/dashboard/share");
+  await page.getByLabel("Port", { exact: true }).fill("4310");
+  await page.getByText("Project & password").click();
+  await page.getByRole("radio", { name: "Password" }).click();
+  await page.getByPlaceholder("Password (8+ characters)").fill("beginner-pass-1"); // no project name typed
+  await expect(page.getByTestId("setup-state")).toContainText("It works once");
+  const command = ((await page.getByTestId("share-command").textContent()) ?? "").replace(/^\$\s*/, "").trim();
+  expect(command).toMatch(/^localians share 4310 --setup [a-z2-9]{12}$/);
+
+  // Run from a subfolder of the app (app/): the CLI walks up to package.json for the name.
+  const share = runCli([...command.replace(/^localians\s+/, "").split(/\s+/), "--no-browser"], path.join(nextApp, "app"));
+  const [verifyUrl] = await share.waitFor(/http:\/\/localhost:3123\/cli\/activate\?code=\S+/);
+  const approval = await context.newPage();
+  await approval.goto(verifyUrl);
+  await approval.getByRole("button", { name: "Authorize CLI" }).click();
+  await expect(approval.getByText("Your terminal carries on by itself")).toBeVisible();
+  await approval.close();
+
+  const [, publicUrl] = await share.waitFor(/Preview link\s+(https:\/\/[a-z2-7]{12}\.preview\.localhost:8643)/, 60_000);
+  expect(share.output).toMatch(/Project\s+next-sample-app/); // not "localians-web", not "app"
+  expect(share.output).toMatch(/Access\s+Password protected/);
+  expect(share.output).toMatch(/Status\s+● Connected/);
+  expect(share.output).toContain("Press Ctrl+C to stop sharing.");
+
+  const client = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
+  expect((await client.goto(publicUrl))?.status()).toBe(401); // the password choice was applied to the auto-named project
+
+  const status = runCli(["status"]);
+  expect(await status.exited).toBe(0);
+  expect(status.output).toMatch(/Project\s+next-sample-app/);
+  expect(status.output).toContain(publicUrl);
+
+  await page.goto("/dashboard/projects");
+  await expect(page.getByRole("link", { name: /next-sample-app/ })).toBeVisible();
+
+  share.proc.kill("SIGINT");
+  await share.exited;
   expect(await runCli(["logout"]).exited).toBe(0);
 });

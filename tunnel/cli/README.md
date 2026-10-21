@@ -3,12 +3,19 @@
 Share the app running on your computer with a secure HTTPS preview link — public, or protected with a password.
 
 ```bash
-npx localians share 5173
+npx localians share 3000
 ```
 
-1. Start your app as usual (`npm run dev`) and note its port.
-2. Run `localians share <port>` in another terminal. The first time, your browser opens to approve this computer.
-3. Copy the preview link it prints and send it. Keep the command running while you share; press Ctrl+C to stop.
+No install, no account setup in the terminal, no flags. Works on Windows, macOS and Linux with Node.js 20+.
+
+1. Start your app as usual (`npm run dev`) and note its port (3000 for Next.js, 5173 for Vite, …).
+2. In a second terminal, in your project folder, run `npx localians share <port>`. The first time, your browser opens
+   so you can approve this computer — once.
+3. Copy the preview link it prints and send it. Keep the command running while you share; press **Ctrl+C** to stop.
+
+The project is named after your app (from `package.json`, `pyproject.toml`, `Cargo.toml`, `composer.json` or `go.mod`,
+else the folder name). Prefer clicking? The dashboard’s **Share App** page gives you a ready-made command with your
+project and password already chosen.
 
 ## Commands
 
@@ -22,7 +29,9 @@ npx localians share 5173
 | `localians logout` | Sign out and revoke this computer's access |
 
 Options: `-y, --yes` (create a project without asking, for scripts), `--host-header preserve`, `-v, --verbose`,
-`--no-browser`, `--api-url <url>`. Run `localians --help` for details.
+`--no-browser`, `--api-url <url>` (only needed for a self-hosted server). Run `localians --help` for details.
+
+Exit codes: `0` ok, `1` other error, `2` usage, `3` login needed, `4` nothing running on that port, `5` Localians unreachable.
 
 ## Security
 

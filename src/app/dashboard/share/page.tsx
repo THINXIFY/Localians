@@ -29,7 +29,7 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-8">
       <PageHeader
         title="Share a local app"
-        description="Choose your port, run one command, share the link. No deployment needed."
+        description="Enter your port, copy one command, share the link. No deployment needed."
       />
       <ShareWizard
         openedAt={openedAt}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Check, Globe, HelpCircle, Info, Loader2, Lock } from "lucide-react";
+import { ArrowUpRight, Check, ChevronRight, Globe, HelpCircle, Info, Loader2, Lock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { buttonClasses } from "@/components/ui/Button";
@@ -75,6 +75,7 @@ export function ShareWizard({
   const selected = choice === "existing" ? active.find((p) => p.id === projectId) : undefined;
   const [mode, setMode] = useState<"PUBLIC" | "PASSWORD">(() => matching(initialPort)?.accessMode ?? "PUBLIC");
   const [password, setPassword] = useState("");
+  const [optionsOpen, setOptionsOpen] = useState(() => matching(initialPort)?.accessMode === "PASSWORD");
   const [save, setSave] = useState<{ state: "idle" | "saving" | "saved" | "error"; message?: string; passwordSaved?: boolean }>({ state: "idle" });
   const [status, setStatus] = useState<ShareStatus>(initialStatus);
   const [waitingLong, setWaitingLong] = useState(false);
@@ -140,6 +141,7 @@ export function ShareWizard({
       setChoice("existing");
       setProjectId(match.id);
       setMode(match.accessMode);
+      if (match.accessMode === "PASSWORD") setOptionsOpen(true); // show that this link will ask for a password
     }
   }
 
@@ -152,7 +154,7 @@ export function ShareWizard({
 
       <ol className="flex flex-col">
         {/* ------------------------------------------------------------ 1. Choose port */}
-        <Step n={1} done={connected} title="Choose your port" last={false}>
+        <Step n={1} done={connected} title="Enter your port" last={false}>
           <p>
             Start your app as usual (for example <code className="font-mono text-[12.5px] text-fg">npm run dev</code>), then pick the port it shows.
           </p>
@@ -207,7 +209,18 @@ export function ShareWizard({
             )}
           </p>
 
-          <div className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+          {/* Optional: most people just share. Opens by itself when the project is password protected. */}
+          <details open={optionsOpen} onToggle={(e) => setOptionsOpen(e.currentTarget.open)} className="group border-t border-line pt-3">
+            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md py-1 text-[13px] text-fg-2 hover:text-fg [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="size-3.5 shrink-0 text-fg-3 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+              <span className="font-medium text-fg">Project &amp; password</span>
+              <span className="min-w-0 truncate text-fg-3" data-testid="share-options-summary">
+                · {choice === "existing" ? (selected?.name ?? "Existing project") : projectName.trim() || "New project"} ·{" "}
+                {mode === "PASSWORD" ? "Password protected" : "Anyone with the link"}
+              </span>
+              <span className="ml-auto shrink-0 text-[11.5px] text-fg-3">Optional</span>
+            </summary>
+          <div className="grid gap-4 pt-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <span className="text-[13px] font-medium text-fg" id={`${ids.project}-label`}>
                 Project
@@ -240,7 +253,7 @@ export function ShareWizard({
                     autoComplete="off"
                     className={cn(inputClasses, "h-10 text-[13.5px]")}
                   />
-                  <p className="text-[12px] text-fg-3">Leave empty to name it after your app&apos;s folder.</p>
+                  <p className="text-[12px] text-fg-3">Leave empty to use your app&apos;s own name (from package.json or its folder).</p>
                 </>
               ) : (
                 <>
@@ -318,11 +331,12 @@ export function ShareWizard({
               )}
             </div>
           </div>
+          </details>
         </Step>
 
-        {/* ------------------------------------------------------------ 2. Run command */}
-        <Step n={2} done={connected} title="Run this command" last={false}>
-          <p>Open another terminal in your project folder and run:</p>
+        {/* ------------------------------------------------------------ 2. Copy command */}
+        <Step n={2} done={connected} title="Copy the command" last={false}>
+          <p>Paste it into a second terminal in your project folder (keep your app running in the first) and press Enter:</p>
           <div className={cn("flex flex-col gap-3 rounded-xl border border-line-strong bg-bg-2 p-3 sm:flex-row sm:items-center sm:p-2 sm:pl-4", !ready && "opacity-60")}>
             <code className="min-w-0 flex-1 break-all font-mono text-[14.5px] text-fg" data-testid="share-command">
               <span aria-hidden="true" className="select-none text-accent-ink">

@@ -24,9 +24,12 @@ Global options:
   --version             Print the CLI version
 
 Examples:
-  localians share 5173
-  localians share 5173 --project client-dashboard
-  localians status
+  npx localians share 3000                   Share a Next.js / React app on port 3000
+  npx localians share 5173                   Share a Vite app
+  npx localians share 3000 --project shop    Share under an existing project
+  npx localians status                       See what this computer is sharing
+
+Stop sharing: press Ctrl+C in the window where "localians share" is running.
 `;
 
 export type ParsedCli =

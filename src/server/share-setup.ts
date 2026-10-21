@@ -97,10 +97,10 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
 
 /**
  * The CLI redeems a setup code (once). Returns the project to share under, creating it if the
- * wizard asked for a new one, and applies the chosen protection to it. `project: null` means
- * the wizard left the project to the CLI (match by port, or create one — consent was given in the wizard).
+ * wizard asked for a new one, and applies the chosen protection to it. With no project chosen it uses the project on
+ * this port, or creates one named after the app the CLI runs in (`detected`; consent was given in the wizard).
  */
-export async function redeemShareSetup(auth: CliAuth, code: string, port: number) {
+export async function redeemShareSetup(auth: CliAuth, code: string, port: number, detected?: { name?: string; framework?: string | null }) {
   if (!setupCodePattern.test(code)) throw new SetupError("setup_invalid", "That setup code isn't valid. Copy the command again from the dashboard.");
   const setup = await prisma.shareSetup.findUnique({ where: { codeHash: sha256(code) } });
   // Same answer for "doesn't exist" and "belongs to someone else".
@@ -123,6 +123,19 @@ export async function redeemShareSetup(auth: CliAuth, code: string, port: number
     project = existing;
   } else if (setup.newProjectName) {
     project = await createProject(auth.userId, projectInputSchema.parse({ name: setup.newProjectName, description: "", framework: "", defaultPort: String(port) }));
+  } else {
+    // "New project, no name": the project that already uses this port, else one named after the app the CLI is run
+    // from. Resolved here (not in the CLI) so the chosen protection is always applied to it.
+    project = await prisma.project.findFirst({
+      where: { workspaceId: auth.workspaceId, status: ProjectStatus.ACTIVE, defaultPort: port },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, name: true, slug: true, framework: true, defaultPort: true },
+    });
+    if (!project) {
+      const input = { description: "", defaultPort: String(port) };
+      const named = projectInputSchema.safeParse({ ...input, name: detected?.name?.trim() || "My app", framework: detected?.framework ?? "" });
+      project = await createProject(auth.userId, named.success ? named.data : projectInputSchema.parse({ ...input, name: "My app", framework: "" }));
+    }
   }
 
   if (project && setup.accessMode) {

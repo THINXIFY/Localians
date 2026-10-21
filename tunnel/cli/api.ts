@@ -61,7 +61,8 @@ export function createApi(apiUrl: string, token: string | null, userAgent: strin
       ),
     me: () => call<{ user: { email: string; name: string }; workspace: { id: string; name: string }; projects: ApiProject[] }>("GET", "/api/cli/me"),
     createProject: (input: { name: string; framework: string | null; defaultPort: number }) => call<{ project: ApiProject }>("POST", "/api/cli/projects", input),
-    redeemSetup: (code: string, port: number) => call<{ project: ApiProject | null; access: "public" | "password" }>("POST", "/api/cli/setup", { code, port }),
+    redeemSetup: (code: string, port: number, detected?: { name: string; framework: string | null }) =>
+      call<{ project: ApiProject | null; access: "public" | "password" }>("POST", "/api/cli/setup", { code, port, projectName: detected?.name, framework: detected?.framework }),
     createTunnel: (projectId: string, localPort: number) =>
       call<{
         sessionId: string;

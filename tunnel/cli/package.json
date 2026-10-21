@@ -11,15 +11,23 @@
     "dist/localians.js",
     "README.md"
   ],
+  "scripts": {
+    "prepack": "node ../../scripts/verify-cli-package.mjs"
+  },
   "engines": {
     "node": ">=20"
   },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/THINXIFY/Localians.git",
     "directory": "tunnel/cli"
   },
-  "homepage": "https://github.com/THINXIFY/Localians#readme",
+  "homepage": "https://localians.com",
   "bugs": {
     "url": "https://github.com/THINXIFY/Localians/issues"
   },
