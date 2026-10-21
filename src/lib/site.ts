@@ -1,10 +1,11 @@
 export const site = {
   name: "Localians",
-  title: "Localians — Your localhost. Anywhere.",  description:
+  title: "Localians — Your localhost. Anywhere.",
+  description:
     "Share your local web apps with clients and teammates in seconds. Secure HTTPS previews, real-time updates, and zero deployment hassle.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://localians.com",
-  command: "npx localians share 3000",
-  demoUrl: "https://demo.localians.com",
+  command: "npx localians share 5173",
+  demoUrl: "https://demo.preview.localians.com",
 };
 
 export const navLinks = [

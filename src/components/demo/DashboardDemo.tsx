@@ -33,7 +33,7 @@ const projects: Project[] = [
     id: "ecommerce",
     name: "E-commerce Website",
     live: true,
-    local: "localhost:3000",
+    local: "localhost:5173",
     url: "https://demo.localians.com",
     visits: [4, 6, 5, 9, 12, 8, 14, 18, 15, 22, 19, 26],
   },

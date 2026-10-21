@@ -145,7 +145,7 @@ function AccessVisual() {
         </span>
         <div className="min-w-0">
           <p className="text-[12.5px] font-medium text-fg">Protected preview</p>
-          <p className="font-mono text-[10.5px] text-fg-3">storefront · :3000</p>
+          <p className="font-mono text-[10.5px] text-fg-3">storefront · :5173</p>
         </div>
       </div>
       <div className="mt-4 flex items-center justify-between rounded-lg border border-line bg-white/[0.02] px-3 py-2">
@@ -175,7 +175,7 @@ function AccessVisual() {
 }
 
 const projects = [
-  { name: "storefront", port: "3000", live: true },
+  { name: "storefront", port: "5173", live: true },
   { name: "client-portal", port: "5173", live: true },
   { name: "portfolio-v2", port: "8080", live: false },
 ];
@@ -253,7 +253,7 @@ function SyncVisual() {
 }
 
 const tunnels = [
-  { name: "storefront", port: "3000", state: "live" as const, bars: "111111111111111111" },
+  { name: "storefront", port: "5173", state: "live" as const, bars: "111111111111111111" },
   { name: "client-portal", port: "5173", state: "live" as const, bars: "000111111111111111" },
   { name: "portfolio-v2", port: "8080", state: "offline" as const, bars: "111111110000000000" },
 ];

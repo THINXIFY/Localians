@@ -38,8 +38,8 @@ test("mobile menu, copy button and FAQ still work", async ({ page, context }) =>
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator("#how-it-works").scrollIntoViewIfNeeded();
-  await page.getByRole("button", { name: "Copy command: npx localians share 3000" }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("npx localians share 3000");
+  await page.getByRole("button", { name: "Copy command: npx localians share 5173" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("npx localians share 5173");
 
   const q = page.getByRole("button", { name: "Does Localians host my application?" });
   await q.scrollIntoViewIfNeeded();

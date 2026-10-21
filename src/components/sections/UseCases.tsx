@@ -113,7 +113,7 @@ function FreelancerVisual() {
         <Panel className="rounded-bl-sm p-3">
           <p className="text-[12px] leading-snug text-fg-2">Today&apos;s progress is up — have a look when you can.</p>
           <div className="mt-2">
-            <LinkChip host="demo.localians.com" />
+            <LinkChip host="demo.preview.localians.com" />
           </div>
         </Panel>
       </div>
@@ -180,7 +180,7 @@ function TeamVisual() {
         </span>
       </div>
       <div className="mt-3">
-        <LinkChip host="checkout.localians.com" />
+        <LinkChip host="checkout.preview.localians.com" />
       </div>
       <div className="mt-3 space-y-2">
         <div className="flex gap-2">
