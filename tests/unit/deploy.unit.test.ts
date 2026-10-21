@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -213,7 +214,7 @@ describe("production install and Prisma config (regression: Cannot find module '
     expect(install, "npm ci must run in a subshell that unsets the inherited npm settings").not.toBeNull();
     for (const name of ["NODE_ENV", "NPM_CONFIG_PRODUCTION", "NPM_CONFIG_OMIT", "npm_config_production", "npm_config_omit"]) expect(install![1]).toContain(name);
     expect(install![2]).toContain("--include=dev");
-    expect(deploy.indexOf("npm ci")).toBeGreaterThan(deploy.indexOf(". /etc/localians/web.env")); // i.e. the problem case: NODE_ENV is already exported
+    expect(deploy.indexOf("npm ci")).toBeGreaterThan(deploy.indexOf('. "$ENV_DIR/web.env"')); // i.e. the problem case: NODE_ENV is already exported
     expect(deploy.indexOf("npm ci")).toBeLessThan(deploy.indexOf("npm run build"));
     expect(deploy.match(/^npm ci /gm)).toBeNull(); // no unprotected install
   });
@@ -248,6 +249,62 @@ describe("production install and Prisma config (regression: Cannot find module '
       expect(res.stdout.trim()).toBe("postgresql://u:p@127.0.0.1:5432/prod");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("deploy pipeline under NODE_ENV=production (regression: Cannot find module '@tailwindcss/postcss')", () => {
+  const deploy = read("deploy/scripts/deploy.sh");
+  const pkg = JSON.parse(read("package.json")) as { devDependencies: Record<string, string> };
+
+  it("every build-time tool the pipeline runs is a devDependency installed by the guarded npm ci", () => {
+    // postcss.config -> Next build (tailwind), tunnel:build -> esbuild, migrations -> prisma, type checks during next build -> typescript
+    expect(read("postcss.config.mjs")).toContain("@tailwindcss/postcss");
+    expect(read("scripts/build-tunnel.mjs")).toMatch(/esbuild/);
+    for (const name of ["@tailwindcss/postcss", "tailwindcss", "postcss", "esbuild", "prisma", "typescript", "@types/node", "@types/react"]) expect(pkg.devDependencies[name], name).toBeDefined();
+    const ciIndex = deploy.indexOf("npm ci --include=dev");
+    for (const step of ["npm run build", "npm run tunnel:build", "npx prisma migrate deploy"]) expect(deploy.indexOf(step), step).toBeGreaterThan(ciIndex);
+    expect(deploy).toContain("node_modules/@tailwindcss/postcss/package.json"); // the module that failed on the server must be checked directly
+  });
+
+  it("refreshes a stale /srv/localians/bin/deploy.sh from the release and re-runs it, once", () => {
+    // The server keeps a copy made at install time; an old copy (without the fix) must not run the install.
+    expect(deploy.indexOf("LOCALIANS_DEPLOY_REEXEC")).toBeGreaterThan(-1);
+    expect(deploy.indexOf("LOCALIANS_DEPLOY_REEXEC")).toBeLessThan(deploy.indexOf("npm ci"));
+    expect(deploy.indexOf("LOCALIANS_DEPLOY_REEXEC")).toBeLessThan(deploy.indexOf("check-production-env.mjs"));
+    expect(read("deploy/scripts/install.sh")).toMatch(/-o root -g root -m 750 "\$HERE"\/scripts\/\{restore,verify-restore,healthcheck\}\.sh/);
+  });
+
+  it("really does it: a stale bin/deploy.sh is replaced by the release's copy and not run again in a loop", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "localians-deploy-"));
+    const lf = (s: string) => s.split(String.fromCharCode(13)).join(""); // Windows checkouts use CRLF; git archive emits LF
+    const sh = (cwd: string, args: string[], env: Record<string, string> = {}) =>
+      spawnSync(args[0], args.slice(1), { cwd, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t", ...env } });
+    try {
+      const server = path.join(tmp, "srv");
+      const envDir = path.join(tmp, "etc");
+      const repo = path.join(server, "repo");
+      for (const d of [path.join(server, "bin"), path.join(server, "releases"), repo, envDir]) fs.mkdirSync(d, { recursive: true });
+      for (const f of ["web.env", "gateway.env"]) fs.writeFileSync(path.join(envDir, f), 'NODE_ENV="production"\n');
+      fs.mkdirSync(path.join(repo, "deploy", "scripts"), { recursive: true });
+      fs.writeFileSync(path.join(repo, "deploy", "scripts", "deploy.sh"), read("deploy/scripts/deploy.sh"));
+      fs.writeFileSync(path.join(repo, "deploy", "scripts", "backup.sh"), "#!/usr/bin/env bash\n# new backup\n");
+      expect(sh(repo, ["git", "init", "-q", "-b", "main"]).status).toBe(0);
+      expect(sh(repo, ["git", "remote", "add", "origin", repo]).status).toBe(0);
+      expect(sh(repo, ["git", "add", "-A"]).status).toBe(0);
+      expect(sh(repo, ["git", "commit", "-q", "-m", "release"]).status).toBe(0);
+      const stale = path.join(server, "bin", "deploy.sh");
+      fs.writeFileSync(stale, read("deploy/scripts/deploy.sh").replace("npm ci --include=dev", "npm ci")); // the pre-fix script
+      const res = sh(server, ["bash", stale, "main"], { LOCALIANS_ROOT: server, LOCALIANS_ENV_DIR: envDir });
+      const out = res.stdout + res.stderr;
+      expect(out.match(/out of date — updating it/g)).toHaveLength(1); // refreshed once, no loop
+      expect(out.match(/^release /gm)?.length).toBe(2); // stale run + re-run
+      expect(lf(fs.readFileSync(stale, "utf8"))).toBe(lf(read("deploy/scripts/deploy.sh"))); // now the release's script
+      expect(fs.readFileSync(path.join(server, "bin", "backup.sh"), "utf8")).toContain("# new backup");
+      expect(fs.readdirSync(path.join(server, "releases"))).toHaveLength(1); // the discarded release directory was cleaned up
+      expect(res.status).not.toBe(0); // it stops at the (missing) env checker in this fake layout, after the refresh
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 });

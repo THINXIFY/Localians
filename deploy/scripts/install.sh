@@ -30,8 +30,9 @@ VARS='${APP_DOMAIN} ${TUNNEL_HOST} ${PREVIEW_DOMAIN} ${APP_CERT_DIR} ${PREVIEW_C
 echo "Hosts: app=$APP_DOMAIN tunnel=$TUNNEL_HOST previews=*.$PREVIEW_DOMAIN redirects=$REDIRECT_DOMAINS"
 
 echo "== helper scripts → /srv/localians/bin"
-install -o localians -g localians -m 750 "$HERE"/scripts/{deploy,backup,restore,verify-restore,healthcheck}.sh /srv/localians/bin/
-chown root:root /srv/localians/bin/healthcheck.sh
+install -o localians -g localians -m 750 "$HERE"/scripts/{deploy,backup}.sh /srv/localians/bin/
+# Scripts that run as root must not be writable by the deploy user.
+install -o root -g root -m 750 "$HERE"/scripts/{restore,verify-restore,healthcheck}.sh /srv/localians/bin/
 
 echo "== systemd units"
 install -m 644 "$HERE"/systemd/localians-*.service "$HERE"/systemd/localians-*.timer /etc/systemd/system/

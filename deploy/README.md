@@ -189,9 +189,11 @@ sudo -u localians /srv/localians/bin/deploy.sh main
 ```
 
 `deploy.sh` does the following:
-1. Exports the exact commit (without `.git`).
+1. Exports the exact commit (without `.git`). If `/srv/localians/bin/deploy.sh` (a copy made at install time) differs
+   from the release's own `deploy.sh`, it replaces it and re-runs, so a deploy never uses stale logic.
 2. Validates both env files.
-3. Installs dependencies and builds the web app and the gateway/CLI bundles.
+3. Installs dependencies **including devDependencies** (`web.env` sets `NODE_ENV=production`, which would make npm skip
+   the build tools), checks that the build tools exist, then builds the web app and the gateway/CLI bundles.
 4. Backs up the database.
 5. Runs `prisma migrate deploy`.
 6. Switches the `current` symlink.

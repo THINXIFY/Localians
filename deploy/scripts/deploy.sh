@@ -8,13 +8,14 @@
 # (Database migrations are forward-only: if one must be undone, restore the pre-deploy backup.)
 set -euo pipefail
 REF="${1:-main}"
-ROOT=/srv/localians
+ROOT="${LOCALIANS_ROOT:-/srv/localians}"        # overridable for tests only
+ENV_DIR="${LOCALIANS_ENV_DIR:-/etc/localians}"
 export PATH="/opt/localians/node/bin:$PATH"
 LOG="$ROOT/deploy.log"
 exec > >(tee -a "$LOG") 2>&1
 echo "==== deploy $(date -Is) ref=$REF"
 
-[[ -r /etc/localians/web.env && -r /etc/localians/gateway.env ]] || { echo "Missing /etc/localians/{web,gateway}.env"; exit 1; }
+[[ -r "$ENV_DIR/web.env" && -r "$ENV_DIR/gateway.env" ]] || { echo "Missing $ENV_DIR/{web,gateway}.env"; exit 1; }
 
 # 1. Source: an exact commit, exported without .git (no credentials in the release directory).
 cd "$ROOT/repo"
@@ -25,13 +26,24 @@ mkdir -p "$REL"
 git archive "$SHA" | tar -x -C "$REL"
 echo "release $REL ($SHA)"
 
+# 1b. Always run the deploy logic that ships with the release. /srv/localians/bin/deploy.sh is a copy made when the
+# server was set up and goes stale; if it differs, refresh the copies and re-run with the release's own script.
+if [[ "${LOCALIANS_DEPLOY_REEXEC:-}" != 1 && -f "$REL/deploy/scripts/deploy.sh" ]] && ! cmp -s "$REL/deploy/scripts/deploy.sh" "$0"; then
+  echo "bin/deploy.sh is out of date — updating it from $SHA and re-running"
+  for s in deploy backup; do   # only scripts that run as this user; root-run helpers are installed by install.sh
+    install -m 750 "$REL/deploy/scripts/$s.sh" "$ROOT/bin/$s.sh.new" && mv -f "$ROOT/bin/$s.sh.new" "$ROOT/bin/$s.sh"
+  done
+  rm -rf "$REL"
+  LOCALIANS_DEPLOY_REEXEC=1 exec "$ROOT/bin/deploy.sh" "$@"
+fi
+
 # 2. Configuration checks (fail before touching anything live).
 cd "$REL"
-node --env-file=/etc/localians/web.env scripts/check-production-env.mjs web
-node --env-file=/etc/localians/gateway.env scripts/check-production-env.mjs gateway
+node --env-file="$ENV_DIR/web.env" scripts/check-production-env.mjs web
+node --env-file="$ENV_DIR/gateway.env" scripts/check-production-env.mjs gateway
 
 # 3. Install + build. NEXT_PUBLIC_* values and the CLI's default server are baked in at build time.
-set -a; . /etc/localians/web.env; set +a
+set -a; . "$ENV_DIR/web.env"; set +a
 # web.env sets NODE_ENV=production for the runtime, and npm treats that as "omit devDependencies". The build and
 # migrations need them (prisma, tailwindcss, typescript, esbuild, ...), so install with a clean npm environment and
 # --include=dev, then fail early if a build tool is missing.
@@ -39,7 +51,7 @@ set -a; . /etc/localians/web.env; set +a
   unset NODE_ENV NPM_CONFIG_PRODUCTION NPM_CONFIG_OMIT NPM_CONFIG_INCLUDE npm_config_production npm_config_omit npm_config_include
   npm ci --include=dev --no-audit --no-fund --loglevel=error
 )
-for tool in node_modules/.bin/prisma node_modules/.bin/next node_modules/.bin/tsc node_modules/tailwindcss/package.json node_modules/esbuild/package.json; do
+for tool in node_modules/.bin/prisma node_modules/.bin/next node_modules/.bin/tsc node_modules/tailwindcss/package.json node_modules/@tailwindcss/postcss/package.json node_modules/postcss/package.json node_modules/esbuild/package.json; do
   [[ -e $tool ]] || { echo "Install is incomplete: $tool is missing (devDependencies were not installed)."; exit 1; }
 done
 npm run build
