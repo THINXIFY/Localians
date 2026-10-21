@@ -154,3 +154,51 @@ describe("CLI release build", () => {
     expect(result.stderr).toContain("Release builds need a public https server URL");
   });
 });
+
+describe("provision.sh on the shared VPS", () => {
+  const script = read("deploy/scripts/provision.sh");
+  const sh = (cmd: string[]) => spawnSync("bash", cmd, { encoding: "utf8" });
+
+  it("has valid bash syntax", () => {
+    const res = sh(["-n", path.join(root, "deploy/scripts/provision.sh")]);
+    expect(res.stderr).toBe("");
+    expect(res.status).toBe(0);
+  });
+
+  it("is plan-only by default and rejects unknown options", () => {
+    expect(script).toMatch(/APPLY=0; WITH_SWAP=0; WITH_JOURNALD=0; WITH_FIREWALL=0; WITH_FAIL2BAN=0/);
+    expect(script).toContain('*) echo "Unknown option');
+  });
+
+  it("makes server-wide changes opt-in only", () => {
+    for (const flag of ["--with-swap", "--with-journald", "--with-firewall", "--with-fail2ban"]) expect(script).toContain(flag + ")");
+    expect(script).toContain("if [[ $WITH_SWAP == 1 ]]");
+    expect(script).toContain("if [[ $WITH_JOURNALD == 1 ]]");
+    expect(script).toContain("if [[ $WITH_FIREWALL == 1 ]]");
+    expect(script).toContain("if [[ $WITH_FAIL2BAN == 1 ]]");
+    expect(script).not.toMatch(/apt-get install[^\n]*unattended-upgrades/);
+    expect(script).not.toMatch(/apt-get (upgrade|dist-upgrade)/);
+    expect(script).not.toMatch(/ufw (enable|--force)/);
+  });
+
+  it("installs a supported Node 24 into an isolated, versioned directory and never deletes an existing one", () => {
+    expect(script).toMatch(/NODE_VERSION="\$\{NODE_VERSION:-24\.\d+\.\d+\}"/);
+    expect(script).toContain("sha256sum -c");
+    expect(script).toContain('NODE_DIR="$NODE_ROOT/node-v$NODE_VERSION"');
+    expect(script).toContain("ln -sfn $NODE_DIR $NODE_ROOT/node");
+    expect(script).toMatch(/It will NOT be deleted or replaced/);
+    expect(script).not.toContain("rm -rf /opt/localians");
+    expect(script).not.toContain("rm -rf $NODE_ROOT");
+    expect(script).not.toMatch(/rm -rf[^\n]*\/opt\/localians\/node/);
+  });
+
+  it("fails safely in preflight, before any change, on conflicts", () => {
+    expect(script.indexOf("Preflight (read-only")).toBeLessThan(script.indexOf("Packages (only what is missing"));
+    expect(script).toMatch(/\(\(FAILS > 0\)\)[\s\S]*exit 2/);
+    for (const what of ["port $p is already used", "nginx -t fails", "service $svc is not running", "refusing to take it over", "only one of role/database"]) expect(script).toContain(what);
+  });
+
+  it("keeps the systemd units pointed at the symlinked Node", () => {
+    for (const unit of ["localians-web", "localians-gateway"]) expect(read("deploy/systemd/" + unit + ".service")).toContain("/opt/localians/node/bin/node");
+  });
+});

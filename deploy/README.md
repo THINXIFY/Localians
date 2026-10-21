@@ -144,18 +144,24 @@ sudo bash /root/localians-setup/deploy/scripts/provision.sh            # PLAN ON
 sudo bash /root/localians-setup/deploy/scripts/provision.sh --apply    # after reviewing the plan
 ```
 
-It installs only what's missing and leaves existing sites alone:
-- Node.js 24 under `/opt/localians/node`, leaving the system Node.js untouched.
-- A dedicated PostgreSQL role and database `localians` with a random password, plus PostgreSQL itself only if it
-  isn't installed.
-- Nginx, certbot, fail2ban and unattended-upgrades.
-- 2 GB of swap, only if the server has none.
-- The `localians` user and its directories.
-- journald size limits.
+Plan-only is the default; `--apply` is refused unless the read-only preflight passes. It only touches
+Localians' own resources and leaves everything else on the shared server alone:
+- Node.js 24 (current LTS, checksum-verified) in `/opt/localians/node-v<version>`, with `/opt/localians/node` as a
+  symlink. It never deletes or replaces an existing `/opt/localians/node` directory, and stops if one is there.
+- A dedicated PostgreSQL role and database `localians` with a random password written only to
+  `/etc/localians/web.env`. Other databases are never touched.
+- The `localians` user and its directories (`/srv/localians`, `/etc/localians`, `/var/backups/localians`).
+- Only missing packages (nginx, postgresql, certbot, curl, git); no `apt upgrade`, no unattended-upgrades.
 - A sudoers rule allowing only `systemctl restart localians-*`.
 
-It doesn't install pending OS upgrades, which could restart the other site's services. It doesn't enable a
-firewall that's currently off either; it prints the safe command order instead.
+Preflight fails safely (exit code 2, nothing changed) on: Nginx or PostgreSQL not running, `nginx -t` already
+failing, ports 4000/4100/4101 in use, a `localians` user with a different home, existing non-empty Localians
+directories owned by someone else, an existing real `/opt/localians/node`, or an inconsistent PostgreSQL state.
+
+Server-wide changes are **off by default** and each needs its own flag: `--with-swap` (2 GB, only if there is
+no swap), `--with-journald` (size limits + journald restart), `--with-firewall` (adds ufw rules for 80/443 only
+when ufw is already active; ufw is never enabled) and `--with-fail2ban`. Existing Docker containers, Nginx sites,
+certificates and services are never modified.
 
 Then create the environment files from [`.env.production.example`](../.env.production.example). It already contains
 the production hostnames:
@@ -319,7 +325,7 @@ They're on the same disk: copy them off the server too (Hostinger snapshots, or 
 ## 12. Sizing and load testing
 
 - **Memory and CPU:** 2 vCPU / 4 GB is comfortable. The web app is capped at 1 GB and the gateway at 768 MB
-  (systemd `MemoryMax`). Builds need about 2 GB, hence the swap.
+  (systemd `MemoryMax`). Builds need about 2 GB; add `--with-swap` to provisioning if the server has little free memory.
 - **Tunnel cost:** each tunnel is one long-lived TLS connection; each visitor request is one HTTP/2 stream inside
   it. Locally this adds about 0.6–0.9 ms per request.
 - **Load testing:** keep it gentle on a shared server. For example, `npx autocannon -c 20 -d 30
