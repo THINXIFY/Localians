@@ -1,0 +1,270 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Design tokens
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #070907;
+  --bg-2: #0c100c;
+  --card: #111511;
+  --elevated: #171c17;
+  --accent: #b8ff3b;
+  --accent-hover: #a6f12f;
+  --fg: #f7f8f5;
+  --fg-2: #a7b0a4;
+  --fg-3: #858f84;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --accent-glow: rgba(184, 255, 59, 0.12);
+  --danger: #ff6b5e;
+  --warn: #f5c451;
+  /* Accent used as text/icon colour (stays lime on dark, deepens on light). */
+  --accent-ink: #b8ff3b;
+  /* Base for translucent hover/fill layers: white on dark, near-black on light. */
+  --tint: #ffffff;
+  --overlay: rgba(3, 5, 3, 0.72);
+
+  --radius-card: 16px;
+  --header-h: 64px;
+
+  color-scheme: dark;
+}
+
+/* Dashboard light theme. Scoped so the marketing site always stays dark. */
+.theme-scope[data-theme="light"] {
+  --bg: #f6f7f3;
+  --bg-2: #eef0ea;
+  --card: #ffffff;
+  --elevated: #f1f3ee;
+  --fg: #0e120e;
+  --fg-2: #485146;
+  --fg-3: #5c655a;
+  --border: rgba(14, 22, 14, 0.1);
+  --border-strong: rgba(14, 22, 14, 0.18);
+  --accent-glow: rgba(110, 170, 20, 0.14);
+  --accent-ink: #3f6e00;
+  --danger: #c4372b;
+  --warn: #9a6a00;
+  --tint: #0b0f0b;
+  --overlay: rgba(14, 18, 14, 0.4);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  .theme-scope[data-theme="system"] {
+    --bg: #f6f7f3;
+    --bg-2: #eef0ea;
+    --card: #ffffff;
+    --elevated: #f1f3ee;
+    --fg: #0e120e;
+    --fg-2: #485146;
+    --fg-3: #5c655a;
+    --border: rgba(14, 22, 14, 0.1);
+    --border-strong: rgba(14, 22, 14, 0.18);
+    --accent-glow: rgba(110, 170, 20, 0.14);
+    --accent-ink: #3f6e00;
+    --danger: #c4372b;
+    --warn: #9a6a00;
+    --tint: #0b0f0b;
+    --overlay: rgba(14, 18, 14, 0.4);
+    color-scheme: light;
+  }
+  html:has(.theme-scope[data-theme="system"]) {
+    background: #f6f7f3;
+  }
+}
+
+html:has(.theme-scope[data-theme="light"]) {
+  background: #f6f7f3;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-card: var(--card);
+  --color-elevated: var(--elevated);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-accent-ink: var(--accent-ink);
+  --color-tint: var(--tint);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-card: var(--radius-card);
+
+  --animate-pulse-dot: pulse-dot 2.4s ease-out infinite;
+  --animate-blink: blink 1s steps(2, start) infinite;
+  --animate-flow: flow 2.2s linear infinite;
+  --animate-travel: travel 2.4s cubic-bezier(0.6, 0, 0.4, 1) infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+@keyframes travel {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes pulse-dot {
+  0% { box-shadow: 0 0 0 0 rgba(184, 255, 59, 0.45); }
+  70% { box-shadow: 0 0 0 6px rgba(184, 255, 59, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(184, 255, 59, 0); }
+}
+
+@keyframes blink {
+  to { visibility: hidden; }
+}
+
+@keyframes flow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* ------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------ */
+html {
+  background: var(--bg);
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-h) + 16px);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/* Native dropdowns: the open option list is drawn by the browser/OS and would otherwise be
+   white with our light text. Give it theme colours (dark and light dashboard themes). Base
+   layer, so component classes can still restyle the closed control. */
+@layer base {
+  select {
+    color-scheme: inherit;
+    background-color: var(--card);
+    color: var(--fg);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--elevated);
+    color: var(--fg);
+  }
+  select option:checked {
+    background-color: color-mix(in srgb, var(--accent) 22%, var(--elevated));
+    color: var(--fg);
+  }
+  select option:disabled {
+    color: var(--fg-3);
+  }
+}
+
+::selection {
+  background: var(--accent);
+  color: #070907;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Reusable utilities
+   ------------------------------------------------------------------ */
+@utility container-x {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding-inline: 20px;
+  @media (width >= 640px) { padding-inline: 28px; }
+  @media (width >= 1024px) { padding-inline: 32px; }
+}
+
+@utility section-y {
+  padding-block: 72px;
+  @media (width >= 768px) { padding-block: 104px; }
+  @media (width >= 1024px) { padding-block: 128px; }
+}
+
+/* Faint technical grid, faded at the edges */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+@utility mask-fade-y {
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+}
+
+@utility mask-fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+@utility surface {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+@utility hairline-top {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+    pointer-events: none;
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility text-pretty {
+  text-wrap: pretty;
+}

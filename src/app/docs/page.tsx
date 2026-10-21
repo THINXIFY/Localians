@@ -1,0 +1,93 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight, BookOpen, Layers, LifeBuoy, ShieldCheck, TerminalSquare } from "lucide-react";
+import { Prose, SubPage } from "@/components/sections/SubPage";
+import { routes } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: "Documentation",
+  description: "Learn how to share a locally running web app with a secure Localians preview link.",
+  alternates: { canonical: routes.docs },
+};
+
+const guides = [
+  {
+    href: routes.gettingStarted,
+    icon: BookOpen,
+    title: "Getting Started",
+    description: "Share your first localhost app in 60 seconds.",
+  },
+  {
+    href: routes.cliGuide,
+    icon: TerminalSquare,
+    title: "CLI Guide",
+    description: "Install, share, sign in, check status and stop sharing.",
+  },
+  {
+    href: routes.frameworks,
+    icon: Layers,
+    title: "Framework Guides",
+    description: "Next.js, React with Vite, Vue, Angular and other servers.",
+  },
+  {
+    href: routes.troubleshooting,
+    icon: LifeBuoy,
+    title: "Troubleshooting",
+    description: "Fixes for the messages you might see.",
+  },
+  {
+    href: routes.security,
+    icon: ShieldCheck,
+    title: "Security",
+    description: "Who can open a preview, and how to stop sharing.",
+  },
+];
+
+export default function DocsPage() {
+  return (
+    <SubPage
+      eyebrow="Documentation"
+      title="Localians documentation"
+      intro="Everything you need to share a locally running web app with a secure HTTPS preview link."
+      notice={
+        <>
+          <strong className="font-medium text-fg">Early beta.</strong> These docs cover the Stage 1 workflow and will grow
+          as features ship.
+        </>
+      }
+    >
+      <ul className="grid gap-4 sm:grid-cols-2">
+        {guides.map((g) => (
+          <li key={g.href}>
+            <Link
+              href={g.href}
+              className="group surface flex h-full flex-col p-6 transition-colors hover:border-line-strong"
+            >
+              <g.icon className="size-5 text-accent" aria-hidden="true" />
+              <span className="mt-5 flex items-center gap-2 text-[17px] font-semibold text-fg">
+                {g.title}
+                <ArrowRight className="size-4 text-fg-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+              <span className="mt-1.5 text-[14.5px] text-fg-2">{g.description}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-14">
+        <Prose>
+          <h2>How Localians works</h2>
+          <p>
+            Localians connects a public HTTPS preview URL to a development server running on your machine. Visitors open the
+            link in their browser and are routed to your local app. Nothing is deployed and your code stays on your
+            computer.
+          </p>
+          <p>
+            Because the preview is served from your machine, <strong>your development server and the Localians connection must
+            keep running</strong> for the link to work. Localians is not a replacement for production hosting.
+          </p>
+        </Prose>
+      </div>
+    </SubPage>
+  );
+}

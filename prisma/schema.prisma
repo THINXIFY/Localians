@@ -1,0 +1,438 @@
+// Localians — database schema
+//
+// Auth tables (User, Session, Account, Verification, RateLimit) follow the
+// Better Auth core schema. Product tables hang off Workspace so later phases
+// (tunnels, preview URLs, access policies, analytics, CLI tokens, billing)
+// can attach by workspaceId / projectId without reshaping existing data.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Authentication (Better Auth)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  /// Dashboard theme. Managed by Localians, not by Better Auth.
+  themePreference ThemePreference @default(DARK)
+  /// Set once the user finishes (or skips) onboarding.
+  onboardedAt     DateTime?
+
+  sessions        Session[]
+  accounts        Account[]
+  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
+  memberships     WorkspaceMember[]
+  cliCredentials  CliCredential[]
+  shareSetups     ShareSetup[]
+  tunnelSessions  TunnelSession[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  /// Password hash (scrypt) for email/password accounts only.
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+/// Persistent rate-limit counters for auth endpoints (shared across instances).
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rate_limits")
+}
+
+// ---------------------------------------------------------------------------
+// Workspaces
+// ---------------------------------------------------------------------------
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  /// The owner cannot be deleted while they own a workspace (ownership
+  /// transfer arrives with team features in Stage 2).
+  ownerId   String
+  owner     User     @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members        WorkspaceMember[]
+  projects       Project[]
+  cliCredentials CliCredential[]
+  tunnelEvents   TunnelEvent[]
+  shareSetups    ShareSetup[]
+  tunnelMetrics  TunnelMetric[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  framework   Framework?
+  defaultPort Int?
+  /// Lifecycle state only — says nothing about whether a tunnel is connected.
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  archivedAt  DateTime?
+
+  /// Who may open this project's preview links (Phase 5). Enforced by the gateway.
+  accessMode         PreviewAccess @default(PUBLIC)
+  /// scrypt hash of the preview password (never the password itself).
+  accessPasswordHash String?
+  /// Bumped on every password change or "sign out all visitors": older visitor access cookies stop working.
+  accessVersion      Int           @default(1)
+  /// How long a visitor stays signed in after entering the password.
+  accessTtlMinutes   Int           @default(1440)
+  accessUpdatedAt    DateTime?
+
+  tunnelSessions TunnelSession[]
+  shareSetups    ShareSetup[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status, updatedAt])
+  @@map("projects")
+}
+
+// ---------------------------------------------------------------------------
+// CLI access (Phase 3)
+// ---------------------------------------------------------------------------
+
+/// A revocable, workspace-scoped token issued to the Localians CLI. Only a
+/// SHA-256 hash of the token is stored; the plaintext is shown to the CLI once.
+model CliCredential {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Human label, e.g. "CLI on DESKTOP-42 (win32)".
+  name        String
+  tokenHash   String    @unique
+  /// First characters of the token, for recognising it in the dashboard.
+  tokenPrefix String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+
+  tunnelSessions TunnelSession[]
+
+  @@index([userId, revokedAt])
+  @@map("cli_credentials")
+}
+
+/// OAuth 2.0 Device Authorization Grant (RFC 8628) requests from the CLI.
+model DeviceAuthorization {
+  id             String           @id @default(cuid())
+  /// SHA-256 of the device_code held by the CLI.
+  deviceCodeHash String           @unique
+  /// Short code the user confirms in the browser (stored normalised, e.g. "WDJBMJHT").
+  userCode       String           @unique
+  clientName     String
+  status         DeviceAuthStatus @default(PENDING)
+  userId         String?
+  workspaceId    String?
+  createdAt      DateTime         @default(now())
+  expiresAt      DateTime
+  decidedAt      DateTime?
+  lastPolledAt   DateTime?
+
+  @@index([expiresAt])
+  @@map("device_authorizations")
+}
+
+// ---------------------------------------------------------------------------
+// Tunnels (Phase 3)
+// ---------------------------------------------------------------------------
+
+/// One `localians share` run. Live sockets stay in gateway memory; this row
+/// holds the durable metadata (never request or response contents).
+model TunnelSession {
+  id                  String         @id @default(cuid())
+  projectId           String
+  project             Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId        String?
+  credential          CliCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+  /// Random preview label (`<label>.<preview domain>`). Unique forever, so an
+  /// ended session's URL can never be claimed by anyone else.
+  hostname            String         @unique
+  localPort           Int
+  status              TunnelStatus   @default(CONNECTING)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @default(now()) @updatedAt
+  connectedAt         DateTime?
+  lastHeartbeatAt     DateTime?
+  disconnectedAt      DateTime?
+  /// Last traffic or lifecycle change; drives "latest activity" sorting.
+  lastActivityAt      DateTime       @default(now())
+  expiresAt           DateTime
+  endReason           String?
+  gatewayId           String?
+  /// Gateway connection currently carrying this session (see TunnelConnection).
+  currentConnectionId String?
+  /// Lifetime transfer totals: HTTP body + WebSocket payload bytes (README "Traffic accounting").
+  bytesIn             BigInt         @default(0)
+  bytesOut            BigInt         @default(0)
+  requestCount        Int            @default(0)
+
+  connections TunnelConnection[]
+  events      TunnelEvent[]
+  metrics     TunnelMetric[]
+
+  @@index([projectId, status])
+  @@index([userId, status])
+  @@index([status, lastHeartbeatAt])
+  @@index([projectId, lastActivityAt])
+  @@map("tunnel_sessions")
+}
+
+/// One physical CLI ↔ gateway connection of a session (a reconnect is a new row).
+/// The gateway reports *cumulative* counters per connection; keeping the last
+/// values seen lets the control plane apply only the increase, so retried or
+/// redelivered reports are never counted twice.
+model TunnelConnection {
+  /// Random id the gateway generates when it accepts the connection.
+  id             String        @id
+  sessionId      String
+  session        TunnelSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  gatewayId      String
+  connectedAt    DateTime      @default(now())
+  disconnectedAt DateTime?
+  bytesIn        BigInt        @default(0)
+  bytesOut       BigInt        @default(0)
+  requests       Int           @default(0)
+
+  @@index([sessionId])
+  @@map("tunnel_connections")
+}
+
+/// Recorded lifecycle transitions of a session (never request data).
+model TunnelEvent {
+  id          String          @id @default(cuid())
+  sessionId   String
+  session     TunnelSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type        TunnelEventType
+  detail      String?
+  createdAt   DateTime        @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@map("tunnel_events")
+}
+
+/// Traffic per session per UTC hour, written as metering arrives. Supports
+/// time-ranged analytics without storing per-request rows.
+model TunnelMetric {
+  sessionId   String
+  session     TunnelSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  /// Denormalised from the session's project for range queries.
+  projectId   String
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  bucketStart DateTime
+  requests    Int           @default(0)
+  bytesIn     BigInt        @default(0)
+  bytesOut    BigInt        @default(0)
+
+  @@id([sessionId, bucketStart])
+  @@index([workspaceId, bucketStart])
+  @@index([projectId, bucketStart])
+  @@map("tunnel_metrics")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum Framework {
+  NEXTJS
+  REACT_VITE
+  VUE
+  ANGULAR
+  NODEJS
+  OTHER
+}
+
+enum ThemePreference {
+  DARK
+  LIGHT
+  SYSTEM
+}
+
+enum DeviceAuthStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CONSUMED
+}
+
+enum TunnelStatus {
+  CONNECTING
+  CONNECTED
+  RECONNECTING
+  DISCONNECTED
+  EXPIRED
+  REVOKED
+}
+
+enum TunnelEventType {
+  CREATED
+  CONNECTED
+  RECONNECTED
+  CONNECTION_LOST
+  STOPPED_BY_CLI
+  STOPPED_FROM_DASHBOARD
+  REVOKED
+  EXPIRED
+  PROTECTION_CHANGED
+  VISITORS_SIGNED_OUT
+  QUOTA_EXCEEDED
+}
+
+enum PreviewAccess {
+  PUBLIC
+  PASSWORD
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5
+// ---------------------------------------------------------------------------
+
+/// Context prepared in the Share App wizard (port, project, protection) that the CLI redeems
+/// once with `localians share <port> --setup <code>`. Only a hash of the code is stored; it is
+/// short-lived, single-use, and only redeemable by a CLI login of the same user and workspace.
+model ShareSetup {
+  id                 String         @id @default(cuid())
+  codeHash           String         @unique
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId        String
+  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Existing project to share under, or null to create `newProjectName`.
+  projectId          String?
+  project            Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  newProjectName     String?
+  port               Int?
+  accessMode         PreviewAccess?
+  accessPasswordHash String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  expiresAt          DateTime
+  usedAt             DateTime?
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("share_setups")
+}
+
+/// Fixed-window counters shared by every web instance (replaces the per-process limiter).
+model RateLimitWindow {
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@id([key, windowStart])
+  @@index([expiresAt])
+  @@map("rate_limit_windows")
+}

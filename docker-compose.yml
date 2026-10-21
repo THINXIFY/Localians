@@ -1,0 +1,40 @@
+# Supporting services for local development: PostgreSQL + the tunnel gateway.
+# Alternative to `npm run db:start` / `npm run gateway:start` for machines with Docker.
+# NOTE: written but not yet run — Docker was unavailable in the development environment.
+#
+#   npm run tunnel:build && npm run tunnel:certs
+#   docker compose up
+#
+# The web app (control plane) still runs with `npm run dev`.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: localians
+      POSTGRES_PASSWORD: localians
+      POSTGRES_DB: localians
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  gateway:
+    build:
+      context: .
+      dockerfile: tunnel/gateway/Dockerfile
+    env_file: .env
+    environment:
+      GATEWAY_PORT: "8443"
+      GATEWAY_HOST: "0.0.0.0"
+      CONTROL_PLANE_URL: "http://host.docker.internal:3001"
+      GATEWAY_TLS_CERT_FILE: /certs/gateway.crt
+      GATEWAY_TLS_KEY_FILE: /certs/gateway.key
+    volumes:
+      - ./.localians-dev/certs:/certs:ro
+    ports:
+      - "8443:8443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pgdata:

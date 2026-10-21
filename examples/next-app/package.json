@@ -1,0 +1,13 @@
+{
+  "name": "next-sample-app",
+  "private": true,
+  "description": "Sample Next.js app for testing Localians tunnels (uses the repo's installed next/react).",
+  "scripts": {
+    "dev": "next dev -p 4310"
+  },
+  "dependencies": {
+    "next": "*",
+    "react": "*",
+    "react-dom": "*"
+  }
+}
