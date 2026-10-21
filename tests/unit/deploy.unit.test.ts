@@ -202,3 +202,52 @@ describe("provision.sh on the shared VPS", () => {
     for (const unit of ["localians-web", "localians-gateway"]) expect(read("deploy/systemd/" + unit + ".service")).toContain("/opt/localians/node/bin/node");
   });
 });
+
+describe("production install and Prisma config (regression: Cannot find module 'dotenv/config')", () => {
+  // web.env exports NODE_ENV=production; npm then omits devDependencies, so build-time packages vanished.
+  const deploy = read("deploy/scripts/deploy.sh");
+  const pkg = JSON.parse(read("package.json")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
+
+  it("deploy.sh installs devDependencies whatever npm production settings are inherited", () => {
+    const install = deploy.match(/\(\n\s*unset ([^\n]+)\n\s*npm ci ([^\n]+)\n\)/);
+    expect(install, "npm ci must run in a subshell that unsets the inherited npm settings").not.toBeNull();
+    for (const name of ["NODE_ENV", "NPM_CONFIG_PRODUCTION", "NPM_CONFIG_OMIT", "npm_config_production", "npm_config_omit"]) expect(install![1]).toContain(name);
+    expect(install![2]).toContain("--include=dev");
+    expect(deploy.indexOf("npm ci")).toBeGreaterThan(deploy.indexOf(". /etc/localians/web.env")); // i.e. the problem case: NODE_ENV is already exported
+    expect(deploy.indexOf("npm ci")).toBeLessThan(deploy.indexOf("npm run build"));
+    expect(deploy.match(/^npm ci /gm)).toBeNull(); // no unprotected install
+  });
+
+  it("deploy.sh stops early if a build tool is missing after the install", () => {
+    for (const tool of ["node_modules/.bin/prisma", "node_modules/.bin/next", "node_modules/tailwindcss/package.json"]) expect(deploy).toContain(tool);
+    expect(deploy).toContain("Install is incomplete");
+  });
+
+  it("the build tools the deploy relies on are devDependencies (so --include=dev is required)", () => {
+    for (const name of ["prisma", "tailwindcss", "@tailwindcss/postcss", "typescript", "esbuild"]) expect(pkg.devDependencies[name], name).toBeDefined();
+  });
+
+  it("prisma.config.ts needs no package other than prisma (no dotenv)", () => {
+    const imports = [...read("prisma.config.ts").matchAll(/^import .* from "([^"]+)"/gm)].map((m) => m[1]);
+    expect(imports).toEqual(["prisma/config"]);
+    expect(pkg.dependencies.dotenv ?? pkg.devDependencies.dotenv).toBeUndefined();
+  });
+
+  it("prisma.config.ts loads under NODE_ENV=production with no .env file and keeps DATABASE_URL from the environment", () => {
+    // A scratch directory inside the repo (so `prisma/config` resolves) but outside node_modules (Node won't strip types there).
+    const dir = fs.mkdtempSync(path.join(root, ".tmp-prisma-config-"));
+    try {
+      fs.copyFileSync(path.join(root, "prisma.config.ts"), path.join(dir, "prisma.config.ts"));
+      const res = spawnSync(process.execPath, ["-e", "import('./prisma.config.ts').then((m) => console.log(m.default.datasource.url))"], {
+        cwd: dir,
+        encoding: "utf8",
+        env: { PATH: process.env.PATH ?? "", NODE_ENV: "production", DATABASE_URL: "postgresql://u:p@127.0.0.1:5432/prod" },
+      });
+      expect(res.stderr).not.toContain("Cannot find module");
+      expect(res.status).toBe(0);
+      expect(res.stdout.trim()).toBe("postgresql://u:p@127.0.0.1:5432/prod");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

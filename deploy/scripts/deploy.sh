@@ -32,7 +32,16 @@ node --env-file=/etc/localians/gateway.env scripts/check-production-env.mjs gate
 
 # 3. Install + build. NEXT_PUBLIC_* values and the CLI's default server are baked in at build time.
 set -a; . /etc/localians/web.env; set +a
-npm ci --no-audit --no-fund --loglevel=error
+# web.env sets NODE_ENV=production for the runtime, and npm treats that as "omit devDependencies". The build and
+# migrations need them (prisma, tailwindcss, typescript, esbuild, ...), so install with a clean npm environment and
+# --include=dev, then fail early if a build tool is missing.
+(
+  unset NODE_ENV NPM_CONFIG_PRODUCTION NPM_CONFIG_OMIT NPM_CONFIG_INCLUDE npm_config_production npm_config_omit npm_config_include
+  npm ci --include=dev --no-audit --no-fund --loglevel=error
+)
+for tool in node_modules/.bin/prisma node_modules/.bin/next node_modules/.bin/tsc node_modules/tailwindcss/package.json node_modules/esbuild/package.json; do
+  [[ -e $tool ]] || { echo "Install is incomplete: $tool is missing (devDependencies were not installed)."; exit 1; }
+done
 npm run build
 LOCALIANS_DEFAULT_API_URL="$BETTER_AUTH_URL" npm run tunnel:build   # the CLI served by this deployment points at it
 
