@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { MotionProvider } from "@/components/ui/MotionProvider";
+import { ScrollbarGlow } from "@/components/ui/ScrollbarGlow";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <MotionProvider>{children}</MotionProvider>
+        <ScrollbarGlow />
       </body>
     </html>
   );

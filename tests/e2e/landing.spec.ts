@@ -38,7 +38,7 @@ test("mobile menu, copy button and FAQ still work", async ({ page, context }) =>
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator("#how-it-works").scrollIntoViewIfNeeded();
-  await page.getByRole("button", { name: "Copy command: npx localians share 5173" }).click();
+  await page.locator("#how-it-works").getByRole("button", { name: "Copy command: npx localians share 5173" }).click(); // the hero terminal has the same button
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("npx localians share 5173");
 
   const q = page.getByRole("button", { name: "Does Localians host my application?" });

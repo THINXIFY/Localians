@@ -55,7 +55,7 @@ export function HowItWorks() {
 
           <ol className="grid gap-4 lg:grid-cols-3 lg:gap-5">
           {steps.map((step, i) => (
-            <li key={step.n} className="relative">
+            <li key={step.n} className="relative min-w-0">
               <Reveal delay={i * 0.08} className="surface hairline-top flex h-full flex-col p-6 sm:p-7 lg:items-center lg:text-center">
                 <div className="flex items-center gap-4 lg:flex-col lg:gap-3">
                   <span className="relative z-10 flex size-[38px] shrink-0 items-center justify-center rounded-full border border-accent/40 bg-[#141b0f] text-accent shadow-[0_0_0_6px_var(--card)]">

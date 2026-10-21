@@ -277,3 +277,89 @@ body {
   .theme-scope[data-theme="system"] .brand-on-dark { display: none; }
   .theme-scope[data-theme="system"] .brand-on-light { display: block; }
 }
+
+/* ------------------------------------------------------------------
+   Scrollbars: hairline, nearly invisible at rest, lime when you touch them.
+   - Hit area is 10px (easy to grab) but only ~4px is painted: the thumb has a 3px transparent border.
+   - Resting: a faint neutral thumb. Hover: lime. Dragging or scrolling: solid lime with a soft halo that is
+     drawn in the border zone (rounded, so it reads as a glow). A tiny script (ScrollbarGlow) sets
+     data-scrolling on whatever element is scrolling and clears it after a moment.
+   - Chromium/Safari/Edge get the custom thumb; Firefox gets the standard thin scrollbar with the same colours.
+   - Fine-pointer devices only (touch keeps its native overlay scrollbars); system scrollbars in forced-colors.
+   ------------------------------------------------------------------ */
+:root {
+  --sb-thumb: rgba(255, 255, 255, 0.14);
+  --sb-hover: rgba(184, 255, 59, 0.6);
+  --sb-live: #b8ff3b;
+  --sb-halo: rgba(184, 255, 59, 0.22);
+  scrollbar-gutter: stable; /* no layout shift when a page starts or stops scrolling */
+}
+.theme-scope[data-theme="light"],
+html:has(.theme-scope[data-theme="light"]) {
+  --sb-thumb: rgba(14, 22, 14, 0.18);
+  --sb-hover: rgba(63, 110, 0, 0.62);
+  --sb-live: #4f8a00;
+  --sb-halo: rgba(110, 170, 20, 0.26);
+}
+@media (prefers-color-scheme: light) {
+  .theme-scope[data-theme="system"],
+  html:has(.theme-scope[data-theme="system"]) {
+    --sb-thumb: rgba(14, 22, 14, 0.18);
+    --sb-hover: rgba(63, 110, 0, 0.62);
+    --sb-live: #4f8a00;
+    --sb-halo: rgba(110, 170, 20, 0.26);
+  }
+}
+
+@media (forced-colors: none) {
+  @supports selector(::-webkit-scrollbar) {
+    @media (hover: hover) and (pointer: fine) {
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+        background: transparent;
+      }
+      ::-webkit-scrollbar-track,
+      ::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: var(--sb-thumb);
+        background-clip: padding-box;
+        border: 3px solid transparent; /* paints as the halo when active */
+        border-radius: 999px;
+        transition: background-color 0.25s ease, border-color 0.4s ease;
+      }
+      ::-webkit-scrollbar-thumb:vertical {
+        min-height: 44px;
+      }
+      ::-webkit-scrollbar-thumb:horizontal {
+        min-width: 44px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--sb-hover);
+        border-color: color-mix(in srgb, var(--sb-halo) 55%, transparent);
+      }
+      [data-scrolling]::-webkit-scrollbar-thumb,
+      ::-webkit-scrollbar-thumb:active {
+        background-color: var(--sb-live);
+        border-color: var(--sb-halo);
+      }
+    }
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    :root {
+      scrollbar-width: thin;
+      scrollbar-color: var(--sb-thumb) transparent;
+    }
+    [data-scrolling] {
+      scrollbar-color: var(--sb-live) transparent;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::-webkit-scrollbar-thumb {
+    transition: none;
+  }
+}
