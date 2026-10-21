@@ -47,6 +47,7 @@ export function CopyLabelButton({
   variant = "primary",
   size = "md",
   ariaLabel,
+  onCopied,
 }: {
   value: string;
   label: string;
@@ -54,6 +55,7 @@ export function CopyLabelButton({
   size?: "sm" | "md";
   /** Accessible name when the visible label needs context (e.g. which project). */
   ariaLabel?: string;
+  onCopied?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | undefined>(undefined);
@@ -65,6 +67,7 @@ export function CopyLabelButton({
         try {
           await writeClipboard(value);
           setCopied(true);
+          onCopied?.();
           window.clearTimeout(timer.current);
           timer.current = window.setTimeout(() => setCopied(false), 1800);
         } catch {

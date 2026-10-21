@@ -15,8 +15,10 @@ export const metadata: Metadata = { title: "Share App" };
 export default async function SharePage({ searchParams }: { searchParams: Promise<{ port?: string }> }) {
   const session = await requireUser("/dashboard/share");
   const openedAt = renderTime();
-  const requested = Number((await searchParams).port);
-  const initialPort = Number.isInteger(requested) && requested >= 1 && requested <= 65535 ? requested : DEFAULT_LOCAL_PORT;
+  const portParam = (await searchParams).port;
+  const requested = Number(portParam);
+  const portFromUrl = Number.isInteger(requested) && requested >= 1 && requested <= 65535;
+  const initialPort = portFromUrl ? requested : DEFAULT_LOCAL_PORT;
   const [projects, status, setup, workspace] = await Promise.all([
     getProjectOptions(session.user.id),
     getShareStatus(session.user.id, new Date(openedAt)),
@@ -29,11 +31,12 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-8">
       <PageHeader
         title="Share a local app"
-        description="Enter your port, copy one command, share the link. No deployment needed."
+        description="Pick a project, enter your port and run one command. No deployment needed."
       />
       <ShareWizard
         openedAt={openedAt}
         initialPort={initialPort}
+        portFromUrl={portFromUrl}
         run={cli.run}
         published={cli.published}
         localGateway={cli.localGateway}

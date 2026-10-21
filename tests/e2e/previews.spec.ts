@@ -16,20 +16,22 @@ test("a new user is pointed straight at sharing, with honest empty states", asyn
   await expect(nav.getByRole("link", { name: "Connection Help" })).toHaveAttribute("href", "/docs/troubleshooting");
   await nav.getByRole("link", { name: "Share App" }).click();
   await expect(page).toHaveURL(/\/dashboard\/share$/);
-  for (const step of ["Enter your port", "Copy the command", "Share your link"]) {
+  for (const step of ["Select project", "Enter port", "Start sharing"]) {
     await expect(page.getByRole("heading", { name: step })).toBeVisible();
   }
   // 5173 is only the suggested starting port.
   await expect(page.getByLabel("Port", { exact: true })).toHaveValue("5173");
   await expect(page.getByTestId("share-command")).toHaveText(/localians share 5173 --setup [a-z2-9]{12}$/);
-  await expect(page.getByText("Waiting for your local app to connect...")).toBeVisible();
+  await expect(page.getByText("Your link appears here")).toBeVisible();
   await page.getByLabel("Port", { exact: true }).fill("8080");
   await expect(page.getByTestId("share-command")).toHaveText(/localians share 8080 --setup [a-z2-9]{12}$/);
   await page.getByLabel("Port", { exact: true }).fill("99999");
-  await expect(page.getByText("Enter the port number your dev server printed (1–65535).")).toBeVisible();
+  await expect(page.getByText("Enter a port from 1 to 65535.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy Command" })).toHaveCount(0); // no command for an invalid port
   await page.goto("/dashboard/share?port=4200");
   await expect(page.getByTestId("share-command")).toHaveText(/localians share 4200 --setup [a-z2-9]{12}$/);
-  // The beta install is offered (collapsed) because the npm package isn't published.
+  // The beta install is offered (collapsed, under Help & advanced) because the npm package isn't published.
+  await page.getByText("Help & advanced").click();
   await page.getByText("Don't have the Localians command yet?").click();
   await expect(page.getByText("npm install; npm run tunnel:build")).toBeVisible();
 
@@ -118,7 +120,8 @@ test("project preview access: validation, password protection, sign out visitors
 
   // The wizard picks up the project's protection when its port is chosen.
   await page.goto("/dashboard/share?port=3000");
-  await expect(page.getByRole("radio", { name: "Password" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: /^Password/ })).toBeChecked();
+  await expect(page.getByLabel("Project", { exact: true })).toHaveValue(/.+/); // the project on port 3000 is selected
   await expect(page.getByPlaceholder("Keep the current password")).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy Command" })).toBeVisible();
   await expectNoHorizontalOverflow(page);
