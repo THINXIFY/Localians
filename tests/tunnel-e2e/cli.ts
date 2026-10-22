@@ -6,9 +6,14 @@ import { TUNNEL_E2E } from "./env";
 
 export const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "localians-e2e-"));
 
-/** Runs the bundled CLI as a real child process (as a developer would). */
+/**
+ * Runs the bundled CLI as a real child process (as a developer would). LOCALIANS_E2E_CLI points at another build,
+ * e.g. the copy installed from the packed npm tarball (release checks).
+ */
+const CLI_PATH = process.env.LOCALIANS_E2E_CLI ?? path.join(TUNNEL_E2E.root, "tunnel/cli/dist/localians.js");
+
 export function runCli(args: string[], cwd = TUNNEL_E2E.root) {
-  const proc: ChildProcess = spawn(process.execPath, [path.join(TUNNEL_E2E.root, "tunnel/cli/dist/localians.js"), ...args], {
+  const proc: ChildProcess = spawn(process.execPath, [CLI_PATH, ...args], {
     cwd,
     env: {
       ...(Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "FORCE_COLOR")) as NodeJS.ProcessEnv),
