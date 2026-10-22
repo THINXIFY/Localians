@@ -1,0 +1,9 @@
+# Only the bundle, icons, README, CHANGELOG and license go into the .vsix.
+**
+!dist/extension.js
+!media/icon.png
+!media/activity.svg
+!README.md
+!CHANGELOG.md
+!LICENSE.md
+!package.json

@@ -8,6 +8,8 @@ export default defineConfig({
       "@tunnel": path.resolve(__dirname, "tunnel"),
       // `server-only` throws outside the React server condition; tests run server code directly.
       "server-only": path.resolve(__dirname, "tests/setup/empty.ts"),
+      // The VS Code extension runs against a small fake of the editor API in unit tests.
+      vscode: path.resolve(__dirname, "tests/setup/fake-vscode.ts"),
     },
   },
   test: {

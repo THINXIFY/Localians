@@ -1,6 +1,15 @@
 import { ConnectError } from "./agent";
 
-export type ApiProject = { id: string; name: string; slug: string; framework: string | null; defaultPort: number | null };
+export type ApiProject = {
+  id: string;
+  name: string;
+  slug: string;
+  framework: string | null;
+  defaultPort: number | null;
+  /** Reported by newer servers (GET /api/cli/me). */
+  access?: "public" | "password";
+  hasPassword?: boolean;
+};
 
 export class ApiError extends Error {
   constructor(
@@ -83,6 +92,9 @@ export function createApi(apiUrl: string, token: string | null, userAgent: strin
         throw error;
       }
     },
+    /** Turns on password protection / sets a new password. The server never lets this make a project public. */
+    protectProject: (projectId: string, password: string) =>
+      call<{ access: "password"; livePreviews: number }>("POST", `/api/cli/projects/${encodeURIComponent(projectId)}/access`, { password }),
     closeTunnel: (sessionId: string) => call<{ closed: boolean }>("POST", `/api/cli/tunnels/${encodeURIComponent(sessionId)}/close`),
     listTunnels: () =>
       call<{ tunnels: { id: string; publicUrl: string | null; localPort: number; status: string; connectedAt: string | null; createdAt: string; project: { name: string } }[] }>(

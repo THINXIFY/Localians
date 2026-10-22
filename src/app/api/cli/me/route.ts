@@ -11,11 +11,17 @@ export const GET = withCliAuth(async (_request, auth) => {
       name: true,
       projects: {
         where: { status: ProjectStatus.ACTIVE },
-        select: { id: true, name: true, slug: true, framework: true, defaultPort: true },
+        select: { id: true, name: true, slug: true, framework: true, defaultPort: true, accessMode: true, accessPasswordHash: true },
         orderBy: { updatedAt: "desc" },
         take: 200,
       },
     },
   });
-  return json({ user: auth.user, workspace: { id: workspace.id, name: workspace.name }, projects: workspace.projects });
+  // Access is reported as public/password (+ whether a password exists); the hash itself never leaves the server.
+  const projects = workspace.projects.map(({ accessMode, accessPasswordHash, ...p }) => ({
+    ...p,
+    access: accessMode === "PASSWORD" ? ("password" as const) : ("public" as const),
+    hasPassword: accessPasswordHash !== null,
+  }));
+  return json({ user: auth.user, workspace: { id: workspace.id, name: workspace.name }, projects });
 });

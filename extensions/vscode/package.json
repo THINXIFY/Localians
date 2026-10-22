@@ -1,0 +1,323 @@
+{
+  "name": "localians",
+  "displayName": "Localians — Share Localhost",
+  "description": "Share the app running on your computer with a secure HTTPS preview link — public or password protected. One click, no terminal.",
+  "version": "0.1.0",
+  "publisher": "thinxify",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "private": true,
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#070907",
+    "theme": "dark"
+  },
+  "homepage": "https://localians.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/THINXIFY/Localians.git",
+    "directory": "extensions/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/THINXIFY/Localians/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Testing"
+  ],
+  "keywords": [
+    "localhost",
+    "tunnel",
+    "share",
+    "preview",
+    "https",
+    "ngrok",
+    "dev server",
+    "localians"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Sharing is turned off until you trust the workspace."
+    }
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "localians",
+          "title": "Localians",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "localians": [
+        {
+          "id": "localians.main",
+          "name": "Share",
+          "icon": "media/activity.svg",
+          "contextualTitle": "Localians"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "localians.main",
+        "contents": "Share the app running on your computer with a secure HTTPS link — public or password protected.\n[Connect to Localians](command:localians.login)\nYour browser opens once to approve VS Code. [How it works](https://localians.com/docs/getting-started)",
+        "when": "!localians.signedIn"
+      }
+    ],
+    "commands": [
+      {
+        "command": "localians.share",
+        "title": "Share App",
+        "category": "Localians",
+        "icon": "$(broadcast)"
+      },
+      {
+        "command": "localians.stop",
+        "title": "Stop Sharing",
+        "category": "Localians",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "localians.copyLink",
+        "title": "Copy Preview Link",
+        "category": "Localians",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "localians.openPreview",
+        "title": "Open Preview",
+        "category": "Localians",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "localians.protect",
+        "title": "Set Preview Password",
+        "category": "Localians",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "localians.reconnect",
+        "title": "Share Again",
+        "category": "Localians",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "localians.openDashboard",
+        "title": "Open Dashboard",
+        "category": "Localians",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "localians.refresh",
+        "title": "Refresh",
+        "category": "Localians",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "localians.login",
+        "title": "Connect to Localians",
+        "category": "Localians",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "localians.logout",
+        "title": "Sign Out",
+        "category": "Localians",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "localians.switchAccount",
+        "title": "Switch Account",
+        "category": "Localians"
+      },
+      {
+        "command": "localians.help",
+        "title": "Help",
+        "category": "Localians",
+        "icon": "$(question)"
+      },
+      {
+        "command": "localians.showLog",
+        "title": "Show Log",
+        "category": "Localians"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "localians.share",
+          "when": "view == localians.main && localians.signedIn",
+          "group": "navigation@1"
+        },
+        {
+          "command": "localians.refresh",
+          "when": "view == localians.main && localians.signedIn",
+          "group": "navigation@2"
+        },
+        {
+          "command": "localians.openDashboard",
+          "when": "view == localians.main && localians.signedIn",
+          "group": "1_links@1"
+        },
+        {
+          "command": "localians.help",
+          "when": "view == localians.main",
+          "group": "1_links@2"
+        },
+        {
+          "command": "localians.switchAccount",
+          "when": "view == localians.main && localians.signedIn",
+          "group": "2_account@1"
+        },
+        {
+          "command": "localians.logout",
+          "when": "view == localians.main && localians.signedIn",
+          "group": "2_account@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "localians.share",
+          "when": "view == localians.main && viewItem == app",
+          "group": "inline"
+        },
+        {
+          "command": "localians.copyLink",
+          "when": "view == localians.main && viewItem =~ /^share\\./",
+          "group": "inline@1"
+        },
+        {
+          "command": "localians.openPreview",
+          "when": "view == localians.main && viewItem =~ /^share\\./",
+          "group": "inline@2"
+        },
+        {
+          "command": "localians.stop",
+          "when": "view == localians.main && viewItem =~ /^share\\.(live|remote)/",
+          "group": "inline@3"
+        },
+        {
+          "command": "localians.reconnect",
+          "when": "view == localians.main && viewItem == share.ended",
+          "group": "inline@3"
+        },
+        {
+          "command": "localians.protect",
+          "when": "view == localians.main && viewItem =~ /^share\\.live/",
+          "group": "1_share@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "localians.share",
+          "when": "localians.signedIn"
+        },
+        {
+          "command": "localians.stop",
+          "when": "localians.sharing"
+        },
+        {
+          "command": "localians.copyLink",
+          "when": "localians.sharing"
+        },
+        {
+          "command": "localians.openPreview",
+          "when": "localians.sharing"
+        },
+        {
+          "command": "localians.protect",
+          "when": "localians.sharing"
+        },
+        {
+          "command": "localians.reconnect",
+          "when": "false"
+        },
+        {
+          "command": "localians.refresh",
+          "when": "localians.signedIn"
+        },
+        {
+          "command": "localians.logout",
+          "when": "localians.signedIn"
+        },
+        {
+          "command": "localians.switchAccount",
+          "when": "localians.signedIn"
+        },
+        {
+          "command": "localians.login",
+          "when": "!localians.signedIn"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Localians",
+      "properties": {
+        "localians.serverUrl": {
+          "type": "string",
+          "default": "https://localians.com",
+          "scope": "application",
+          "markdownDescription": "Localians server. Leave as `https://localians.com` unless you run your own. Must be `https://` (plain `http://` only for `localhost`). Changing it signs you out."
+        },
+        "localians.extraPorts": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "maxItems": 20,
+          "default": [],
+          "scope": "application",
+          "markdownDescription": "Extra local ports to look for running apps (besides common ones like 3000, 4200, 5173 and 8000). Only `localhost` is ever checked."
+        },
+        "localians.hostHeader": {
+          "type": "string",
+          "enum": [
+            "rewrite",
+            "preserve"
+          ],
+          "enumDescriptions": [
+            "Send `Host: localhost:<port>` (what most dev servers expect)",
+            "Forward the public preview host"
+          ],
+          "default": "rewrite",
+          "scope": "resource",
+          "description": "Host header your app receives for preview requests."
+        },
+        "localians.verboseLog": {
+          "type": "boolean",
+          "default": false,
+          "description": "Log every forwarded request (method, path, status) to the Localians output. Never logs tokens or passwords."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:release": "node scripts/build.mjs --production",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "package": "node scripts/build.mjs --production && vsce package --no-dependencies --out dist/localians.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}

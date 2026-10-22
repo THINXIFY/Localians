@@ -23,7 +23,10 @@
     "gateway:start": "node --env-file=.env tunnel/gateway/dist/gateway.js",
     "start:prod": "next start --port 4000 --hostname 127.0.0.1",
     "check:prod-env": "node scripts/check-production-env.mjs",
-    "cli:release": "node scripts/build-tunnel.mjs --release"
+    "cli:release": "node scripts/build-tunnel.mjs --release",
+    "vscode:build": "npm --prefix extensions/vscode run build",
+    "vscode:typecheck": "npm --prefix extensions/vscode run typecheck",
+    "vscode:package": "npm --prefix extensions/vscode run package"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",
