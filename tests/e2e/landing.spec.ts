@@ -18,8 +18,8 @@ test("CTAs point at the real auth routes", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Primary" });
   await expect(nav.getByRole("link", { name: "Sign In" })).toHaveAttribute("href", "/login");
   await expect(nav.getByRole("link", { name: "Get Started Free" })).toHaveAttribute("href", "/signup");
-  await expect(page.getByRole("link", { name: "Start Sharing Free" })).toHaveAttribute("href", "/signup");
-  await expect(page.getByRole("link", { name: "Join the Free Beta" })).toHaveAttribute("href", "/signup");
+  for (const link of await page.getByRole("link", { name: "Start Free" }).all()) await expect(link).toHaveAttribute("href", "/signup");
+  await expect(page.locator("#hero-title").locator("xpath=ancestor::section").getByRole("link", { name: "See Pricing" })).toHaveAttribute("href", "/#pricing");
 
   await page.goto("/sign-in");
   await expect(page).toHaveURL(/\/login$/);
@@ -38,10 +38,10 @@ test("mobile menu, copy button and FAQ still work", async ({ page, context }) =>
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator("#how-it-works").scrollIntoViewIfNeeded();
-  await page.locator("#how-it-works").getByRole("button", { name: "Copy command: npx localians share 5173" }).click(); // the hero terminal has the same button
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("npx localians share 5173");
+  await page.locator("#how-it-works").getByRole("button", { name: "Copy command: npx localians share 3000" }).click(); // the hero has the same button
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("npx localians share 3000");
 
-  const q = page.getByRole("button", { name: "Does Localians host my application?" });
+  const q = page.getByRole("button", { name: "Does my computer need to stay online?" });
   await q.scrollIntoViewIfNeeded();
   await q.click();
   await expect(q).toHaveAttribute("aria-expanded", "true");
@@ -53,4 +53,23 @@ test("signed-in visitors see a Dashboard button on the landing page", async ({ p
   const nav = page.getByRole("navigation", { name: "Primary" });
   await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
   await expect(nav.getByRole("link", { name: "Sign In" })).toHaveCount(0);
+});
+
+test("pricing: Free vs 7-Day Pass, honest about what's live, never a wallet address on the homepage", async ({ page }) => {
+  await page.goto("/");
+  const pricing = page.locator("#pricing");
+  await expect(pricing.getByRole("heading", { name: "Free", exact: true })).toBeVisible();
+  await expect(pricing.getByRole("heading", { name: "7-Day Preview Pass", exact: true })).toBeVisible();
+  await expect(pricing).toContainText("$0");
+  await expect(pricing).toContainText("$5");
+  await expect(pricing).toContainText("not a subscription");
+  await expect(pricing.getByRole("link", { name: "Start Free" })).toHaveAttribute("href", "/signup");
+  const upgrade = pricing.getByRole("link", { name: "Upgrade for $5" });
+  if (await upgrade.count()) await expect(upgrade).toHaveAttribute("href", "/dashboard/settings/billing"); // payments on: the dashboard checkout
+  else await expect(pricing.getByTestId("pass-coming-soon")).toHaveText("Coming Soon"); // payments off: no checkout link
+  await expect(page.getByTestId("plan-comparison")).toContainText("No, one-time");
+  expect(await page.content()).not.toContain("0x2f94b75535eff533378c90f8dda29cf10208b174");
+  await expect(page.locator("#features")).toContainText("Coming soon"); // VS Code isn't released yet
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoHorizontalOverflow(page);
 });

@@ -23,8 +23,8 @@ export default function AboutPage() {
           open in a browser.
         </p>
         <p>
-          We&apos;re starting with the essentials in our Stage 1 beta: sharing, a clean project dashboard, basic access
-          protection and connection monitoring.
+          We&apos;re starting with the essentials: one-command sharing, password-protected HTTPS previews, auto-stop
+          timers and a clean project dashboard with connection monitoring.
         </p>
       </Prose>
     </SubPage>

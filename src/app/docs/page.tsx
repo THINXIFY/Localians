@@ -53,7 +53,7 @@ export default function DocsPage() {
       intro="Everything you need to share a locally running web app with a secure HTTPS preview link."
       notice={
         <>
-          <strong className="font-medium text-fg">Early beta.</strong> These docs cover the Stage 1 workflow and will grow
+          <strong className="font-medium text-fg">Early beta.</strong> These docs cover today&apos;s workflow and will grow
           as features ship.
         </>
       }

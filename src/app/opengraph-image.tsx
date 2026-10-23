@@ -48,7 +48,7 @@ export default async function OpengraphImage() {
           }}
         >
           <span style={{ color: "#B8FF3B", marginRight: 14 }}>$</span>
-          npx localians share 5173
+          npx localians share 3000
         </div>
       </div>
     ),

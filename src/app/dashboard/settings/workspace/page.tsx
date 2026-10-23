@@ -15,7 +15,7 @@ export default async function WorkspaceSettingsPage() {
     { label: "Your role", value: workspace.role === "OWNER" ? "Owner" : "Member" },
     { label: "Created", value: formatDate(workspace.createdAt) },
     { label: "Projects", value: String(counts.total) },
-    { label: "Plan", value: "Free Beta" },
+    { label: "Plan", value: "Free · 7-Day Pass per project" },
   ];
 
   return (

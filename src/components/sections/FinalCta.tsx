@@ -24,12 +24,12 @@ export function FinalCta() {
             Your next preview is one command away.
           </h2>
           <p className="mt-5 max-w-[46ch] text-pretty text-[16px] leading-relaxed text-fg-2 sm:text-[17px]">
-            Stop deploying just to show progress. Share your localhost and keep building.
+            Stop deploying just to show progress. Share your localhost free for 24 hours and keep building.
           </p>
 
           <div className="mt-9 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
             <ButtonLink href={routes.getStarted} size="lg" className="w-full sm:w-auto">
-              Get Started Free
+              Start Free
               <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-0.5" aria-hidden="true" />
             </ButtonLink>
             <ButtonLink href={routes.docs} variant="secondary" size="lg" className="w-full sm:w-auto">

@@ -9,24 +9,24 @@ import { site } from "@/lib/site";
 const steps: { n: string; title: string; description: string; code: string; prompt: boolean; icon: LucideIcon }[] = [
   {
     n: "01",
-    title: "Start your app.",
-    description: "Run your development server as you normally would.",
+    title: "Run your app.",
+    description: "Start your local dev server the way you always do.",
     code: "npm run dev",
     prompt: true,
     icon: Play,
   },
   {
     n: "02",
-    title: "Share your port.",
-    description: "Run Localians and securely expose your local application.",
+    title: "Share it with Localians.",
+    description: "One command in a second terminal. Approve the login once in your browser.",
     code: site.command,
     prompt: true,
     icon: Share2,
   },
   {
     n: "03",
-    title: "Send the link.",
-    description: "Give clients or teammates a URL they can open from any browser.",
+    title: "Copy your HTTPS link.",
+    description: "Send it to clients or teammates. It opens in any browser, nothing to install.",
     code: site.demoUrl,
     prompt: false,
     icon: Globe,
@@ -40,8 +40,8 @@ export function HowItWorks() {
         <SectionHeader
           id="how-title"
           eyebrow="Three simple steps"
-          title="From localhost to anywhere."
-          description="No complicated setup. No deployment pipeline. Just your app and a shareable link."
+          title="From localhost to a link in a minute."
+          description="No GitHub cloning, no deploys, no config files. Your app stays on your machine."
         />
 
         <div className="relative mt-14 sm:mt-16">

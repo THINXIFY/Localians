@@ -92,7 +92,7 @@ export default function SecurityPage() {
             Everything it was sharing stops.
           </li>
           <li>
-            <strong>Automatic limits:</strong> a share lasts at most 24 hours by default, CLI logins expire after 90 days, and dashboard setup
+            <strong>Automatic limits:</strong> a share stops when the project&apos;s free 24-hour window (or its 7-Day Pass) ends, or earlier if you set an auto-stop; CLI logins expire after 90 days, and dashboard setup
             commands work once within 30 minutes.
           </li>
         </ul>

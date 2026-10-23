@@ -21,11 +21,11 @@ test("official logo, favicon, manifest and credit on the public site and auth pa
 
   const footer = page.getByRole("contentinfo");
   await expect(footer.getByRole("img", { name: "Localians" })).toBeVisible();
-  await expect(footer).toContainText("Your localhost. Anywhere.");
+  await expect(footer).toContainText("Secure localhost previews. Share your work with anyone, anywhere.");
   const credit = footer.getByRole("link", { name: "Thinxify Technologies" });
   await expect(credit).toHaveAttribute("href", "https://thinxify.com");
   await expect(credit).toHaveAttribute("target", "_blank");
-  await expect(footer).toContainText("Developed by: Thinxify Technologies");
+  await expect(footer).toContainText("Built by THINXIFY Technologies");
   await expectImagesLoaded(page);
 
   // Browser icons and the web app manifest.

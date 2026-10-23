@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Eye, EyeOff, Folder, KeyRound, Lock, ShieldCheck } from "lucide-react";
+import { Clock, Code2, Eye, EyeOff, KeyRound, Link2, Lock, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -6,55 +6,65 @@ import { DemoTag, StatusDot } from "@/components/ui/Window";
 import { cn } from "@/lib/cn";
 import { site } from "@/lib/site";
 
-export function Features() {
+/** Product capabilities. Anything not live in this environment carries a "Coming soon" badge (see launchFlags). */
+export function Features({ customUrls, vscode }: { customUrls: boolean; vscode: boolean }) {
   return (
     <section id="features" aria-labelledby="features-title" className="section-y relative">
       <div className="container-x">
         <SectionHeader
           id="features-title"
           eyebrow="Everything you need"
-          title="Built for the way developers work."
-          description="A simpler way to share, manage, and protect your development previews."
+          title="Built for showing work in progress."
+          description="One command to share, and the controls you need to keep previews private, on time and on brand."
         />
 
         <div className="mt-14 grid gap-4 sm:mt-16 md:grid-cols-2 lg:grid-cols-6 lg:gap-5">
           <FeatureCard
-            className="lg:col-span-4"
-            title="One Command. Instant Preview."
-            description="Turn any running local web app into a shareable HTTPS link with a single command."
+            className="md:col-span-2 lg:col-span-4"
+            title="One command. Instant preview."
+            description={`Run ${site.command} next to your app and get a shareable link in seconds. Hot reload keeps working.`}
             visual={<CommandVisual />}
           />
           <FeatureCard
             className="lg:col-span-2"
-            title="Secure by Default."
-            description="Protect unfinished projects with access controls and password-protected previews."
+            title="Password-protected sharing."
+            description="Visitors enter a password before they see anything. Change it and everyone is signed out."
             visual={<AccessVisual />}
             delay={0.06}
           />
           <FeatureCard
             className="lg:col-span-2"
-            title="All Projects. One Place."
-            description="Organize development projects and manage active previews from a clean dashboard."
-            visual={<ProjectsVisual />}
+            title="Custom preview URLs."
+            description="Reserve a memorable link like agentaxio.preview.localians.com with the 7-Day Pass."
+            badge={customUrls ? undefined : "Coming soon"}
+            visual={<CustomUrlVisual />}
           />
           <FeatureCard
-            className="lg:col-span-4"
-            title="Changes Without Redeploying."
-            description="Keep developing locally while your shared preview reflects updates from your development server."
-            visual={<SyncVisual />}
+            className="lg:col-span-2"
+            title="Flexible preview timers."
+            description="Every link has an end time, with optional auto-stops from 5 minutes. Enforced on the server."
+            visual={<TimerVisual />}
             delay={0.06}
           />
           <FeatureCard
-            className="lg:col-span-3"
-            title="Know What's Live."
-            description="Monitor tunnel connections and instantly see which previews are online or offline."
+            className="lg:col-span-2"
+            title="Secure HTTPS links."
+            description="Encrypted, unguessable preview links. See what is online and stop any preview instantly."
             visual={<StatusVisual />}
+            delay={0.12}
           />
           <FeatureCard
             className="lg:col-span-3"
-            title="Useful Insights. No Noise."
-            description="View basic preview activity and bandwidth usage without unnecessary complexity."
+            title="Projects and analytics."
+            description="Organize previews by project and see visits and bandwidth without the noise."
             visual={<InsightsVisual />}
+          />
+          <FeatureCard
+            className="lg:col-span-3"
+            title="Share from VS Code."
+            description="Pick your running app in the sidebar and share it without opening a terminal."
+            badge={vscode ? undefined : "Coming soon"}
+            visual={<VsCodeVisual />}
             delay={0.06}
           />
         </div>
@@ -72,24 +82,29 @@ function FeatureCard({
   description,
   visual,
   className,
+  badge,
   delay = 0,
 }: {
   title: string;
   description: string;
   visual: ReactNode;
   className?: string;
+  badge?: string;
   delay?: number;
 }) {
   return (
     <Reveal delay={delay} className={cn("group surface hairline-top flex flex-col overflow-hidden transition-colors duration-300 hover:border-line-strong", className)}>
-      <div className="relative flex min-h-[220px] flex-1 items-center justify-center overflow-hidden border-b border-line bg-[radial-gradient(120%_80%_at_50%_0%,rgba(255,255,255,0.03),transparent)] p-5 sm:p-6">
+      <div className="relative flex min-h-[200px] flex-1 items-center justify-center overflow-hidden border-b border-line bg-[radial-gradient(120%_80%_at_50%_0%,rgba(255,255,255,0.03),transparent)] p-5 sm:p-6">
         <div aria-hidden="true" className="bg-grid absolute inset-0 opacity-50 [mask-image:radial-gradient(70%_70%_at_50%_50%,#000,transparent)]" />
-        <div className="relative w-full" aria-hidden="true">
+        <div className={cn("relative w-full", badge && "opacity-70")} aria-hidden="true">
           {visual}
         </div>
       </div>
       <div className="p-6 sm:p-7">
-        <h3 className="text-[18px] font-semibold tracking-[-0.02em] text-fg">{title}</h3>
+        <h3 className="flex flex-wrap items-center gap-2 text-[18px] font-semibold tracking-[-0.02em] text-fg">
+          {title}
+          {badge ? <span className="rounded-full border border-line-strong px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-fg-3">{badge}</span> : null}
+        </h3>
         <p className="mt-2 max-w-[46ch] text-[15px] leading-relaxed text-fg-2">{description}</p>
       </div>
     </Reveal>
@@ -174,84 +189,6 @@ function AccessVisual() {
   );
 }
 
-const projects = [
-  { name: "storefront", port: "5173", live: true },
-  { name: "client-portal", port: "5173", live: true },
-  { name: "portfolio-v2", port: "8080", live: false },
-];
-
-function ProjectsVisual() {
-  return (
-    <MiniPanel className="mx-auto max-w-[300px] overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line px-3.5 py-2.5">
-        <span className="text-[12px] font-medium text-fg">Projects</span>
-        <span className="font-mono text-[10px] text-fg-3">3 total</span>
-      </div>
-      <ul className="divide-y divide-line">
-        {projects.map((p, i) => (
-          <li key={p.name} className={cn("flex items-center gap-3 px-3.5 py-2.5", i === 0 && "bg-white/[0.025]")}>
-            <Folder className="size-3.5 shrink-0 text-fg-3" />
-            <span className="min-w-0 flex-1 truncate text-[12px] text-fg-2">{p.name}</span>
-            <span className="font-mono text-[10.5px] text-fg-3">:{p.port}</span>
-            <StatusDot state={p.live ? "live" : "offline"} />
-          </li>
-        ))}
-      </ul>
-    </MiniPanel>
-  );
-}
-
-function SyncVisual() {
-  return (
-    <div className="mx-auto grid max-w-[600px] grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
-      <MiniPanel className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-line px-3 py-2">
-          <span className="font-mono text-[10.5px] text-fg-3">Hero.tsx</span>
-          <span className="size-1.5 rounded-full bg-fg-3" />
-        </div>
-        <div className="space-y-1 px-3 py-3 font-mono text-[10px] leading-relaxed sm:text-[11px]">
-          <p className="text-fg-3">
-            <span className="mr-2 text-white/20">12</span>
-            {"<h1>"}
-          </p>
-          <p className="-mx-3 border-l-2 border-accent bg-accent/[0.08] px-3 text-fg">
-            <span className="mr-2 text-white/25">13</span>
-            {"  Spring edit"}
-          </p>
-          <p className="text-fg-3">
-            <span className="mr-2 text-white/20">14</span>
-            {"</h1>"}
-          </p>
-          <p className="text-fg-3">
-            <span className="mr-2 text-white/20">15</span>
-            {"<Button />"}
-          </p>
-        </div>
-      </MiniPanel>
-
-      <div className="flex flex-col items-center gap-1.5">
-        <span className="flex size-8 items-center justify-center rounded-full border border-accent/30 bg-accent/[0.08] text-accent transition-transform duration-500 group-hover:rotate-180">
-          <ArrowLeftRight className="size-3.5" />
-        </span>
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-fg-3">sync</span>
-      </div>
-
-      <MiniPanel className="overflow-hidden">
-        <div className="flex items-center gap-1.5 border-b border-line px-3 py-2">
-          <Lock className="size-2.5 text-accent" />
-          <span className="truncate font-mono text-[10.5px] text-fg-3">demo.localians.com</span>
-        </div>
-        <div className="space-y-2 bg-[#f3f1ea] px-3 py-3">
-          <p className="text-[13px] font-semibold tracking-tight text-[#16180f] sm:text-[15px]">Spring edit</p>
-          <div className="h-1.5 w-3/4 rounded bg-black/10" />
-          <div className="h-1.5 w-1/2 rounded bg-black/10" />
-          <div className="h-4 w-14 rounded-full bg-[#16180f]" />
-        </div>
-      </MiniPanel>
-    </div>
-  );
-}
-
 const tunnels = [
   { name: "storefront", port: "5173", state: "live" as const, bars: "111111111111111111" },
   { name: "client-portal", port: "5173", state: "live" as const, bars: "000111111111111111" },
@@ -322,6 +259,74 @@ function InsightsVisual() {
         <span>14 days ago</span>
         <span>Today</span>
       </div>
+    </MiniPanel>
+  );
+}
+
+function CustomUrlVisual() {
+  return (
+    <MiniPanel className="mx-auto max-w-[300px] p-4">
+      <p className="text-[11px] text-fg-3">Preview link</p>
+      <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/[0.07] px-2.5 py-2 font-mono text-[11.5px]">
+        <Lock className="size-3 shrink-0 text-accent" />
+        <span className="truncate">
+          <span className="text-accent">agentaxio</span>
+          <span className="text-fg-3">.preview.localians.com</span>
+        </span>
+      </div>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-fg-3">
+        <Link2 className="size-3" /> Same link every time you share
+      </p>
+    </MiniPanel>
+  );
+}
+
+function TimerVisual() {
+  return (
+    <MiniPanel className="mx-auto max-w-[300px] p-4">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-[12px] font-medium text-fg">
+          <Clock className="size-3.5 text-accent" /> Expires in
+        </span>
+        <span className="font-mono text-[10px] text-fg-3">auto-stop</span>
+      </div>
+      <p className="mt-2 font-mono text-[26px] font-semibold tabular-nums tracking-tight text-fg">
+        23<span className="text-fg-3">h</span> 41<span className="text-fg-3">m</span>
+      </p>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <span className="block h-full w-[86%] rounded-full bg-accent/70 transition-[width] duration-700 group-hover:w-[80%]" />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1">
+        {["15m", "1h", "12h", "24h"].map((d) => (
+          <span key={d} className={cn("rounded-full border px-2 py-0.5 font-mono text-[10px]", d === "24h" ? "border-accent/40 text-accent" : "border-line text-fg-3")}>
+            {d}
+          </span>
+        ))}
+      </div>
+    </MiniPanel>
+  );
+}
+
+function VsCodeVisual() {
+  return (
+    <MiniPanel className="mx-auto max-w-[420px] overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-line px-3.5 py-2">
+        <Code2 className="size-3.5 text-fg-3" />
+        <span className="font-mono text-[10.5px] text-fg-3">LOCALIANS</span>
+      </div>
+      <ul className="divide-y divide-line">
+        {[
+          { name: "storefront", port: "3000", live: true },
+          { name: "docs-site", port: "5173", live: false },
+        ].map((a) => (
+          <li key={a.name} className="flex items-center gap-3 px-3.5 py-2.5">
+            <StatusDot state={a.live ? "live" : "offline"} />
+            <span className="min-w-0 flex-1 truncate text-[12px] text-fg-2">{a.name}</span>
+            <span className="font-mono text-[10.5px] text-fg-3">:{a.port}</span>
+            <span className={cn("rounded-md px-2 py-0.5 text-[10.5px]", a.live ? "bg-accent/15 text-accent" : "border border-line text-fg-3")}>{a.live ? "Shared" : "Share"}</span>
+          </li>
+        ))}
+      </ul>
     </MiniPanel>
   );
 }

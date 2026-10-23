@@ -98,10 +98,8 @@ test("structured data matches the page: software, organization and the visible F
 
 test("guides are linked from the footer and the docs, and render on mobile", async ({ page }) => {
   await page.goto("/docs");
-  for (const name of ["Share localhost online", "Share a Next.js app", "Share a Vite app", "ngrok alternative"]) {
-    await expect(page.getByRole("navigation", { name: "Footer" }).getByRole("link", { name })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Guides" }).getByRole("link", { name })).toBeVisible();
-  }
+  for (const name of ["Share Localhost", "Next.js Guide", "Vite Guide", "ngrok Alternative"]) await expect(page.getByRole("navigation", { name: "Footer" }).getByRole("link", { name, exact: true })).toBeVisible();
+  for (const name of ["Share localhost online", "Share a Next.js app", "Share a Vite app", "ngrok alternative"]) await expect(page.getByRole("navigation", { name: "Guides" }).getByRole("link", { name })).toBeVisible();
   await page.setViewportSize({ width: 360, height: 780 });
   for (const path of ["/share-localhost", "/ngrok-alternative", "/share-vite-localhost", "/share-nextjs-localhost", "/docs", "/docs/frameworks", "/docs/cli"]) {
     await page.goto(path);

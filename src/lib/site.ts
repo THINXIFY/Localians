@@ -4,7 +4,7 @@ export const site = {
   description:
     "Share the app running on your computer with a secure HTTPS preview link — public or password protected. One command for Next.js, Vite and any local dev server. No deployment.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://localians.com",
-  command: "npx localians share 5173",
+  command: "npx localians share 3000",
   demoUrl: "https://demo.preview.localians.com",
 };
 
@@ -20,6 +20,8 @@ export const routes = {
   signIn: "/login",
   getStarted: "/signup",
   dashboard: "/dashboard",
+  /** Plans and upgrades (sign-in first when signed out). */
+  billing: "/dashboard/settings/billing",
   forgotPassword: "/forgot-password",
   docs: "/docs",
   cliGuide: "/docs/cli",
@@ -55,17 +57,17 @@ export const footerColumns = [
     ],
   },
   {
-    title: "Developers",
+    title: "Resources",
     links: [
       { label: "Documentation", href: routes.docs },
-      { label: "CLI Guide", href: routes.cliGuide },
       { label: "Getting Started", href: routes.gettingStarted },
+      { label: "CLI Guide", href: routes.cliGuide },
       { label: "Troubleshooting", href: routes.troubleshooting },
+      { label: "Share Localhost", href: routes.shareLocalhost },
+      { label: "Next.js Guide", href: routes.shareNextjs },
+      { label: "Vite Guide", href: routes.shareVite },
+      { label: "ngrok Alternative", href: routes.ngrokAlternative },
     ],
-  },
-  {
-    title: "Guides",
-    links: guideLinks,
   },
   {
     title: "Company",

@@ -28,10 +28,20 @@ project and password already chosen.
 | `localians status` | Show your login and what this computer is sharing |
 | `localians logout` | Sign out and revoke this computer's access |
 
-Options: `-d, --duration <time>` (how long the link works: `5m`, `15m`, `30m`, `1h`, `12h` or `24h`; default 24h), `-y, --yes` (create a project without asking, for scripts), `--host-header preserve`, `-v, --verbose`,
+Options: `-d, --duration <time>` (an earlier auto-stop: `5m`, `15m`, `30m`, `1h`, `12h` or `24h`, plus `3d` or `7d` with a
+7-Day Preview Pass; by default the link works until the project's free window or pass ends), `-y, --yes` (create a project without asking, for scripts), `--host-header preserve`, `-v, --verbose`,
 `--no-browser`, `--api-url <url>` (only needed for a self-hosted server). Run `localians --help` for details.
 
 Exit codes: `0` ok, `1` other error, `2` usage, `3` login needed, `4` nothing running on that port, `5` Localians unreachable.
+
+## Preview time
+
+- **Free:** every project gets one 24-hour preview window, starting with its first share. Restarting or reconnecting
+  stays within that window. When it has been used, the CLI tells you and points you to the dashboard.
+- **7-Day Preview Pass ($5, one-time):** 7 more days of sharing for one project, added from the dashboard when
+  available.
+
+Your computer and the app must stay running while you share — Localians doesn't host a copy of your app.
 
 ## Security
 

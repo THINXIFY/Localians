@@ -1,14 +1,20 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Link2, Lock, ShieldCheck } from "lucide-react";
 import type { CSSProperties } from "react";
 import { HeroDemo } from "@/components/demo/HeroDemo";
 import { ButtonLink } from "@/components/ui/Button";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { Reveal } from "@/components/ui/Reveal";
-import { routes } from "@/lib/site";
+import { routes, site } from "@/lib/site";
 
 /** Staggered rise for the above-the-fold text: it paints right away (no fade), so it never delays the largest paint. */
 const rise = (delay: number) => ({ className: "hero-rise", style: { "--rise-delay": `${delay}s` } as CSSProperties });
 
-export function Hero() {
+export function Hero({ customUrls }: { customUrls: boolean }) {
+  const proof = [
+    { icon: ShieldCheck, label: "Instant HTTPS links" },
+    { icon: Lock, label: "Password protection" },
+    { icon: Link2, label: customUrls ? "Custom URLs" : "Custom URLs · soon" },
+  ];
   return (
     <section aria-labelledby="hero-title" className="relative isolate overflow-hidden pt-[calc(var(--header-h)+56px)] sm:pt-[calc(var(--header-h)+80px)]">
       {/* Backdrop: fading grid + restrained accent wash */}
@@ -26,7 +32,7 @@ export function Hero() {
                 <span aria-hidden="true" className="animate-pulse-dot size-1.5 rounded-full bg-accent" />
                 Beta
               </span>
-              Secure localhost sharing
+              Free 24-hour previews
             </p>
           </div>
 
@@ -38,26 +44,39 @@ export function Hero() {
           </div>
 
           <div {...rise(0.12)}>
-            <p className="mt-6 max-w-[56ch] text-pretty text-[16.5px] leading-relaxed text-fg-2 sm:text-[18px]">
-              Give the app running on your computer a secure HTTPS preview link, public or password protected. Works with Next.js, Vite and any local dev
-              server, from your terminal today and right from VS Code soon. No deployment.
+            <p className="mt-6 max-w-[54ch] text-pretty text-[16.5px] leading-relaxed text-fg-2 sm:text-[18px]">
+              Turn the app running on your computer into a secure HTTPS preview link for clients and teammates. No deploys, no port forwarding, no
+              config.
             </p>
           </div>
 
-          <div {...rise(0.18)} className="hero-rise mt-9 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
+          <div {...rise(0.16)} className="hero-rise mt-8 flex w-full max-w-[420px] items-center gap-3 rounded-full border border-line bg-black/50 py-1.5 pl-5 pr-1.5 backdrop-blur">
+            <code className="min-w-0 flex-1 truncate text-left font-mono text-[13.5px] text-fg">
+              <span className="select-none text-accent">$ </span>
+              {site.command}
+            </code>
+            <CopyButton value={site.command} label={`Copy command: ${site.command}`} className="rounded-full" />
+          </div>
+
+          <div {...rise(0.2)} className="hero-rise mt-7 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
             <ButtonLink href={routes.getStarted} size="lg" className="w-full sm:w-auto">
-              Start Sharing Free
+              Start Free
               <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-0.5" aria-hidden="true" />
             </ButtonLink>
-            <ButtonLink href="/#how-it-works" variant="secondary" size="lg" className="w-full sm:w-auto">
-              See How It Works
+            <ButtonLink href="/#pricing" variant="secondary" size="lg" className="w-full sm:w-auto">
+              See Pricing
             </ButtonLink>
           </div>
 
           <div {...rise(0.24)}>
-            <p className="mt-6 font-mono text-[12.5px] tracking-[0.02em] text-fg-3">
-              One command<span className="text-accent">.</span> One link<span className="text-accent">.</span> Anywhere<span className="text-accent">.</span>
-            </p>
+            <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-fg-2" aria-label="Highlights">
+              {proof.map((p) => (
+                <li key={p.label} className="inline-flex items-center gap-1.5">
+                  <p.icon className="size-3.5 text-accent" aria-hidden="true" />
+                  {p.label}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

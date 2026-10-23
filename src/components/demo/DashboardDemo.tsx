@@ -33,7 +33,7 @@ const projects: Project[] = [
     id: "ecommerce",
     name: "E-commerce Website",
     live: true,
-    local: "localhost:5173",
+    local: "localhost:3000",
     url: "https://demo.localians.com",
     visits: [4, 6, 5, 9, 12, 8, 14, 18, 15, 22, 19, 26],
   },
@@ -41,7 +41,7 @@ const projects: Project[] = [
     id: "client-dashboard",
     name: "Client Dashboard",
     live: true,
-    local: "localhost:5173",
+    local: "localhost:3000",
     url: "https://client-dashboard.localians.com",
     visits: [2, 3, 3, 5, 4, 7, 6, 9, 8, 7, 11, 10],
   },
@@ -104,7 +104,7 @@ export function DashboardDemo() {
         </ul>
         <div className="mt-8 rounded-lg border border-line p-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-3">Plan</p>
-          <p className="mt-1 text-[12.5px] text-fg">Free Beta</p>
+          <p className="mt-1 text-[12.5px] text-fg">Free</p>
         </div>
       </aside>
 

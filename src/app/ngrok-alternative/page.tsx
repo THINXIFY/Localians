@@ -19,7 +19,7 @@ const faq: FaqItem[] = [
   },
   {
     question: "Is Localians free?",
-    answer: "Yes, Localians is free during the beta, within fair-use limits on simultaneous previews and daily traffic.",
+    answer: "Yes, to start: every project gets one free 24-hour preview window, within fair-use limits. If a review takes longer, a one-time $5 7-Day Preview Pass adds 7 more days for that project — no subscription.",
   },
   {
     question: "Can I use both?",

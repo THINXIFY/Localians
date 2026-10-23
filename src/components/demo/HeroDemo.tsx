@@ -13,7 +13,7 @@ import { site } from "@/lib/site";
  * 0 idle · 1 typing · 2 connected · 3 tunnel · 4 live (output) · 5 browser loaded
  */
 const FINAL = 5;
-const OUTPUT = ["Connected to localhost:5173", "Secure tunnel established", "Your preview is live"];
+const OUTPUT = ["Connected to localhost:3000", "Secure tunnel established", "Your preview is live"];
 const REQUESTS = [
   { method: "GET", path: "/", status: 200 },
   { method: "GET", path: "/_next/static/css/app.css", status: 200 },
@@ -86,7 +86,7 @@ export function HeroDemo() {
 
 function FlowRail({ phase }: { phase: number }) {
   const nodes = [
-    { label: "Localhost", sub: ":5173", icon: Laptop, on: phase >= 2 },
+    { label: "Localhost", sub: ":3000", icon: Laptop, on: phase >= 2 },
     { label: "Localians", sub: "tunnel", icon: Shuffle, on: phase >= 3 },
     { label: "Client", sub: "browser", icon: Globe, on: phase >= 5 },
   ];
@@ -227,7 +227,7 @@ function Terminal({ phase, typed, onReplay }: { phase: number; typed: number; on
             {phase >= 4 ? "Connected" : phase >= 1 ? "Connecting…" : "Waiting"}
           </span>
         </span>
-        <span className="truncate text-fg-3">localhost:5173 → https</span>
+        <span className="truncate text-fg-3">localhost:3000 → https</span>
       </div>
     </Window>
   );
@@ -330,7 +330,7 @@ function MockStorefront() {
       </div>
       <div className="flex items-center gap-2 border-t border-black/[0.07] px-[5%] py-[2.2%] text-[clamp(7.5px,1.7cqw,10px)] text-black/50">
         <span className="size-1.5 rounded-full bg-[#5c8f1d]" />
-        Served from localhost:5173 via a Localians preview link
+        Served from localhost:3000 via a Localians preview link
       </div>
     </div>
   );

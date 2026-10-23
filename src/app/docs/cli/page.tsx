@@ -60,7 +60,18 @@ export default function CliGuidePage() {
           (no interactive terminal), add <code className="font-mono">--yes</code> to allow creating a project automatically.
         </p>
         <CodeLine>localians share 5173 --project client-dashboard</CodeLine>
+        <p>
+          <strong>Preview time:</strong> every project gets one free 24-hour preview window, starting with its first share; restarting or reconnecting
+          stays within it. A 7-Day Preview Pass adds 7 more days for one project. By default a share runs until that window ends — add{" "}
+          <code className="font-mono">--duration</code> to stop it sooner.
+        </p>
+        <CodeLine>localians share 5173 --duration 1h</CodeLine>
         <ul>
+          <li>
+            <strong>-d, --duration &lt;time&gt;</strong> — auto-stop after <code className="font-mono">5m</code>, <code className="font-mono">15m</code>,{" "}
+            <code className="font-mono">30m</code>, <code className="font-mono">1h</code>, <code className="font-mono">12h</code> or{" "}
+            <code className="font-mono">24h</code> (<code className="font-mono">3d</code> or <code className="font-mono">7d</code> with a pass).
+          </li>
           <li>
             <strong>--host-header preserve</strong> — send the preview host to your app instead of <code className="font-mono">localhost:&lt;port&gt;</code>.
           </li>

@@ -32,7 +32,7 @@ const faq: FaqItem[] = [
   },
   {
     question: "Can I choose the link's name?",
-    answer: "Each share gets a random, hard-to-guess address on preview.localians.com. Memorable custom names are planned.",
+    answer: "Each share gets a random, hard-to-guess address on preview.localians.com. A reserved custom URL that stays the same every time you share comes with the 7-Day Preview Pass.",
   },
 ];
 
