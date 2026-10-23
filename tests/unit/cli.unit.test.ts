@@ -127,15 +127,20 @@ describe("npm package: release build", () => {
     expect(build({ LOCALIANS_CLI_OUTFILE: devBundle, LOCALIANS_DEFAULT_API_URL: "http://localhost:3001" }, true).status).not.toBe(0);
   }, 60_000);
 
-  it("packs only the bundle, README and package.json, runs the check before packing, and stays unpublishable until approved", () => {
+  it("packs only the bundle, README, LICENSE and package.json (MIT, publishable) and runs the check before packing", () => {
     expect(pkg.bin).toEqual({ localians: "dist/localians.js" });
     expect(pkg.engines).toEqual({ node: ">=20" });
     expect(pkg.os).toEqual(["win32", "darwin", "linux"]);
     expect((pkg.scripts as Record<string, string>).prepack).toBe("node ../../scripts/verify-cli-package.mjs");
-    expect(pkg.private).toBe(true); // guard: `npm publish` refuses until the owner approves and removes it
+    expect(pkg.private).toBeUndefined(); // approved for public npm release (CLI package only)
+    expect(pkg.license).toBe("MIT");
+    // …and only the CLI: the SaaS app (incl. the gateway) and the VS Code extension stay private, with no repo-wide license.
+    expect(JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).private).toBe(true);
+    expect(JSON.parse(fs.readFileSync(path.join(root, "extensions/vscode/package.json"), "utf8"))).toMatchObject({ private: true, license: "SEE LICENSE IN LICENSE.md" });
+    expect(fs.readdirSync(root).filter((f) => /^licen[cs]e/i.test(f))).toEqual([]);
     const packed = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], { cwd: path.join(root, "tunnel/cli"), encoding: "utf8", shell: process.platform === "win32" });
     expect(packed.status, packed.stderr).toBe(0);
     const files = (JSON.parse(packed.stdout) as { files: { path: string }[] }[])[0].files.map((f) => f.path).sort();
-    expect(files).toEqual(["README.md", "dist/localians.js", "package.json"]);
+    expect(files).toEqual(["LICENSE", "README.md", "dist/localians.js", "package.json"]);
   }, 60_000);
 });

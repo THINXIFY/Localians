@@ -52,3 +52,44 @@ jobs:
       - run: npm run tunnel:build
       - run: npm run vscode:typecheck
       - run: npm run vscode:package
+
+  # The published `localians` CLI: pack it exactly as `npm publish` would, install the tarball in an empty folder and
+  # run it, on every supported OS and Node.js version. Never publishes.
+  cli-package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22, 24]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run cli:release
+      - name: Pack (runs the prepack package check)
+        run: mkdir -p "$RUNNER_TEMP/pack" && cd tunnel/cli && npm pack --pack-destination "$RUNNER_TEMP/pack"
+      - name: Install the tarball in an empty folder and run it
+        env:
+          NO_COLOR: "1"
+          LOCALIANS_CONFIG_DIR: ${{ runner.temp }}/localians-config
+        run: |
+          set -u
+          app="$RUNNER_TEMP/clean-app" && mkdir -p "$app" && cd "$app" && echo '{}' > package.json
+          npm install --no-audit --no-fund "$RUNNER_TEMP/pack/localians-0.1.0.tgz"
+          test "$(npx --no-install localians --version)" = "0.1.0"
+          npx --no-install localians --help | grep -q "npx localians share 3000"
+          if [ "$RUNNER_OS" != "Windows" ]; then test -x "$(readlink -f node_modules/.bin/localians)"; fi
+          set +e
+          npx --no-install localians status; test $? -eq 3 || exit 1     # not logged in
+          npx --no-install localians share 1; test $? -eq 4 || exit 1    # nothing running there
+          npx --no-install localians share abc; test $? -eq 2 || exit 1  # usage error
+          set -e
+          test -z "$(ls -A "$LOCALIANS_CONFIG_DIR" 2>/dev/null)"         # nothing written without a login

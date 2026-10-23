@@ -2,14 +2,14 @@
   "name": "localians",
   "version": "0.1.0",
   "description": "Share your localhost with a secure HTTPS preview link — public or password protected.",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
   "bin": {
     "localians": "dist/localians.js"
   },
   "files": [
     "dist/localians.js",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "prepack": "node ../../scripts/verify-cli-package.mjs"

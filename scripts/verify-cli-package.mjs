@@ -28,6 +28,9 @@ if (!problems.length) {
   check(Buffer.byteLength(code) <= MAX_BYTES, `the bundle is ${Math.round(Buffer.byteLength(code) / 1024)} KB (limit ${MAX_BYTES / 1024} KB)`);
   check(pkg.bin?.localians === "dist/localians.js", 'package.json "bin" must map localians to dist/localians.js');
   check(/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(pkg.version), `invalid version "${pkg.version}"`);
+  check(pkg.license === "MIT" && pkg.files?.includes("LICENSE"), 'package.json must declare "license": "MIT" and publish LICENSE');
+  const license = path.join(root, "tunnel/cli/LICENSE");
+  check(fs.existsSync(license) && fs.readFileSync(license, "utf8").startsWith("MIT License"), "tunnel/cli/LICENSE is missing or not the MIT license");
 
   const run = (...args) => spawnSync(process.execPath, [bundle, ...args], { encoding: "utf8", env: { ...process.env, NO_COLOR: "1", LOCALIANS_API_URL: "" } });
   const version = run("--version");

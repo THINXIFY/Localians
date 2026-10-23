@@ -41,4 +41,9 @@ Exit codes: `0` ok, `1` other error, `2` usage, `3` login needed, `4` nothing ru
   from the dashboard at any time.
 - Public previews can be opened by anyone with the link. Enable password protection in the dashboard to restrict access.
 
-Requires Node.js 20 or newer. Docs: https://github.com/THINXIFY/Localians
+Requires Node.js 20 or newer on Windows, macOS or Linux. Docs: https://github.com/THINXIFY/Localians
+
+## License
+
+MIT — see [LICENSE](LICENSE). This license covers the `localians` CLI package only; the Localians service is not
+open source.
