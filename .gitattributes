@@ -1,0 +1,3 @@
+# Release files are published byte-for-byte (their checksums are shown on the website).
+*.vsix binary
+*.sha256 text eol=lf
