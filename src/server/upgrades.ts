@@ -335,12 +335,14 @@ export { BSC };
 
 /** What the customer's payment step shows. The QR appears only when its image passed verification. */
 export function paymentInfo(): import("@/lib/plans").PaymentInfo {
+  const enabled = paymentsEnabled();
   return {
-    enabled: paymentsEnabled(),
+    enabled,
     amountLabel: PASS_PRICE.label,
     networkLabel: PASS_PRICE.networkLabel,
-    recipient: PASS_PRICE.recipient,
-    qrUrl: paymentQrUrl(),
+    // While payments are off, the deposit address and QR aren't sent to the browser at all.
+    recipient: enabled ? PASS_PRICE.recipient : null,
+    qrUrl: enabled ? paymentQrUrl() : null,
     supportEmail: SUPPORT_EMAIL,
     afterPaymentMessage: AFTER_PAYMENT_MESSAGE,
   };

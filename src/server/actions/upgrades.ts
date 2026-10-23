@@ -21,14 +21,18 @@ async function limited(userId: string) {
 }
 
 /** "Upgrade for $5": creates (or returns) the project's open upgrade request. */
-export async function requestUpgradeAction(projectId: string, name?: string | null): Promise<ActionResult<{ orderId: string }>> {
+export async function requestUpgradeAction(
+  projectId: string,
+  name?: string | null,
+): Promise<ActionResult<{ orderId: string; status: "PENDING" | "UNDER_REVIEW"; txHash: string | null; created: boolean }>> {
   const session = await getSession();
   if (!session) return SESSION_EXPIRED;
   if (await limited(session.user.id)) return { ok: false, error: "Too many requests. Try again later." };
   try {
-    const { request } = await createUpgradeRequest(session.user.id, String(projectId), { name: name ? String(name) : null });
+    const { request, created } = await createUpgradeRequest(session.user.id, String(projectId), { name: name ? String(name) : null });
     revalidatePath("/dashboard", "layout");
-    return { ok: true, data: { orderId: request.orderId } };
+    // An open order for this project is returned instead of a second one (repeated clicks, other tabs).
+    return { ok: true, data: { orderId: request.orderId, status: request.status === "UNDER_REVIEW" ? "UNDER_REVIEW" : "PENDING", txHash: request.txHash, created } };
   } catch (error) {
     return failure(error, "requestUpgrade");
   }

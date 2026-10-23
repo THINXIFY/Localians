@@ -10,6 +10,7 @@ const TABS = [
   { label: "Preferences", href: "/dashboard/settings/preferences" },
   { label: "Workspace", href: "/dashboard/settings/workspace" },
   { label: "CLI", href: "/dashboard/settings/cli" },
+  { label: "Billing", href: "/dashboard/settings/billing" },
 ];
 
 export function SettingsTabs() {

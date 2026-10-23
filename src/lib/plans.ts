@@ -17,7 +17,8 @@ export type PaymentInfo = {
   enabled: boolean;
   amountLabel: string;
   networkLabel: string;
-  recipient: string;
+  /** Only sent when payments are enabled (the deposit address is never shown otherwise). */
+  recipient: string | null;
   qrUrl: string | null;
   supportEmail: string;
   afterPaymentMessage: string;

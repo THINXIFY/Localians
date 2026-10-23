@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Clock, Mail, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Dialog } from "@/components/app/Dialog";
@@ -15,9 +15,13 @@ import { type NameCheck, NameField } from "../names/NameField";
 
 export const PASS_BENEFITS = ["7 more days of sharing for this project", "One reserved custom URL", "Password protection", "Reconnect on the same link while it's active"];
 
+type OpenOrder = { orderId: string; status: "PENDING" | "UNDER_REVIEW"; txHash: string | null };
+const FAILED = { ok: false as const, error: "Couldn't reach Localians. Check your connection and try again." };
+
 /**
- * 7-Day Preview Pass checkout: choose a custom URL → Order ID + USDT (BEP20) payment details → transaction hash →
- * status. Nothing activates until an administrator verifies the transfer on chain.
+ * 7-Day Preview Pass checkout: plan → (custom URL) → Order ID + USDT (BEP20) payment details → transaction hash →
+ * status. Nothing activates until the transfer is verified on chain and an administrator approves it. While payments
+ * are off, it shows the plan and "Payments coming soon" — no deposit address, no order.
  */
 export function UpgradeDialog({
   open,
@@ -37,46 +41,61 @@ export function UpgradeDialog({
   hasCustomName: boolean;
 }) {
   const router = useRouter();
-  const request = isOpenRequest(plan.request) ? plan.request : null;
+  // The order this dialog just created is shown right away (no waiting for the page to refresh, no second order).
+  const [created, setCreated] = useState<OpenOrder | null>(null);
+  const fromPlan = isOpenRequest(plan.request) ? (plan.request as OpenOrder) : null;
+  const order = created && (!fromPlan || fromPlan.orderId === created.orderId) ? { ...created, ...(fromPlan ?? {}) } : fromPlan;
   const renewing = Boolean(plan.pass);
+  const askName = !hasCustomName && !renewing;
   const [name, setName] = useState(() => suggestName(project.name));
   const [check, setCheck] = useState<NameCheck>({ state: "idle" });
   const [hash, setHash] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"start" | "hash" | "cancel" | "refresh" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
   async function start() {
+    if (busy) return; // repeated clicks: one request at a time (the server also returns the open order)
     setBusy("start");
     setError(null);
-    const result = await requestUpgradeAction(project.id, hasCustomName || !name ? null : name).catch(() => ({ ok: false as const, error: "Something went wrong. Try again." }));
+    const result = await requestUpgradeAction(project.id, askName && name ? name : null).catch(() => FAILED);
     setBusy(null);
     if (!result.ok) return setError(result.error);
+    setCreated({ orderId: result.data.orderId, status: result.data.status, txHash: result.data.txHash });
     router.refresh();
   }
   async function submitHash(orderId: string) {
+    if (busy) return;
     setBusy("hash");
     setError(null);
-    const result = await submitTxHashAction(orderId, hash).catch(() => ({ ok: false as const, error: "Something went wrong. Try again." }));
+    const result = await submitTxHashAction(orderId, hash).catch(() => FAILED);
     setBusy(null);
     if (!result.ok) return setError(result.error);
     setSent(true);
+    setCreated((c) => (c && c.orderId === orderId ? { ...c, txHash: hash.toLowerCase() } : c));
     router.refresh();
   }
   async function cancel(orderId: string) {
     setBusy("cancel");
-    await cancelUpgradeAction(orderId).catch(() => undefined);
+    const result = await cancelUpgradeAction(orderId).catch(() => FAILED);
     setBusy(null);
+    if (!result.ok) return setError(result.error);
+    setCreated(null);
     router.refresh();
     onClose();
   }
+  function refresh() {
+    setBusy("refresh");
+    router.refresh();
+    window.setTimeout(() => setBusy(null), 800);
+  }
 
   return (
-    <Dialog open={open} onClose={onClose} title={renewing ? "Renew your 7-Day Pass" : "7-Day Preview Pass"} busy={busy !== null} className="max-w-[540px]">
+    <Dialog open={open} onClose={onClose} title={renewing ? "Renew your 7-Day Pass" : "7-Day Preview Pass"} busy={busy === "start" || busy === "hash"} className="max-w-[540px]">
       <div className="flex flex-col gap-5 text-[13.5px] leading-relaxed text-fg-2" data-testid="upgrade-dialog">
-        <div className="flex items-start justify-between gap-4 rounded-xl border border-accent/25 bg-accent/[0.05] p-4">
-          <div>
-            <p className="text-[15px] font-semibold text-fg">{project.name}</p>
+        <div className="flex flex-col gap-3 rounded-xl border border-accent/25 bg-accent/[0.05] p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-semibold text-fg">{project.name}</p>
             <ul className="mt-2 flex flex-col gap-1">
               {PASS_BENEFITS.map((b) => (
                 <li key={b} className="flex items-center gap-2 text-[13px]">
@@ -86,9 +105,9 @@ export function UpgradeDialog({
               ))}
             </ul>
           </div>
-          <div className="shrink-0 text-right">
+          <div className="flex shrink-0 items-baseline gap-2 sm:block sm:text-right">
             <p className="text-[26px] font-semibold leading-none tracking-[-0.03em] text-fg">$5</p>
-            <p className="mt-1 text-[11.5px] text-fg-3">one-time · 7 days</p>
+            <p className="text-[11.5px] text-fg-3 sm:mt-1">one-time · 7 days</p>
           </div>
         </div>
         <p className="text-[12.5px] text-fg-3">
@@ -97,37 +116,45 @@ export function UpgradeDialog({
         </p>
 
         {!payment.enabled ? (
-          <p className="flex items-start gap-2 rounded-xl border border-line-strong p-4" role="status">
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden="true" />
-            <span>
-              The 7-Day Pass is launching soon. Want it now? Email{" "}
-              <a href={`mailto:${payment.supportEmail}`} className="text-fg underline underline-offset-2">
-                {payment.supportEmail}
-              </a>
-              .
-            </span>
-          </p>
-        ) : !request ? (
+          <div className="flex flex-col gap-3" data-testid="payments-coming-soon">
+            <div className="flex items-start gap-3 rounded-xl border border-line-strong bg-tint/[0.02] p-4" role="status">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden="true" />
+              <div>
+                <p className="font-medium text-fg">Payments coming soon</p>
+                <p className="mt-0.5 text-[13px]">
+                  You&apos;ll be able to pay {payment.amountLabel} on {payment.networkLabel} here. Questions? Email{" "}
+                  <a href={`mailto:${payment.supportEmail}`} className="text-fg underline underline-offset-2">
+                    {payment.supportEmail}
+                  </a>
+                  .
+                </p>
+              </div>
+            </div>
+            <Button size="lg" className="w-full" disabled>
+              Pay {payment.amountLabel} — coming soon
+            </Button>
+          </div>
+        ) : !order ? (
           <>
-            {!hasCustomName && !renewing ? (
-              <NameField value={name} onChange={setName} onCheck={setCheck} previewDomain={previewDomain} label="Your custom URL (optional)" />
-            ) : null}
+            {askName ? <NameField value={name} onChange={setName} onCheck={setCheck} previewDomain={previewDomain} label="Your custom URL (optional)" /> : null}
             <FormError message={error} />
-            <Button size="lg" className="w-full" loading={busy === "start"} disabled={!hasCustomName && !renewing && name !== "" && check.state === "unavailable"} onClick={start}>
+            <Button size="lg" className="w-full" loading={busy === "start"} disabled={busy !== null || (askName && name !== "" && check.state === "unavailable")} onClick={start}>
               Continue to payment
             </Button>
+            <p className="text-center text-[12px] text-fg-3">You&apos;ll get an Order ID and the payment details. Nothing is charged automatically.</p>
           </>
         ) : (
           <PaymentStep
-            request={request}
+            order={order}
             payment={payment}
             hash={hash}
             setHash={setHash}
             busy={busy}
             error={error}
-            sent={sent || Boolean(request.txHash)}
-            onSubmit={() => submitHash(request.orderId)}
-            onCancel={request.status === "PENDING" && !request.txHash ? () => cancel(request.orderId) : null}
+            sent={sent}
+            onSubmit={() => submitHash(order.orderId)}
+            onCancel={order.status === "PENDING" && !order.txHash ? () => cancel(order.orderId) : null}
+            onRefresh={refresh}
           />
         )}
       </div>
@@ -136,7 +163,7 @@ export function UpgradeDialog({
 }
 
 function PaymentStep({
-  request,
+  order,
   payment,
   hash,
   setHash,
@@ -145,8 +172,9 @@ function PaymentStep({
   sent,
   onSubmit,
   onCancel,
+  onRefresh,
 }: {
-  request: NonNullable<PlanSummary["request"]>;
+  order: OpenOrder;
   payment: PaymentInfo;
   hash: string;
   setHash: (v: string) => void;
@@ -155,20 +183,34 @@ function PaymentStep({
   sent: boolean;
   onSubmit: () => void;
   onCancel: (() => void) | null;
+  onRefresh: () => void;
 }) {
+  const submitted = sent || Boolean(order.txHash);
   return (
     <div className="flex flex-col gap-4" data-testid="payment-step">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[13px]">
-          Order <span className="font-mono text-fg" data-testid="order-id">{request.orderId}</span>
+          Order{" "}
+          <span className="font-mono text-fg" data-testid="order-id">
+            {order.orderId}
+          </span>
         </p>
-        <span className={cn("rounded-full border px-2 py-0.5 text-[11.5px] font-medium", request.status === "UNDER_REVIEW" ? "border-warn/30 bg-warn/10 text-warn" : "border-line-strong text-fg-2")}>
-          {ORDER_STATUS_LABEL[request.status]}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11.5px] font-medium", order.status === "UNDER_REVIEW" ? "border-warn/30 bg-warn/10 text-warn" : "border-line-strong text-fg-2")}
+            data-testid="order-status"
+          >
+            <Clock className="size-3" aria-hidden="true" />
+            {submitted && order.status === "PENDING" ? "Awaiting verification" : ORDER_STATUS_LABEL[order.status]}
+          </span>
+          <button type="button" onClick={onRefresh} aria-label="Refresh status" className="rounded-md p-1 text-fg-3 hover:bg-tint/[0.05] hover:text-fg">
+            <RefreshCw className={cn("size-3.5", busy === "refresh" && "motion-safe:animate-spin")} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[148px_minmax(0,1fr)]">
-        {payment.qrUrl ? (
+        {payment.qrUrl && payment.recipient ? (
           // eslint-disable-next-line @next/next/no-img-element -- small verified static QR
           <img src={payment.qrUrl} alt={`QR code for the wallet address ${payment.recipient}`} width={148} height={148} className="mx-auto size-[148px] rounded-xl bg-white p-1.5 sm:mx-0" />
         ) : null}
@@ -187,7 +229,7 @@ function PaymentStep({
               <code className="min-w-0 break-all font-mono text-[12.5px] text-fg" data-testid="wallet-address">
                 {payment.recipient}
               </code>
-              <CopyButton value={payment.recipient} label="Copy wallet address" />
+              {payment.recipient ? <CopyButton value={payment.recipient} label="Copy wallet address" /> : null}
             </dd>
           </div>
         </dl>
@@ -198,9 +240,14 @@ function PaymentStep({
         Send USDT on BNB Smart Chain (BEP20) only. USDT on another network, or another token, can&apos;t be recovered.
       </p>
 
-      <p className="flex items-start gap-2 text-[12.5px]">
+      <p className="flex items-start gap-2 rounded-xl border border-line p-3 text-[12.5px]">
         <Mail className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden="true" />
-        <span>{payment.afterPaymentMessage}</span>
+        <span>
+          {payment.afterPaymentMessage}{" "}
+          <a href={`mailto:${payment.supportEmail}?subject=${encodeURIComponent(`Payment for ${order.orderId}`)}`} className="text-fg underline underline-offset-2">
+            Email us
+          </a>
+        </span>
       </p>
 
       <form
@@ -214,20 +261,28 @@ function PaymentStep({
           Transaction hash
         </label>
         <div className="flex gap-2">
-          <input id="tx-hash" value={hash} onChange={(e) => setHash(e.target.value.trim())} placeholder={request.txHash ?? "0x…"} className={`${inputClasses} h-10 min-w-0 flex-1 font-mono text-[12.5px]`} autoComplete="off" spellCheck={false} />
-          <Button type="submit" size="sm" className="h-10" loading={busy === "hash"} disabled={!hash}>
-            {request.txHash ? "Update" : "Submit"}
+          <input
+            id="tx-hash"
+            value={hash}
+            onChange={(e) => setHash(e.target.value.trim())}
+            placeholder={order.txHash ?? "0x…"}
+            className={`${inputClasses} h-10 min-w-0 flex-1 font-mono text-[12.5px]`}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <Button type="submit" size="sm" className="h-10" loading={busy === "hash"} disabled={!hash || busy !== null}>
+            {order.txHash ? "Update" : "Submit"}
           </Button>
         </div>
         <FormError message={error} />
-        {sent ? (
-          <p className="flex items-center gap-1.5 text-[12.5px] text-accent-ink" role="status">
+        {submitted ? (
+          <p className="flex items-center gap-1.5 text-[12.5px] text-accent-ink" role="status" data-testid="hash-received">
             <ShieldCheck className="size-3.5" aria-hidden="true" /> Received. We&apos;ll verify the transfer on BSC and email you when your pass is active.
           </p>
         ) : null}
       </form>
       {onCancel ? (
-        <button type="button" onClick={onCancel} className="w-fit text-[12.5px] text-fg-3 underline underline-offset-2 hover:text-fg">
+        <button type="button" onClick={onCancel} disabled={busy !== null} className="w-fit text-[12.5px] text-fg-3 underline underline-offset-2 hover:text-fg disabled:opacity-50">
           Cancel this order
         </button>
       ) : null}
