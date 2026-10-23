@@ -30,9 +30,13 @@ test("upgrade from the project page: one order however often you click, then has
   await plan.getByRole("button", { name: "Upgrade for $5" }).click();
   const dialog = page.getByTestId("upgrade-dialog");
   await expect(dialog).toContainText("7 more days of sharing for this project");
+  // The wallet, QR and network are visible as soon as the dialog opens (before any order exists).
+  await expect(dialog.getByTestId("wallet-address")).toHaveText("0x2f94b75535eff533378c90f8dda29cf10208b174");
+  await expect(dialog.getByRole("img", { name: /QR code for the wallet address/ })).toBeVisible();
+  expect(await orderCount(projectId)).toBe(0);
   await expect(dialog.getByTestId("name-status")).toContainText("is available");
   // Repeated clicks don't create duplicate orders.
-  const go = dialog.getByRole("button", { name: "Continue to payment" });
+  const go = dialog.getByRole("button", { name: "Get my Order ID" });
   await go.dblclick();
   await go.click({ force: true, trial: false }).catch(() => undefined);
   const orderId = await expectPaymentDetails(dialog);
@@ -73,7 +77,7 @@ test("upgrade from Billing settings, on a phone", async ({ page }) => {
 
   await row.getByRole("button", { name: "Upgrade for $5" }).click();
   const dialog = page.getByTestId("upgrade-dialog");
-  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+  await dialog.getByRole("button", { name: "Get my Order ID" }).click();
   const orderId = await expectPaymentDetails(dialog);
   await expectNoHorizontalOverflow(page);
   await page.keyboard.press("Escape");

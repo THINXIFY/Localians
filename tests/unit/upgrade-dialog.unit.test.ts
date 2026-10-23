@@ -32,16 +32,22 @@ describe("Upgrade dialog", () => {
     expect(html).toContain("Payments coming soon");
     expect(html).not.toContain(WALLET);
     expect(html).not.toContain("usdt-bsc-qr");
-    expect(html).not.toContain("Continue to payment");
+    expect(html).not.toContain("Get my Order ID");
     expect(html).not.toContain("Transaction hash");
     expect(html).toMatch(/<button[^>]*disabled[^>]*>.*Pay 5 USDT — coming soon/);
   });
 
-  it("with payments on and no order yet: asks for the custom URL and continues to payment (no address before an order)", () => {
+  it("with payments on: the wallet, QR, amount and network are shown as soon as the dialog opens", () => {
     const html = render(payment(true), plan());
-    expect(html).toContain("Continue to payment");
+    expect(html).toContain(WALLET);
+    expect(html).toContain("Copy wallet address");
+    expect(html).toContain('src="/images/payment/usdt-bsc-qr.jpg"');
+    expect(html).toContain("5 USDT");
+    expect(html).toContain("BNB Smart Chain (BEP20)");
+    expect(html).toContain("Send USDT on BNB Smart Chain (BEP20) only");
+    expect(html).toContain("Get my Order ID");
     expect(html).toContain("Your custom URL (optional)");
-    expect(html).not.toContain(WALLET);
+    expect(html).not.toContain("Transaction hash"); // the hash goes with an order
   });
 
   it("with an open order: Order ID, amount, network, wallet + copy, QR, warning, email instructions, hash field and status", () => {

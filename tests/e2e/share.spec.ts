@@ -100,7 +100,7 @@ test("Share App: Free and 7-Day Pass cards show the project's state; a used proj
   await expect(dialog).toContainText("one-time · 7 days");
   await expect(dialog.getByTestId("name-input")).toHaveValue("plan-app");
   await expect(dialog.getByTestId("name-status")).toContainText("is available");
-  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+  await dialog.getByRole("button", { name: "Get my Order ID" }).click();
   await expect(dialog.getByTestId("order-id")).toHaveText(/^ORD-[A-Z2-9]{8}$/);
   const orderId = (await dialog.getByTestId("order-id").textContent())!;
   await expect(dialog).toContainText("5 USDT");
