@@ -14,6 +14,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, "package.js
 describe("website ↔ extension consistency (nothing on the site can point at something that doesn't exist)", () => {
   it("the site's extension facts equal the extension's own manifest", () => {
     expect(vscodeExtension.id).toBe(`${manifest.publisher}.${manifest.name}`);
+    expect(vscodeExtension.publisherName).toBe("THINXIFY");
     expect(vscodeExtension.displayName).toBe(manifest.displayName);
     expect(vscodeExtension.version).toBe(manifest.version);
     expect(`^${vscodeExtension.minVscode}.0`).toBe(manifest.engines.vscode);
@@ -26,14 +27,14 @@ describe("website ↔ extension consistency (nothing on the site can point at so
     const { marketplace, vsix } = vscodeExtension;
     const a = vscodeAvailability();
     expect(a.installable).toBe(marketplace.published);
-    expect(a.downloadable).toBe(vsix !== null);
-    expect(a.comingSoon).toBe(!marketplace.published && vsix === null);
-    if (vsix) {
-      // A recorded release must be a versioned, checksummed file of this extension on GitHub Releases.
-      expect(vsix.url).toBe(`https://github.com/THINXIFY/Localians/releases/download/vscode-v${vsix.version}/localians-${vsix.version}.vsix`);
-      expect(vsix.sha256).toMatch(/^[0-9a-f]{64}$/);
-      expect(vsix.size).toBeTruthy();
-    }
+    expect(a.downloadable).toBe(vsix.released);
+    expect(a.comingSoon).toBe(!marketplace.published && !vsix.released);
+    // The recorded file: this extension's version, a versioned file on GitHub Releases, and a SHA-256.
+    expect(vsix.version).toBe(manifest.version);
+    expect(vsix.fileName).toBe(`localians-${manifest.version}.vsix`);
+    expect(vsix.url).toBe(`https://github.com/THINXIFY/Localians/releases/download/vscode-v${vsix.version}/${vsix.fileName}`);
+    expect(vsix.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(vsix.size).toMatch(/^\d+ KB$/);
   });
 });
 

@@ -19,7 +19,7 @@ test("extension page: hero, capabilities, steps, and only real buttons are enabl
   const actions = page.getByTestId("vscode-actions");
   await expect(actions.getByRole("link", { name: "View Documentation" })).toHaveAttribute("href", "/docs/vscode");
   if (installable) {
-    await expect(actions.getByRole("link", { name: "Install in VS Code" })).toHaveAttribute("href", vscodeExtension.marketplace.installUri);
+    await expect(actions.getByRole("link", { name: "Install from Marketplace" })).toHaveAttribute("href", vscodeExtension.marketplace.installUri);
   } else {
     // Unreleased: a disabled button, never a link to a listing that doesn't exist.
     await expect(page.getByTestId("install-disabled")).toBeDisabled();
@@ -27,12 +27,36 @@ test("extension page: hero, capabilities, steps, and only real buttons are enabl
     await expect(page.locator('a[href^="vscode:"], a[href*="marketplace.visualstudio.com"]')).toHaveCount(0);
   }
   if (downloadable) {
-    await expect(actions.getByRole("link", { name: "Download VSIX" })).toHaveAttribute("href", vscodeExtension.vsix!.url);
+    await expect(actions.getByRole("link", { name: "Download VSIX" })).toHaveAttribute("href", vscodeExtension.vsix.url);
   } else {
-    await expect(page.getByTestId("vsix-disabled")).toBeDisabled();
+    await expect(actions.getByTestId("vsix-disabled")).toBeDisabled();
     await expect(page.locator('a[href$=".vsix"]')).toHaveCount(0);
     await expect(page.locator("main")).toContainText("Nothing to download yet");
   }
+});
+
+test("Download VSIX section: version, publisher, supported VS Code, checksum, manual install steps and the updates note", async ({ page }) => {
+  await page.goto("/vscode-extension#download");
+  await expect(page.getByRole("heading", { level: 2, name: "Download VSIX" })).toBeVisible();
+  const card = page.getByTestId("vsix-card");
+  const { vsix } = vscodeExtension;
+  await expect(card).toContainText(`Localians for VS Code ${vsix.version}`);
+  await expect(card).toContainText("THINXIFY (thinxify.localians)");
+  await expect(card).toContainText(`VS Code ${vscodeExtension.minVscode} or newer`);
+  await expect(card).toContainText(vsix.fileName);
+  await expect(page.getByTestId("vsix-sha256")).toHaveText(vsix.sha256);
+  await expect(card.getByTestId("vsix-status")).toHaveText(vscodeAvailability().downloadable ? "Available" : "Release pending");
+  const download = card.locator('[data-testid="vsix-download"], [data-testid="vsix-disabled"]');
+  if (vscodeAvailability().downloadable) await expect(download).toHaveAttribute("href", vsix.url);
+  else await expect(download).toBeDisabled();
+
+  const steps = page.getByTestId("vsix-steps");
+  await expect(steps).toContainText("Install from VSIX…");
+  await expect(steps).toContainText("Views and More Actions");
+  await expect(steps).toContainText("Get-FileHash");
+  await expect(steps).toContainText("shasum -a 256");
+  await expect(page.getByTestId("vsix-updates-note")).toContainText("does not receive automatic updates from the");
+  await expect(page.getByTestId("marketplace-note")).toContainText(vscodeAvailability().installable ? "Search for Localians" : "Coming soon");
 });
 
 test("extension page: SEO, structured data and sitemap", async ({ page, request }) => {
@@ -54,6 +78,8 @@ test("docs page, docs index, footer, homepage and dashboard all lead to the exte
   await page.goto("/docs/vscode");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Share localhost from VS Code");
   for (const h of ["Install", "Connect", "Share an app", "Password protection", "Commands", "Settings", "Troubleshooting"]) await expect(page.getByRole("heading", { level: 2, name: h })).toBeVisible();
+  await expect(page.getByTestId("vsix-card")).toContainText(vscodeExtension.vsix.sha256);
+  await expect(page.getByTestId("vsix-updates-note")).toBeVisible();
   if (!installable && !downloadable) await expect(page.locator("main")).toContainText("Coming soon");
 
   await page.goto("/docs");

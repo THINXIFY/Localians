@@ -48,7 +48,7 @@ If `thinxify` is already taken by someone else, pick another ID and change `publ
 
 ## 3. Publish
 
-Preferred, with an approval step: GitHub → **Actions → VS Code extension release → Run workflow** → enter the version
+Marketplace publishing, with an approval step: GitHub → **Actions → VS Code extension release → Run workflow** → enter the version
 (must equal `package.json`) → leave **publish** off first. It builds, tests, packages, and drafts a GitHub Release with
 the `.vsix` and `.sha256`. Review the draft, then run the workflow again with **publish** on: after the environment's
 reviewers approve, it publishes the same package to the Marketplace.
@@ -62,17 +62,32 @@ npx vsce publish --packagePath dist/localians-<version>.vsix
 Check the listing at <https://marketplace.visualstudio.com/items?itemName=thinxify.localians> (it can take a few
 minutes), install it in a clean VS Code profile and share an app.
 
-## 4. After publishing: the website
+## 4. A direct VSIX download (manual install, before or without the Marketplace)
 
-In `src/lib/vscode-extension.ts` (repository root) set `marketplace.published = true`; if the VSIX release is public also
-set `vsix` to its release URL, version and SHA-256. Run the site tests, commit, push and deploy. The "Coming soon" labels on
-localians.com change to **Install in VS Code** only through that file. Nothing is linked before it is real.
+The site's **Download VSIX** section is ready and disabled until you approve the release. The checksum it shows is the SHA-256
+of one specific file: the release candidate built on 2026-10-24 (`localians-0.1.0.vsix`, kept at
+`extensions/vscode/dist/` and `~/.cache/localians-vsix-release/0.1.0/`). **Every rebuild has a different checksum**, so release that exact
+file (or rebuild and update `src/lib/vscode-extension.ts` first; `npm run vscode:package` tells you when they differ).
 
-## 5. A direct VSIX download (optional, needs approval)
+1. **Draft the release** (not public). Either:
+   - on the web: GitHub → Releases → **Draft a new release** → choose a new tag `vscode-v0.1.0` (created when published), target `main`,
+     title `Localians for VS Code 0.1.0`, attach `localians-0.1.0.vsix` and `localians-0.1.0.vsix.sha256`, **Save draft**; or
+   - by script: `GITHUB_TOKEN=<fine-grained token, Contents: read and write on THINXIFY/Localians> npm run vscode:draft-release`.
+     It checks the file against the website's checksum, refuses if the tag or release already exists, creates a **draft** with both files, and
+     cannot publish or replace anything. (The token goes in the environment only.)
+   Do not use the "VS Code extension release" workflow for this: it rebuilds the package, so its file would not match the checksum on the site.
+2. **Review** the draft, then **Publish release** in GitHub (this is the public step and needs the owner's approval).
+3. **Verify the public asset**: `npm run vscode:verify-release` downloads the URL recorded in `src/lib/vscode-extension.ts`, and checks its
+   SHA-256, the `.sha256` file and the package contents.
+4. **Enable the button**: set `vsix.released = true` in `src/lib/vscode-extension.ts`, run the site tests, commit, push and deploy.
 
-The GitHub Release created by the workflow holds `localians-<version>.vsix` and its checksum under the tag
-`vscode-v<version>`. Tags and release files are never replaced: the workflow fails if the tag already exists (do not use
-`--clobber`). To fix a bad release, publish a new version.
+Tags and release files are never replaced; to fix a bad release, publish a new version.
+
+## 5. After publishing on the Marketplace: the website
+
+In `src/lib/vscode-extension.ts` set `marketplace.published = true` (and keep the VSIX section). **Install from Marketplace** then becomes a link
+to `vscode:extension/thinxify.localians`, the "Coming soon" labels go away, and the page is described as an available application.
+Users who installed from a .vsix keep that copy; installing from the Marketplace replaces it and enables automatic updates.
 
 ## Optional: Open VS Code forks (VSCodium, Cursor, …)
 

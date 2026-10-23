@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { ArrowRight, ArrowUpRight, BookOpen, Download, KeyRound, Link2, Radar, Share2, ShieldCheck, Terminal } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, KeyRound, Link2, Radar, Share2, ShieldCheck, Terminal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { VsixDownload, VsixDownloadButton, VsixInstallSteps } from "@/components/vscode/VsixDownload";
 import { Footer } from "@/components/sections/Footer";
 import { Navbar } from "@/components/sections/Navbar";
 import { buttonClasses, ButtonLink } from "@/components/ui/Button";
@@ -30,18 +31,18 @@ const capabilities: { icon: LucideIcon; title: string; text: string }[] = [
 ];
 
 const steps = [
-  { n: "01", title: "Install the extension", text: "Add Localians from the Extensions view, or from a downloaded .vsix file." },
+  { n: "01", title: "Install the extension", text: "From the Marketplace (coming soon), or by hand from a downloaded .vsix file." },
   { n: "02", title: "Connect your account", text: "Click Connect to Localians. Your browser opens once so you can approve VS Code." },
   { n: "03", title: "Share your app", text: "Start your dev server, click it under Local apps, choose who can open it, and send the copied link." },
 ];
 
 export default function VsCodeExtensionPage() {
-  const { installable, comingSoon } = vscodeAvailability();
-  const { vsix, marketplace } = vscodeExtension;
+  const { installable, downloadable, comingSoon } = vscodeAvailability();
+  const { marketplace } = vscodeExtension;
 
   const structured: object[] = [breadcrumbs([{ name: "VS Code Extension", path: routes.vscodeExtension }])];
   // Only describe it as an available application when it truly is.
-  if (installable) {
+  if (installable || downloadable) {
     structured.push({
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
@@ -50,7 +51,7 @@ export default function VsCodeExtensionPage() {
       operatingSystem: "Windows, macOS, Linux",
       softwareVersion: vscodeExtension.version,
       url: absoluteUrl(routes.vscodeExtension),
-      installUrl: marketplace.listingUrl,
+      ...(installable ? { installUrl: marketplace.listingUrl } : { downloadUrl: vscodeExtension.vsix.url }),
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       publisher: { "@type": "Organization", name: "THINXIFY", url: site.operator.url },
     });
@@ -79,30 +80,24 @@ export default function VsCodeExtensionPage() {
               <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3.5 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.14em] text-accent" data-testid="vscode-status">
                 Coming soon · Preview
               </p>
-            ) : null}
+            ) : installable ? null : (
+              <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3.5 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.14em] text-accent" data-testid="vscode-status">
+                Preview release · Manual install
+              </p>
+            )}
 
             <div className="mt-8 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row" data-testid="vscode-actions">
               {installable ? (
-                <a href={marketplace.installUri} className={buttonClasses({ size: "lg", className: "w-full sm:w-auto" })}>
-                  Install in VS Code
+                <a href={marketplace.installUri} className={buttonClasses({ size: "lg", className: "w-full sm:w-auto" })} data-testid="install-marketplace">
+                  Install from Marketplace
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </a>
               ) : (
                 <button type="button" disabled className="inline-flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-line-strong px-6 text-[15px] font-medium text-fg-3 sm:w-auto" data-testid="install-disabled">
-                  Install in VS Code · Soon
+                  Install from Marketplace · Soon
                 </button>
               )}
-              {vsix ? (
-                <a href={vsix.url} className={buttonClasses({ variant: "secondary", size: "lg", className: "w-full sm:w-auto" })} download>
-                  <Download className="size-4" aria-hidden="true" />
-                  Download VSIX
-                </a>
-              ) : (
-                <button type="button" disabled className="inline-flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-line px-6 text-[15px] font-medium text-fg-3 sm:w-auto" data-testid="vsix-disabled">
-                  <Download className="size-4" aria-hidden="true" />
-                  Download VSIX · Soon
-                </button>
-              )}
+              <VsixDownloadButton className="w-full sm:w-auto" />
               <ButtonLink href={routes.vscodeDocs} variant="ghost" size="lg" className="w-full sm:w-auto">
                 <BookOpen className="size-4" aria-hidden="true" />
                 View Documentation
@@ -182,28 +177,38 @@ export default function VsCodeExtensionPage() {
               ))}
             </ol>
 
-            <Reveal className="mx-auto mt-10 max-w-[720px] rounded-[var(--radius-card)] border border-line p-6 text-left">
-              <h3 className="text-[16px] font-semibold text-fg">Install from a .vsix file</h3>
-              {vsix ? (
-                <>
-                  <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[14.5px] leading-relaxed text-fg-2">
-                    <li>
-                      Download <a href={vsix.url} className="text-fg underline underline-offset-4">localians-{vsix.version}.vsix</a> ({vsix.size}).
-                    </li>
-                    <li>
-                      Check the download: its SHA-256 should be <code className="break-all font-mono text-[12.5px] text-fg">{vsix.sha256}</code>.
-                    </li>
-                    <li>
-                      In VS Code, open the Command Palette and run <strong className="font-medium text-fg">Extensions: Install from VSIX…</strong>, then choose the file.
-                    </li>
-                  </ol>
-                </>
-              ) : (
-                <p className="mt-2 text-[14.5px] leading-relaxed text-fg-2">
-                  A downloadable .vsix with a version number and checksum will be listed here when the first release is published. Nothing to download yet.
-                </p>
-              )}
-            </Reveal>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ download */}
+        <section id="download" aria-labelledby="vsc-download" className="section-y relative scroll-mt-20 border-t border-line">
+          <div className="container-x">
+            <SectionHeader
+              id="vsc-download"
+              eyebrow="Install"
+              title="Download VSIX"
+              description="Install Localians for VS Code from a file now, or from the Marketplace once it is published there."
+            />
+            <div className="mx-auto mt-12 grid max-w-[1000px] grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+              <Reveal className="min-w-0">
+                <VsixDownload className="h-full" />
+              </Reveal>
+              <Reveal delay={0.06} className="flex min-w-0 flex-col gap-6">
+                <div>
+                  <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-fg">Install from a .vsix file</h3>
+                  <VsixInstallSteps className="mt-4" />
+                </div>
+                <div className="rounded-xl border border-line p-4" data-testid="marketplace-note">
+                  <h3 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-fg">
+                    Install from Marketplace
+                    {installable ? null : <span className="rounded-full border border-line-strong px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-3">Coming soon</span>}
+                  </h3>
+                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+                    {installable ? "Search for Localians in the Extensions view, or use the Install from Marketplace button above." : "The extension isn't on the Visual Studio Marketplace yet. When it is, you'll be able to install it with one click and get automatic updates."}
+                  </p>
+                </div>
+              </Reveal>
+            </div>
           </div>
         </section>
 

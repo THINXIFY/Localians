@@ -1,6 +1,9 @@
 # Builds, tests and packages the Localians VS Code extension, then drafts a GitHub Release with the .vsix and its
 # checksum. Publishing to the Visual Studio Marketplace is a separate job behind the `vscode-marketplace` environment
 # (add required reviewers there), only runs when "publish" is ticked, and needs the VSCE_PAT environment secret.
+# NOTE: this workflow REBUILDS the package, and every build has a different SHA-256. The website shows the checksum of one
+# specific file (src/lib/vscode-extension.ts), so for the manual-download release use `npm run vscode:draft-release` (it
+# uploads that exact file) or, if you release this workflow's file instead, update the recorded checksum first.
 # Nothing here runs automatically: start it from Actions → "VS Code extension release".
 # See extensions/vscode/PUBLISHING.md.
 name: VS Code extension release

@@ -35,3 +35,10 @@ fs.writeFileSync(`${file}.sha256`, `${sha256}  ${path.basename(file)}\n`);
 
 execFileSync(process.execPath, [path.join(repoRoot, "scripts", "verify-vsix.mjs"), file], { cwd: repoRoot, stdio: "inherit" });
 console.log(`${path.relative(repoRoot, file)}\nsha256 ${sha256}`);
+
+// Every build differs by timestamps. The website shows the checksum of the file attached to the GitHub Release, so say so
+// loudly if this build isn't that file.
+const recorded = /sha256: "([0-9a-f]{64})"/.exec(fs.readFileSync(path.join(repoRoot, "src", "lib", "vscode-extension.ts"), "utf8"))?.[1];
+if (recorded && recorded !== sha256) {
+  console.warn(`\nNOTE: this build's checksum differs from the one recorded for the release (src/lib/vscode-extension.ts: ${recorded}).\nThat is normal for a rebuild. If you release THIS file, update the recorded checksum first; otherwise release the file the website describes.`);
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Prose, SubPage } from "@/components/sections/SubPage";
+import { VsixDownload, VsixInstallSteps } from "@/components/vscode/VsixDownload";
 import { breadcrumbs, pageMetadata } from "@/lib/seo";
 import { routes } from "@/lib/site";
 import { vscodeAvailability, vscodeExtension } from "@/lib/vscode-extension";
@@ -23,7 +24,6 @@ const commands: [string, string][] = [
 
 export default function VsCodeDocsPage() {
   const { installable, downloadable } = vscodeAvailability();
-  const { vsix } = vscodeExtension;
   return (
     <SubPage
       eyebrow="VS Code extension"
@@ -40,23 +40,29 @@ export default function VsCodeDocsPage() {
       }
     >
       <Prose>
-        <h2>Install</h2>
-        <ul>
-          <li>
-            <strong>Marketplace:</strong> {installable ? "search for Localians in the Extensions view (publisher THINXIFY), or use the Install in VS Code button on the extension page." : "will be available by searching for Localians in the Extensions view (publisher THINXIFY)."}
-          </li>
-          <li>
-            <strong>From a .vsix file:</strong>{" "}
-            {vsix ? (
-              <>
-                download <a href={vsix.url} className="text-fg underline underline-offset-4">localians-{vsix.version}.vsix</a>, check that its SHA-256 is{" "}
-                <code className="break-all font-mono text-[12.5px]">{vsix.sha256}</code>, then run <strong>Extensions: Install from VSIX…</strong> from the Command Palette and choose the file.
-              </>
-            ) : (
-              "a downloadable file with a version number and checksum will be offered on the extension page when the first release is published. Then run Extensions: Install from VSIX… from the Command Palette and choose the file."
-            )}
-          </li>
-        </ul>
+        <h2 id="install">Install</h2>
+        <p>
+          <strong>From the Marketplace:</strong>{" "}
+          {installable ? "search for Localians in the Extensions view (publisher THINXIFY), or use the Install from Marketplace button on the extension page." : "coming soon. It will be available by searching for Localians in the Extensions view (publisher THINXIFY), with automatic updates."}
+        </p>
+        <p>
+          <strong>From a .vsix file:</strong> the file, its version, supported VS Code versions and checksum are below, and on the{" "}
+          <Link href={routes.vscodeExtension + "#download"} className="text-fg underline underline-offset-4">
+            extension page
+          </Link>
+          .
+        </p>
+      </Prose>
+      <div className="my-8">
+        <VsixDownload />
+      </div>
+      <Prose>
+        <h3 className="text-[18px] font-semibold text-fg">Install from VSIX</h3>
+      </Prose>
+      <div className="mt-4 mb-8">
+        <VsixInstallSteps />
+      </div>
+      <Prose>
         <p>
           It needs VS Code {vscodeExtension.minVscode} or newer and a free Localians account. Nothing else: the extension includes the same tunnel client as the CLI.
         </p>

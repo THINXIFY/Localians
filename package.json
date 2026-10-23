@@ -28,6 +28,8 @@
     "vscode:typecheck": "npm --prefix extensions/vscode run typecheck",
     "vscode:package": "npm --prefix extensions/vscode run package",
     "vscode:test": "node scripts/vscode-host-test.mjs",
+    "vscode:draft-release": "node scripts/draft-vsix-release.mjs",
+    "vscode:verify-release": "node scripts/verify-vsix-release.mjs",
     "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {

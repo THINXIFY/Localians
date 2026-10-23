@@ -2,7 +2,7 @@
 // a local app. The in-host checks live in extensions/vscode/test/host/suite.ts; this file starts everything around them.
 //
 // Opt-in, because it opens VS Code windows: `npm run vscode:test [version]` downloads a separate stable build into ~/.cache/localians-vscode-test (outside the project, so dev servers do not watch it)
-// (LOCALIANS_VSCODE_DOWNLOAD=1, optionally LOCALIANS_VSCODE_VERSION; the extension supports 1.90+), or set VSCODE_EXECUTABLE_PATH to
+// (LOCALIANS_VSCODE_DOWNLOAD=1, optionally LOCALIANS_VSCODE_VERSION and LOCALIANS_VSIX_PATH to test an existing .vsix; the extension supports 1.90+), or set VSCODE_EXECUTABLE_PATH to
 // use an installed one. Otherwise this test is skipped.
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -91,7 +91,13 @@ describe.skipIf(!canRun)("VS Code extension in a real VS Code (Extension Develop
 
     // The extension exactly as shipped: the real .vsix, installed into a clean VS Code the way a user installs it.
     const vsixDir = path.join(tmp, "vsix");
-    execFileSync(process.execPath, [path.join(extensionRoot, "scripts", "package.mjs"), "--out-dir", vsixDir], { cwd: extensionRoot, stdio: "pipe" });
+    if (process.env.LOCALIANS_VSIX_PATH) {
+      // Test one specific, already built file (the release candidate) instead of building a new one.
+      fs.mkdirSync(vsixDir, { recursive: true });
+      fs.copyFileSync(process.env.LOCALIANS_VSIX_PATH, path.join(vsixDir, path.basename(process.env.LOCALIANS_VSIX_PATH)));
+    } else {
+      execFileSync(process.execPath, [path.join(extensionRoot, "scripts", "package.mjs"), "--out-dir", vsixDir], { cwd: extensionRoot, stdio: "pipe" });
+    }
     const vsix = fs.readdirSync(vsixDir).find((n) => n.endsWith(".vsix"))!;
     const version = (JSON.parse(fs.readFileSync(path.join(extensionRoot, "package.json"), "utf8")) as { version: string }).version;
     // The in-host checks ship as a tiny second extension that runs them when VS Code starts, then quits VS Code.
@@ -203,5 +209,5 @@ ${fs.readFileSync(marker("error"), "utf8")}`);
     expect(leaks).toEqual([]);
     // The token is only valid server-side as a revocable CLI credential, never a dashboard session.
     await expect(createApi(controlPlane.url, first.token, "t").me()).rejects.toMatchObject({ status: 401 }); // revoked in step 5
-  }, 300_000);
+  }, 900_000); // includes a first-time VS Code download (~350 MB)
 });
