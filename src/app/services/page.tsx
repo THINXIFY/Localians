@@ -17,9 +17,10 @@ export const metadata: Metadata = pageMetadata({
 });
 
 /*
- * Every card leads to THINXIFY's contact page, as the owner specified: neither thinxify.com nor services.thinxify.com
- * publishes a page per service. Game Development, Domain & Hosting Management and IT Consulting & Strategy are on the
- * owner's service list but aren't named on thinxify.com's services page yet.
+ * Every card leads to THINXIFY's contact page, as the owner specified. Checked against thinxify.com (sitemaps, services
+ * page) and services.thinxify.com: neither publishes a page per service, so there is no deeper URL to use.
+ * Game Development, Domain & Hosting Management, IT Consulting & Strategy and the four newest services (AI agents,
+ * AI voice agents, Chrome extensions, APIs) are on the owner's list but aren't named on thinxify.com's services page yet.
  */
 const SERVICES_URL = site.servicesContactUrl;
 
@@ -43,6 +44,8 @@ const categories: { id: string; title: string; services: { title: string; descri
       { title: "SaaS Product Development", description: "From first prototype to production, with the accounts, dashboards and infrastructure a subscription product needs." },
       { title: "Mobile App Development", description: "iOS and Android apps built around your users, from the first concept through to release and updates." },
       { title: "Cloud & DevOps Services", description: "Reliable deployment, hosting infrastructure and automation that keep your applications running and easy to ship." },
+      { title: "Chrome Extension Development", description: "Browser extensions for Chrome that add features to websites, automate repetitive tasks and fit smoothly into how people work." },
+      { title: "API Development & Integrations", description: "Reliable APIs and system integrations that connect your software, services and data, built to be secure and easy to maintain." },
       { title: "Data & Analytics", description: "Dashboards and reporting that turn scattered data into clear insights your team can act on." },
       { title: "Game Development", description: "Engaging interactive games, from early prototype to playable release, shaped around your audience and goals." },
       { title: "Domain & Hosting Management", description: "Help choosing, configuring and maintaining your domains, DNS and hosting so your website stays online." },
@@ -53,6 +56,8 @@ const categories: { id: string; title: string; services: { title: string; descri
     title: "AI, Innovation & Growth",
     services: [
       { title: "AI & Business Automation", description: "Practical AI and workflow automation that removes repetitive tasks and helps your team work faster." },
+      { title: "AI Agents & Workflow Automation", description: "Custom AI agents that handle multi-step tasks and connect your tools, so routine workflows run with less manual effort." },
+      { title: "AI Voice Agents & Call Automation", description: "Conversational voice agents that answer calls, qualify enquiries and route requests, helping your team handle conversations at scale." },
       { title: "Blockchain & Web3 Development", description: "Decentralized applications and smart-contract solutions for teams that want to build on public blockchain networks." },
       { title: "Token Launch & Marketing", description: "Planning and promotion support for crypto token launches, from positioning and community to launch campaigns." },
       { title: "Search Engine Optimization (SEO)", description: "Technical and content optimization that helps your website become easier to find in search engines." },

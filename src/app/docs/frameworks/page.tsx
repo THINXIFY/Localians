@@ -24,7 +24,7 @@ export default function FrameworksPage() {
     <SubPage
       eyebrow="Framework guides"
       title="Share any local dev server"
-      intro="Start your app the usual way, then run localians share with the port it prints. Default ports are listed below, but always use the one your terminal shows: it changes if the default is busy or configured differently."
+      intro="Start your app the usual way, then run npx localians share with the port it prints. Default ports are listed below, but always use the one your terminal shows: it changes if the default is busy or configured differently."
       back={{ href: routes.docs, label: "Documentation" }}
       notice={
         <>
@@ -44,7 +44,7 @@ export default function FrameworksPage() {
       <Prose>
         <h2 id="nextjs">Next.js</h2>
         <p>Usually port 3000.</p>
-        <CodeLine>{"npm run dev\nlocalians share 3000"}</CodeLine>
+        <CodeLine>{"npm run dev\nnpx localians share 3000"}</CodeLine>
         <p>
           <strong>Hot reload:</strong> Next.js blocks its development resources for other origins. Allow Localians preview links in{" "}
           <code className="font-mono">next.config.js</code>:
@@ -60,7 +60,7 @@ export default function FrameworksPage() {
 
         <h2 id="vite">React with Vite</h2>
         <p>Usually port 5173. Works without changes, hot reload included.</p>
-        <CodeLine>{"npm run dev\nlocalians share 5173"}</CodeLine>
+        <CodeLine>{"npm run dev\nnpx localians share 5173"}</CodeLine>
         <p>
           If you share with <code className="font-mono">--host-header preserve</code>, add the preview domain to{" "}
           <code className="font-mono">server.allowedHosts</code> in <code className="font-mono">vite.config</code>.
@@ -71,12 +71,12 @@ export default function FrameworksPage() {
           Projects created with <code className="font-mono">npm create vue</code> use Vite: usually port 5173. Older Vue CLI projects use{" "}
           <code className="font-mono">npm run serve</code> on port 8080.
         </p>
-        <CodeLine label="Vite (create-vue)">{"npm run dev\nlocalians share 5173"}</CodeLine>
-        <CodeLine label="Vue CLI">{"npm run serve\nlocalians share 8080"}</CodeLine>
+        <CodeLine label="Vite (create-vue)">{"npm run dev\nnpx localians share 5173"}</CodeLine>
+        <CodeLine label="Vue CLI">{"npm run serve\nnpx localians share 8080"}</CodeLine>
 
         <h2 id="angular">Angular</h2>
         <p>Usually port 4200.</p>
-        <CodeLine>{"npm start\nlocalians share 4200"}</CodeLine>
+        <CodeLine>{"npm start\nnpx localians share 4200"}</CodeLine>
         <p>
           <code className="font-mono">ng serve</code> works the same way. If you pass <code className="font-mono">--host-header preserve</code>, also start
           Angular with <code className="font-mono">--allowed-hosts</code> for the preview domain.
@@ -101,7 +101,7 @@ export default function FrameworksPage() {
             Laravel: <code className="font-mono">php artisan serve</code> — 8000.
           </li>
         </ul>
-        <CodeLine>localians share 8000</CodeLine>
+        <CodeLine>npx localians share 8000</CodeLine>
         <p>
           By default your app sees requests as coming to <code className="font-mono">localhost:&lt;port&gt;</code>, which keeps host checks happy. If
           your app builds absolute links from the request host, those links will point at localhost — use{" "}

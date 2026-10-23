@@ -311,7 +311,7 @@ function MockStorefront() {
       </div>
       <div className="grid flex-1 grid-cols-[1.1fr_1fr] gap-[4%] px-[5%] py-[4.5%]">
         <div className="flex flex-col justify-center">
-          <span className="text-[clamp(7.5px,1.7cqw,10px)] uppercase tracking-[0.2em] text-black/50">Spring collection</span>
+          <span className="text-[clamp(7.5px,1.7cqw,10px)] uppercase tracking-[0.2em] text-black/70">Spring collection</span>
           <span className="mt-[6%] text-[clamp(15px,5.4cqw,32px)] font-semibold leading-[1.02] tracking-[-0.03em]">
             Objects for slower mornings.
           </span>
@@ -328,7 +328,7 @@ function MockStorefront() {
           <div className="rounded-[clamp(6px,1.8cqw,12px)] bg-[linear-gradient(160deg,#e6dfd0,#d1c4ad)]" />
         </div>
       </div>
-      <div className="flex items-center gap-2 border-t border-black/[0.07] px-[5%] py-[2.2%] text-[clamp(7.5px,1.7cqw,10px)] text-black/50">
+      <div className="flex items-center gap-2 border-t border-black/[0.07] px-[5%] py-[2.2%] text-[clamp(7.5px,1.7cqw,10px)] text-black/70">
         <span className="size-1.5 rounded-full bg-[#5c8f1d]" />
         Served from localhost:3000 via a Localians preview link
       </div>

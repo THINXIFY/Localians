@@ -9,7 +9,7 @@ const OS_LABEL: Record<Os, string> = { windows: "Windows", macos: "macOS", linux
 const OS_ORDER: Os[] = ["windows", "macos", "linux"];
 
 /**
- * One-time CLI install while the npm package is unpublished, plus (for a local development
+ * One-time install of a locally built CLI (shown while LOCALIANS_CLI_PUBLISHED is off, e.g. local development), plus (for a local development
  * gateway) trusting its certificate. Collapsed by default: most visits don't need it.
  */
 export function InstallBeta({ localGateway, defaultOpen = false }: { localGateway: boolean; defaultOpen?: boolean }) {
@@ -52,8 +52,8 @@ export function InstallBeta({ localGateway, defaultOpen = false }: { localGatewa
       </summary>
       <div className="flex flex-col gap-3 border-t border-line px-4 py-4 text-[13px] leading-relaxed text-fg-2">
         <p>
-          The CLI isn&apos;t on npm yet, so <code className="font-mono text-[12px]">npx localians</code> won&apos;t work. Install it once from a
-          Localians checkout (Node.js 20+):
+          This server uses a locally built CLI, so install it once from a Localians checkout (Node.js 20+). The published
+          <code className="font-mono text-[12px]"> npx localians</code> package talks to localians.com instead:
         </p>
         <div role="tablist" aria-label="Operating system" className="flex w-fit rounded-lg border border-line-strong bg-tint/[0.03] p-0.5">
           {OS_ORDER.map((value) => (

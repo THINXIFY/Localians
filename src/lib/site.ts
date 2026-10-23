@@ -8,7 +8,7 @@ export const site = {
   demoUrl: "https://demo.preview.localians.com",
   supportEmail: "hello@thinxify.com",
   operator: { name: "THINXIFY Technologies", url: "https://thinxify.com" },
-  /** Where every service card on /services leads: THINXIFY's contact page (it publishes no per-service pages). */
+  /** Where every service card on /services leads (the owner's choice): THINXIFY's contact page. It publishes no per-service pages. */
   servicesContactUrl: "https://thinxify.com/contact-us/",
 };
 

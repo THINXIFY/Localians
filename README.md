@@ -82,7 +82,8 @@ npm run tunnel:certs        # local CA + gateway cert in .localians-dev/certs (n
 npm run tunnel:build        # bundles tunnel/cli/dist/localians.js and tunnel/gateway/dist/gateway.js
 npm run gateway:start       # gateway on https://127.0.0.1:8443 (reads .env)
 
-# Once: put the `localians` command on your PATH (or run node tunnel/cli/dist/localians.js)
+# Once: put your locally built `localians` command on your PATH (or run node tunnel/cli/dist/localians.js).
+# (`npx localians` runs the published package, which talks to localians.com, not to this local server.)
 cd tunnel/cli && npm link && cd ../..
 export NODE_EXTRA_CA_CERTS="$PWD/.localians-dev/certs/ca.crt"   # trust the local CA (from the repo root)
 
@@ -349,8 +350,8 @@ Tests use the `localians_test` database (migrated and emptied on every run); the
   The CLI approval page lets users with several workspaces choose which one the computer may share into.
 - **Which server the CLI uses:** `npm run tunnel:build` bakes in `LOCALIANS_DEFAULT_API_URL` (falling back to
   `BETTER_AUTH_URL` from `.env`). Set it to the production web app before publishing the package.
-- **npx:** the dashboard shows `localians …` (the linked beta) until you publish the package and set
-  `LOCALIANS_CLI_PUBLISHED=1`; then it shows `npx localians …`. This is deliberately a setting rather than an npm
+- **npx:** the package is published on npm (`localians@0.1.0`). The dashboard shows `localians …` (the linked build) until a
+  deployment sets `LOCALIANS_CLI_PUBLISHED=1`; then it shows `npx localians …`. This is deliberately a setting rather than an npm
   registry check, since someone else could publish a package with that name first.
 - **Docs:** `/docs/getting-started`, `/docs/cli`, `/docs/frameworks`, `/docs/troubleshooting`, `/docs/security`.
 

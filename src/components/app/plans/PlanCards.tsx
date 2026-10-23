@@ -117,7 +117,7 @@ export function PlanCards({
         <div className="mt-auto pt-1">
           {project ? (
             <Button size="sm" variant={passActive ? "secondary" : "primary"} className="h-9" onClick={() => setOpen(true)}>
-              {request ? "View payment details" : passActive || plan.graceUntil ? "Renew Pass" : "Upgrade for $5"}
+              {request ? "View payment details" : passActive || plan.graceUntil ? "Renew Pass" : payment.enabled ? "Upgrade for $5" : "7-Day Pass · Coming soon"}
             </Button>
           ) : (
             <p className="text-[12px] text-fg-3">Available once the project exists — share it once, or pick an existing project.</p>

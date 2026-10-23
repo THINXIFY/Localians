@@ -21,7 +21,7 @@ export default async function SignupPage() {
   return (
     <AuthCard
       title="Create your account"
-      description="Free during the beta. Share your first localhost preview in minutes."
+      description="Free to start: every project gets a 24-hour preview. Share your first localhost preview in minutes."
       footer={
         <>
           Already have an account?{" "}

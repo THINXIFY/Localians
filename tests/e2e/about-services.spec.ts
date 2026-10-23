@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectNoHorizontalOverflow } from "./helpers";
 
-const CONTACT = "https://thinxify.com/contact-us/"; // every service card leads to THINXIFY's contact page
+const CONTACT = "https://thinxify.com/contact-us/"; // every service card leads to THINXIFY's contact page (it publishes no per-service pages)
 
 test("About: hero, sections, THINXIFY link and CTAs", async ({ page }) => {
   await page.goto("/about");
@@ -22,16 +22,16 @@ test("About: hero, sections, THINXIFY link and CTAs", async ({ page }) => {
   await expect(page.locator("main")).not.toContainText(/founder|funding|customers|award/i);
 });
 
-test("Services: 18 cards in three categories, every link goes to THINXIFY in a new tab", async ({ page }) => {
+test("Services: 22 cards in three categories, every link goes to THINXIFY in a new tab", async ({ page }) => {
   await page.goto("/services");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Beyond Localhost. Build What's Next.");
   await expect(page.locator("main")).toContainText("provided by THINXIFY, not by the Localians");
-  for (const [name, n] of [["Web & Digital Experiences", 5], ["Software & Engineering", 7], ["AI, Innovation & Growth", 6]] as const) {
+  for (const [name, n] of [["Web & Digital Experiences", 5], ["Software & Engineering", 9], ["AI, Innovation & Growth", 8]] as const) {
     const group = page.locator("div[aria-labelledby]").filter({ has: page.getByRole("heading", { level: 2, name }) });
     await expect(group.getByRole("listitem")).toHaveCount(n);
   }
   const links = page.getByRole("link", { name: /^Explore Service/ });
-  await expect(links).toHaveCount(18);
+  await expect(links).toHaveCount(22);
   for (const a of await links.all()) {
     await expect(a).toHaveAttribute("href", CONTACT);
     await expect(a).toHaveAttribute("target", "_blank");

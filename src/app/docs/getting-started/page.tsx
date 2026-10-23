@@ -20,9 +20,8 @@ export default function GettingStartedPage() {
       back={{ href: routes.docs, label: "Documentation" }}
       notice={
         <>
-          <strong className="font-medium text-fg">Beta:</strong> the <code className="font-mono">localians</code> command isn&apos;t on npm yet, so{" "}
-          <code className="font-mono">npx localians</code> doesn&apos;t work today. Install it once from a Localians checkout (below). Public preview
-          links also need the Localians service to be deployed; until then, links work on the computer and network running the beta server.
+          <strong className="font-medium text-fg">Beta:</strong> Localians is in beta. The CLI is on npm, so{" "}
+          <code className="font-mono">npx localians</code> works without installing anything.
         </>
       }
     >
@@ -34,11 +33,6 @@ export default function GettingStartedPage() {
           <li>A web app you can run locally — anything that opens at <code className="font-mono">http://localhost:&lt;port&gt;</code>.</li>
         </ul>
 
-        <h2>One-time setup (beta)</h2>
-        <p>From a checkout of the Localians repository, build and link the CLI. This adds the <code className="font-mono">localians</code> command.</p>
-        <CodeLine label="Windows PowerShell">{"npm install; npm run tunnel:build\ncd tunnel\\cli; npm link"}</CodeLine>
-        <CodeLine label="macOS / Linux">{"npm install && npm run tunnel:build\ncd tunnel/cli && npm link"}</CodeLine>
-
         <h2>1. Start your app</h2>
         <p>Open your project and start its development server the way you always do, for example:</p>
         <CodeLine>npm run dev</CodeLine>
@@ -49,7 +43,7 @@ export default function GettingStartedPage() {
 
         <h2>2. Share it</h2>
         <p>Open a second terminal in the same project folder and run the command with your port:</p>
-        <CodeLine>localians share 5173</CodeLine>
+        <CodeLine>npx localians share 5173</CodeLine>
         <p>The first time, two quick questions are answered for you:</p>
         <ul>
           <li>

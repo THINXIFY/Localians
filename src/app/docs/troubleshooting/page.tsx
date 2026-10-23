@@ -48,7 +48,7 @@ export default function TroubleshootingPage() {
             Use the port your dev server prints, not the framework&apos;s usual one: it changes when the default is busy. Vite might print{" "}
             <code className="font-mono">Local: http://localhost:5174/</code> — then share 5174.
           </p>
-          <CodeLine>localians share 5174</CodeLine>
+          <CodeLine>npx localians share 5174</CodeLine>
         </Problem>
 
         <Problem id="login-expired" title="Login expired or revoked" symptom="“Your login on this computer expired or was revoked. Let’s sign in again.”">
@@ -152,10 +152,10 @@ export default function TroubleshootingPage() {
 
         <Problem id="npm-not-found" title="npm package not found / command not found" symptom={<>&ldquo;npm error 404 Not Found&rdquo; for <code className="font-mono">npx localians</code>, or &ldquo;localians is not recognized&rdquo;</>}>
           <p>
-            The package isn&apos;t published to npm during the beta, so <code className="font-mono">npx localians</code> can&apos;t work yet. Install the
-            beta from a Localians checkout (see the <Link href={routes.cliGuide} className="text-fg underline underline-offset-4">CLI guide</Link>). If
-            <code className="font-mono"> localians</code> still isn&apos;t found after <code className="font-mono">npm link</code>, make sure npm&apos;s
-            global folder is on your PATH:
+            The package is published on npm, so <code className="font-mono">npx localians</code> should work with Node.js 20 or newer (check with{" "}
+            <code className="font-mono">node --version</code>). A 404 usually means a typo in the name or a registry/proxy setting that blocks npm. If you installed it
+            globally with <code className="font-mono">npm install -g localians</code> and <code className="font-mono">localians</code> isn&apos;t found, make sure
+            npm&apos;s global folder is on your PATH:
           </p>
           <CodeLine>npm prefix -g</CodeLine>
         </Problem>

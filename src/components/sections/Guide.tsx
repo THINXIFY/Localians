@@ -32,7 +32,7 @@ export function GuideCta({ name, path }: { name: string; path: string }) {
   return (
     <div className="mt-16 flex flex-col gap-4 rounded-[var(--radius-card)] border border-accent/25 bg-accent/[0.04] p-6 sm:p-8">
       <p className="text-[20px] font-semibold tracking-[-0.02em] text-fg">Share your first preview in about a minute.</p>
-      <p className="text-[15px] leading-relaxed text-fg-2">Free during the beta. No credit card, nothing to deploy.</p>
+      <p className="text-[15px] leading-relaxed text-fg-2">Free to start with a 24-hour preview per project. No credit card, nothing to deploy.</p>
       <div className="flex flex-wrap gap-3">
         <ButtonLink href={routes.getStarted}>
           Start Sharing Free

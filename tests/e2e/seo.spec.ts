@@ -119,3 +119,22 @@ test("hero text is visible in the first paint, even without JavaScript", async (
   expect(await page.locator(".reveal").first().evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
   await context.close();
 });
+
+test("every internal link on every public page resolves, and external links are well-formed", async ({ page, request }) => {
+  const internal = new Set<string>();
+  const external = new Set<string>();
+  for (const path of indexablePaths) {
+    await page.goto(path);
+    const hrefs = await page.locator("a[href]").evaluateAll((links) => (links as HTMLAnchorElement[]).map((a) => a.getAttribute("href")!));
+    for (const href of hrefs) {
+      if (href.startsWith("#") || href.startsWith("mailto:")) continue;
+      if (/^https?:\/\//.test(href)) external.add(href);
+      else if (href.startsWith("/")) internal.add(href.split("#")[0] || "/");
+    }
+  }
+  expect(internal.size).toBeGreaterThan(15);
+  for (const href of internal) expect((await request.get(href)).status(), href).toBe(200);
+  for (const href of external) expect(() => new URL(href), href).not.toThrow();
+  expect(external).toContain("https://thinxify.com");
+  expect(external).toContain("https://thinxify.com/contact-us/");
+});

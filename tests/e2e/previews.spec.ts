@@ -30,7 +30,7 @@ test("a new user is pointed straight at sharing, with honest empty states", asyn
   await expect(page.getByRole("button", { name: "Copy Command" })).toHaveCount(0); // no command for an invalid port
   await page.goto("/dashboard/share?port=4200");
   await expect(page.getByTestId("share-command")).toHaveText(/localians share 4200 --setup [a-z2-9]{12}$/);
-  // The beta install is offered (collapsed, under Help & advanced) because the npm package isn't published.
+  // The beta install is offered (collapsed, under Help & advanced) because this local server doesn't set LOCALIANS_CLI_PUBLISHED.
   await page.getByText("Help & advanced").click();
   await page.getByText("Don't have the Localians command yet?").click();
   await expect(page.getByText("npm install; npm run tunnel:build")).toBeVisible();

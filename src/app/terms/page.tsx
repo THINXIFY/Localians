@@ -14,10 +14,10 @@ export const metadata: Metadata = pageMetadata({
 
 /*
  * Decisions that still need the business owner / legal review before these terms are final (kept out of the public text):
- *  1. Refund policy: section 6 describes a review process only; no refund window or amount has been approved.
+ *  1. Refund policy: section 6 states no refund policy and promises no refund; one has to be approved and written.
  *  2. Governing law, venue and any arbitration: deliberately not specified (section 14).
- *  3. Minimum age (16) is mirrored from the privacy policy and is a proposal.
- *  4. Liability cap (greater of 12 months of fees and US$50) in section 13 is a proposal.
+ *  3. Liability limits: section 13 has only the generic disclaimer; no monetary cap has been approved.
+ *  4. Minimum age: 18 (no approved policy exists; mirrored in the privacy policy).
  *  5. The operator's legal entity name, registration and postal address are not stated anywhere in the project.
  */
 function buildSections(payments: boolean): LegalSection[] {
@@ -32,7 +32,7 @@ function buildSections(payments: boolean): LegalSection[] {
             By creating an account, running the Localians CLI, opening your dashboard or otherwise using Localians, you agree to these Terms and to our <LegalLink href={routes.privacy}>Privacy Policy</LegalLink>.
             If you use Localians on behalf of a company or team, you confirm you are allowed to accept these Terms for it. If you don&apos;t agree, please don&apos;t use the service.
           </p>
-          <p>You must be at least 16 years old, or the age at which you can form a binding contract where you live if that is higher. Younger users may use Localians only with a parent&apos;s or guardian&apos;s permission.</p>
+          <p>You must be at least 18 years old to create an account and use Localians.</p>
         </>
       ),
     },
@@ -132,12 +132,10 @@ function buildSections(payments: boolean): LegalSection[] {
             <li><strong>Verification and approval are required.</strong> A pass is activated only after we verify your payment on the blockchain and an administrator approves the order. Submitting a transaction hash or a screenshot doesn&apos;t guarantee activation, and we may ask for more information.</li>
             <li><strong>No false or duplicate evidence.</strong> Submitting forged, altered or reused payment evidence, or a transaction already used for another order, is prohibited and may lead to rejection and account suspension.</li>
             <li><strong>Network fees</strong> and any exchange or wallet charges are yours to pay; the pass price is the amount shown, received in full.</li>
-            <li><strong>Corrections and disputes.</strong> If you paid and haven&apos;t been activated, paid the wrong amount, or paid twice, email <MailLink /> with your Order ID and transaction hash. We&apos;ll review it and put it right where we can.</li>
+            <li><strong>Corrections and disputes.</strong> If you paid and haven&apos;t been activated, paid the wrong amount, or paid twice, email <MailLink /> with your Order ID and transaction hash. We&apos;ll review it and reply by email.</li>
           </ul>
           <p>
-            <strong>Cancellation and refunds.</strong> Because a pass is a single payment, there is nothing to cancel. Blockchain transfers can&apos;t be reversed by us, so any refund would be a separate transfer from us, and the network&apos;s fees may apply. We don&apos;t publish a fixed refund
-            schedule yet. Instead we review every request individually and fairly. Where we, in good faith, agree that a refund or correction is due, for example a payment we received but couldn&apos;t activate, a duplicate payment, or a pass that we failed to provide, we&apos;ll refund it or extend the pass, and we&apos;ll tell you by email. Nothing in these Terms limits any
-            refund or other rights that the law gives you.
+            <strong>Cancellation and refunds.</strong> Because a pass is a single payment, there is nothing to cancel. Blockchain transfers can&apos;t be reversed by us, so any refund would be a separate transfer from us, and the network&apos;s fees may apply. We haven&apos;t published a refund policy for passes. If you believe a payment was taken in error, for example a duplicate payment or a payment we received but couldn&apos;t activate, email <MailLink /> with your Order ID and we&apos;ll review the request and reply by email. Nothing in these Terms promises a refund, and nothing limits any refund or other rights that the law gives you.
           </p>
         </>
       ),
@@ -200,7 +198,7 @@ function buildSections(payments: boolean): LegalSection[] {
             You can stop using Localians at any time, stop a preview from your dashboard and ask us to delete your account at <MailLink />.
           </p>
           <p>
-            We may stop a preview or suspend or terminate an account if we reasonably believe it breaks these Terms or the law, puts the service or other people at risk, involves fraudulent payment evidence or abuse of limits, or is unused or unpaid for in a way that requires it. Where it is reasonable and safe to do so, we&apos;ll tell you why by email and give you a chance to respond. For serious or urgent risks, we may act first and explain afterwards.
+            We may stop a preview or suspend or terminate an account if we reasonably believe it breaks these Terms or the law, puts the service or other people at risk, involves fraudulent payment evidence or abuse of limits, or is unused or unpaid for in a way that requires it. Where it is reasonable and safe to do so, we may tell you why by email and give you a chance to respond. For serious or urgent risks, we may act first.
           </p>
         </>
       ),
@@ -237,7 +235,7 @@ function buildSections(payments: boolean): LegalSection[] {
             profits or business, or for what visitors or third parties do with a public link you create.
           </p>
           <p>
-            To the extent the law allows, our total liability to you for claims connected with the service is limited to the greater of the amount you paid us in the 12 months before the claim and US$50. Nothing in these Terms excludes or limits liability that can&apos;t be excluded by law, such as for fraud, or affects any mandatory consumer rights you have where you live.
+            Nothing in these Terms excludes or limits liability that can&apos;t be excluded or limited by law, such as for fraud, or affects any mandatory consumer rights you have where you live.
           </p>
         </>
       ),
@@ -247,7 +245,7 @@ function buildSections(payments: boolean): LegalSection[] {
       title: "Governing law and disputes",
       body: (
         <p>
-          If you have a problem, please email <MailLink /> first so we can try to resolve it informally. These Terms don&apos;t currently name a governing law, court or arbitration process, and we will publish them here once they are confirmed. Until then, the mandatory laws and consumer protections that apply where you live continue to apply.
+          If you have a problem, please email <MailLink /> first so we can try to resolve it informally. These Terms don&apos;t currently name a governing law, court or arbitration process. The mandatory laws and consumer protections that apply where you live continue to apply.
         </p>
       ),
     },

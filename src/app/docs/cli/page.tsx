@@ -20,26 +20,30 @@ export default function CliGuidePage() {
       back={{ href: routes.docs, label: "Documentation" }}
       notice={
         <>
-          <strong className="font-medium text-fg">Beta:</strong> the <code className="font-mono">localians</code> package isn&apos;t published to npm
-          yet, so <code className="font-mono">npx localians</code> won&apos;t resolve until it is. Install it from a Localians checkout as shown below.
-          The commands are the same in Windows PowerShell, macOS and Linux unless noted.
+          <strong className="font-medium text-fg">Beta:</strong> Localians is in beta. The <code className="font-mono">localians</code> package is on npm, so there
+          is nothing to install: <code className="font-mono">npx npx localians share 3000</code> works on Windows PowerShell, macOS and Linux.
         </>
       }
     >
       <Prose>
-        <h2>Install (beta)</h2>
-        <p>From the Localians repository, with Node.js 20 or newer:</p>
-        <CodeLine label="Windows PowerShell">{"npm install; npm run tunnel:build\ncd tunnel\\cli; npm link"}</CodeLine>
-        <CodeLine label="macOS / Linux">{"npm install && npm run tunnel:build\ncd tunnel/cli && npm link"}</CodeLine>
+        <h2>Install</h2>
         <p>
-          The build remembers which Localians server it belongs to (<code className="font-mono">LOCALIANS_DEFAULT_API_URL</code>, or the
-          checkout&apos;s own web app), so no flags are needed. To use another server, add <code className="font-mono">--api-url &lt;url&gt;</code>{" "}
-          once; the CLI remembers it after you sign in. Remove the command with <code className="font-mono">npm unlink -g localians</code>.
+          You need Node.js 20 or newer. Run the CLI straight from npm, with nothing to install:
+        </p>
+        <CodeLine>npx npx localians share 3000</CodeLine>
+        <p>
+          Or install it once and use the shorter <code className="font-mono">localians</code> command everywhere below:
+        </p>
+        <CodeLine>npm install -g localians</CodeLine>
+        <p>
+          The CLI talks to localians.com by default, so no flags are needed. Remove a global install with{" "}
+          <code className="font-mono">npm uninstall -g localians</code>. Contributors running their own Localians server can build the CLI from the
+          repository and point it at that server with <code className="font-mono">--api-url &lt;url&gt;</code>.
         </p>
 
         <h2>localians share &lt;port&gt;</h2>
         <p>Shares the app running on <code className="font-mono">localhost:&lt;port&gt;</code>. Run it in your project folder, in a second terminal next to your dev server.</p>
-        <CodeLine>localians share 5173</CodeLine>
+        <CodeLine>npx localians share 5173</CodeLine>
         <ol>
           <li>Checks that something is running on that port on your computer.</li>
           <li>If this computer isn&apos;t signed in yet (or its login expired), opens your browser to approve it, then carries on.</li>
@@ -52,20 +56,20 @@ export default function CliGuidePage() {
         </p>
         <p>
           <strong>From the dashboard:</strong> the Share App page builds a command like{" "}
-          <code className="font-mono">localians share 5173 --setup k7m2xq9p4tzw</code>. The one-time code carries the project and access (public or
+          <code className="font-mono">npx localians share 5173 --setup k7m2xq9p4tzw</code>. The one-time code carries the project and access (public or
           password) you chose there, so the CLI asks nothing. It works once, within 30 minutes, and only for your own login.
         </p>
         <p>
           <strong>Project selection:</strong> pass <code className="font-mono">--project &lt;name-or-id&gt;</code> to choose one explicitly. In scripts
           (no interactive terminal), add <code className="font-mono">--yes</code> to allow creating a project automatically.
         </p>
-        <CodeLine>localians share 5173 --project client-dashboard</CodeLine>
+        <CodeLine>npx localians share 5173 --project client-dashboard</CodeLine>
         <p>
           <strong>Preview time:</strong> every project gets one free 24-hour preview window, starting with its first share; restarting or reconnecting
           stays within it. A 7-Day Preview Pass adds 7 more days for one project. By default a share runs until that window ends — add{" "}
           <code className="font-mono">--duration</code> to stop it sooner.
         </p>
-        <CodeLine>localians share 5173 --duration 1h</CodeLine>
+        <CodeLine>npx localians share 5173 --duration 1h</CodeLine>
         <ul>
           <li>
             <strong>-d, --duration &lt;time&gt;</strong> — auto-stop after <code className="font-mono">5m</code>, <code className="font-mono">15m</code>,{" "}
@@ -95,15 +99,15 @@ export default function CliGuidePage() {
           You approve the computer in your browser; the CLI gets its own access token (never your dashboard session), valid for 90 days and
           revocable any time in Settings → CLI. If you belong to more than one workspace, the approval page asks which one this computer may share into.
         </p>
-        <CodeLine>localians login</CodeLine>
+        <CodeLine>npx localians login</CodeLine>
 
         <h2>localians status</h2>
         <p>Shows who you&apos;re signed in as, and each preview being shared from this computer: project, local address, preview link, status and uptime.</p>
-        <CodeLine>localians status</CodeLine>
+        <CodeLine>npx localians status</CodeLine>
 
         <h2>localians logout</h2>
         <p>Revokes this computer&apos;s access on the server and deletes it locally. Anything this computer is sharing stops.</p>
-        <CodeLine>localians logout</CodeLine>
+        <CodeLine>npx localians logout</CodeLine>
 
         <h2>Managing previews in the dashboard</h2>
         <p>

@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { SubPage } from "@/components/sections/SubPage";
 import { breadcrumbs, pageMetadata } from "@/lib/seo";
 import { routes, site } from "@/lib/site";
+import { launchFlags } from "@/server/launch";
 
 export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy: How Localians Handles Your Data",
@@ -16,7 +17,8 @@ export const metadata: Metadata = pageMetadata({
  * Resend, the BSC verification). Items the business owner still has to decide are listed in the commit/PR notes:
  * legal entity details, log retention at the host, a self-service deletion flow, and any fixed retention periods.
  */
-const sections: LegalSection[] = [
+function buildSections(payments: boolean): LegalSection[] {
+  return [
   {
     id: "introduction",
     title: "Introduction",
@@ -192,7 +194,10 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          The 7-Day Preview Pass is paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person. You create an upgrade request in your dashboard, which gives you an Order ID; you send the payment
+          {payments
+            ? "The 7-Day Preview Pass is paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person."
+            : "Paid upgrades are not open yet. When they open, the 7-Day Preview Pass is planned to be paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person."}{" "}
+          You create an upgrade request in your dashboard, which gives you an Order ID; you send the payment
           and give us the transaction hash (or email it to us). We then check on the blockchain that the transfer exists and matches, and an administrator approves or rejects the request. We store the order,
           the transaction hash, the result of the check, the reviewer and any note, so we can activate, support and, where appropriate, revoke or correct a pass.
         </p>
@@ -285,8 +290,7 @@ const sections: LegalSection[] = [
     title: "Children",
     body: (
       <p>
-        Localians is a developer tool and isn&apos;t directed to children. You must be at least 16 years old to create an account, or older if the law where you live sets a higher age for consenting to online services.
-        If you are under the age of majority where you live, you may use Localians only with a parent&apos;s or guardian&apos;s permission. If you believe a child has given us personal information without permission, email <MailLink /> and we will delete it.
+        Localians is a developer tool and isn&apos;t directed to children. You must be at least 18 years old to create an account. If you believe a child has given us personal information, email <MailLink /> and we will delete it.
       </p>
     ),
   },
@@ -308,9 +312,11 @@ const sections: LegalSection[] = [
       </p>
     ),
   },
-];
+  ];
+}
 
 export default function PrivacyPolicyPage() {
+  const { payments } = launchFlags();
   return (
     <SubPage
       eyebrow="Legal"
@@ -323,7 +329,7 @@ export default function PrivacyPolicyPage() {
       }
       width="wide"
     >
-      <LegalDocument sections={sections} />
+      <LegalDocument sections={buildSections(payments)} />
       <JsonLd data={breadcrumbs([{ name: "Privacy Policy", path: routes.privacy }])} />
     </SubPage>
   );

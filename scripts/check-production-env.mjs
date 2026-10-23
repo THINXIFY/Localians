@@ -106,7 +106,6 @@ if (role === "web") {
     }
   }
   if (gateway && previewDomain && gateway.hostname.endsWith(`.${previewDomain}`)) errors.push("TUNNEL_GATEWAY_URL must not be under the preview domain");
-  if (env.LOCALIANS_CLI_PUBLISHED === "1") warnings.push("LOCALIANS_CLI_PUBLISHED=1: the dashboard shows `npx localians` — only set this after the npm package is published");
 }
 
 if (role === "gateway") {

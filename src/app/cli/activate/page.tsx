@@ -21,7 +21,7 @@ export default async function CliActivatePage({ searchParams }: { searchParams: 
     const allowed = (await rateLimit(`device-lookup:${session.user.id}`, 10, 60_000)).allowed;
     const pending = allowed ? await findPendingDeviceAuthorization(code) : null;
     if (pending) initialRequest = { userCode: pending.userCode, clientName: pending.clientName };
-    else initialError = allowed ? "That code is invalid or has expired. Run `localians login` again for a new one." : "Too many attempts. Wait a minute and try again.";
+    else initialError = allowed ? "That code is invalid or has expired. Run `npx localians login` again for a new one." : "Too many attempts. Wait a minute and try again.";
   }
 
   return (

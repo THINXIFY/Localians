@@ -298,7 +298,7 @@ Before publishing:
 2. Remove `"private": true`.
 3. Run `npm publish` from the npm account that will own `localians`.
 
-Then set `LOCALIANS_CLI_PUBLISHED=1` in `web.env` and deploy; the dashboard switches to `npx localians …`.
+The package is published (`localians@0.1.0`, MIT). Set `LOCALIANS_CLI_PUBLISHED=1` in `web.env` and deploy to make the dashboard show `npx localians …`.
 (CLIs built by `deploy.sh` on the server also point at `https://localians.com`.)
 
 ## 11. Operations

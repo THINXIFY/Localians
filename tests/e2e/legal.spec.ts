@@ -84,3 +84,16 @@ test("legal pages fit at phone, tablet and desktop widths", async ({ page }) => 
     }
   }
 });
+
+test("legal pages make no unapproved commitments: minimum age 18, no refund promise, no invented liability cap or jurisdiction", async ({ page }) => {
+  await page.goto("/terms");
+  const terms = page.locator("main");
+  await expect(terms).toContainText("at least 18 years old");
+  await expect(terms).not.toContainText(/16 years|parent|US\$ ?50/i);
+  await expect(terms).toContainText("Nothing in these Terms promises a refund");
+  await expect(terms).not.toContainText(/we.ll refund|full refund|no refunds?|non-refundable/i);
+  await expect(terms).toContainText("don't currently name a governing law");
+  await page.goto("/privacy-policy");
+  await expect(page.locator("main")).toContainText("at least 18 years old");
+  await expect(page.locator("main")).not.toContainText(/16 years|parent/i);
+});
