@@ -119,19 +119,35 @@ Gateway ──reports connect / heartbeat / metering──▶ Control plane (Nex
 Session states: `CONNECTING → CONNECTED ⇄ RECONNECTING → DISCONNECTED | EXPIRED | REVOKED`. These are
 separate from a project's Active/Archived status.
 
-## Preview timers
+## Preview plans: Free and the 7-Day Pass
 
-Every preview has a time limit. Developers choose it in the Share App wizard, in VS Code, or with
-`localians share <port> --duration 1h`:
+| | Free | 7-Day Preview Pass |
+| --- | --- | --- |
+| Price | $0 | $5 one-time (USDT on BSC), no renewal |
+| Time | One 24-hour window per project, starting with its first share | 7 more days for one project; a renewal starts when the current pass ends |
+| Link | Random, unguessable | Random, or the project's reserved custom URL (`agentaxio.preview.localians.com`) |
+| Password protection | Yes | Yes |
 
-| Plan | Durations |
-| --- | --- |
-| Free | 5 min, 15 min, 30 min, 1 hour, 12 hours, 24 hours |
-| Preview Pass | also 3 days and 7 days |
+Rules (server-enforced for the dashboard, CLI, VS Code and the API — `src/server/plans.ts`):
 
-Only these values are accepted, and the server checks them against the workspace's plan; a client can't lengthen a
-session by sending something else (`invalid_duration` 400, `plan_required` 403). Clients that don't choose (CLI and
-VS Code versions from before timers) get 24 hours, as before.
+- A share is authorized inside the same database transaction that creates the session, under the project's row lock.
+  The first share starts the project's free window (`free_preview_grants`); restarts, reconnects, another port or a
+  new setup code stay inside it and never outlive it. Afterwards: `402 free_used` until a pass is added.
+- Abuse limit: `QUOTA_FREE_PREVIEWS_PER_30_DAYS` (default 3) new free windows per workspace and per user per rolling
+  30 days. Windows of deleted projects still count.
+- Shorter auto-stops (5 min – 12 h; 24 h and 3 days with a pass) are optional; by default a share runs until the
+  free window / pass ends. Live previews that run "until the plan ends" are extended when a pass is renewed.
+- Passes (`preview_passes`) are created only by an approved upgrade request or an operator. Revoking one (refund)
+  cuts live previews back.
+- At pass expiry previews stop (the gateway enforces the deadline); the custom URL stays reserved for 3 days for
+  renewal, then is released into a 30-day quarantine. A pass never keeps a computer or app online: when the CLI or app
+  stops, the preview shows Offline.
+- **Migration policy:** nothing is retroactive. Projects that had previews before this release get their full free
+  window at their next share; sessions live at deploy time keep their existing expiry.
+
+### Preview timers
+
+Every preview has a deadline (`tunnel_sessions.expiresAt`, the authority):
 
 How the deadline is enforced:
 
@@ -148,6 +164,48 @@ Statuses in the dashboard: **Connected**, **Reconnecting** (the CLI dropped and 
 time ran out) and **Offline** (it ended because the CLI or computer went away). "Share again" starts a new session.
 `QUOTA_SESSIONS_PER_DAY` caps how many previews a user can start per 24 hours, so short free sessions can't be
 restarted without limit.
+
+## Admin panel and payments
+
+`/admin` (Dashboard, Users, Payments) is for operators only. Every admin page and action checks on the server that the
+account has the `ADMIN` role, is active, and signed in within the last 12 hours. `/admin/login` only gives sessions to
+admin accounts (other accounts get the same "Invalid email or password" answer), is rate limited per IP and email, and
+every sign-in is audited. There is no admin registration.
+
+**Create the first administrator** (once, on the server, with the production environment):
+
+```bash
+sudo -u localians bash -c 'cd /srv/localians/current && node --env-file=/etc/localians/web.env node_modules/.bin/tsx scripts/create-admin.ts'
+# asks for the password (hidden, twice) for hello@thinxify.com; --email to use another address
+```
+
+The password is hashed with Better Auth's scrypt and never printed, logged or stored elsewhere. The script refuses to
+run when an administrator already exists, or when the email belongs to a regular account.
+
+**Accounts.** Every user has a permanent public ID (`LOC-000001`, assigned in registration order) and a unique username
+(chosen at sign-up; existing and GitHub accounts choose one at `/username`). The internal auth ID is never shown.
+Admins can search users, edit name and username, suspend / reactivate (signs them out everywhere, revokes CLI logins,
+stops their previews) and delete — which deactivates and anonymises the account but keeps payment and audit records.
+
+**7-Day Pass payments (manual review).** With `PAYMENTS_ENABLED=on`, "Upgrade for $5" creates an upgrade request with
+an Order ID (`ORD-…`), holds the chosen custom URL for 15 minutes, emails `ADMIN_NOTIFY_EMAIL`, and shows the payment
+details: 5 USDT on BNB Smart Chain (BEP20) to `0x2f94b75535eff533378c90f8dda29cf10208b174`, the QR code, and a field
+for the transaction hash. In `/admin/payments` an operator:
+
+1. **Marks it Under Review**, and attaches the hash if the customer only emailed it.
+2. **Verifies on BSC** — the server checks, through `BSC_RPC_URL`: chain 56, the transaction succeeded, a Tether USD
+   (BEP20, `0x55d3…7955`) transfer to the Localians wallet of at least 5 USDT, ≥ 15 confirmations, made after the
+   request. The result is recorded on the request.
+3. **Approves & Activates** (only after a passing check — also enforced by a database constraint). One transaction
+   creates the pass, enables the custom URL and records the reviewer; double approvals and reused hashes are
+   impossible (row lock, unique hash, one pass per request). The customer is emailed. Or **Rejects** with a reason.
+
+The payment QR was decoded and verified to encode exactly the wallet address; the page shows it only while the image
+file's SHA-256 matches (`src/server/upgrades.ts`). The wallet is a Binance deposit address: send only USDT on BSC.
+
+**Deployment requirements for this release:** run the migrations (`npx prisma migrate deploy`, via `deploy.sh`), deploy
+the gateway before setting `PREVIEW_CUSTOM_NAMES=on`, create the first admin as above, and keep
+`PAYMENTS_ENABLED=off` until the payment workflow is approved.
 
 ## Live previews, analytics and session control (Phase 4)
 

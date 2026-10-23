@@ -51,6 +51,9 @@ export default defineConfig({
       ALLOW_TEST_EMAIL_TRANSPORT: "1",
       // Rate limiting is covered by integration tests; E2E signs up many users from one IP.
       AUTH_RATE_LIMIT: "off",
+      // The customer side of 7-Day Pass requests (test database only; nothing is charged).
+      PAYMENTS_ENABLED: "on",
+      ADMIN_NOTIFY_EMAIL: "admin-inbox@example.test",
     },
   },
 });

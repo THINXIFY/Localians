@@ -1,20 +1,23 @@
 "use client";
 
-import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Clock, Globe, Link2, Lock, RefreshCw, Shuffle, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Clock, Globe, Link2, Lock, Plus, RefreshCw, Shuffle, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import { formatDateTime } from "@/lib/format";
+import type { PaymentInfo, PlanSummary } from "@/lib/plans";
 import { type PreviewStatusValue } from "@/lib/previews";
 import { saveShareSetupAction } from "@/server/actions/share";
+import { DURATION_OPTIONS, durationLabel, FREE_MAX_MINUTES, isDurationOption } from "@tunnel/shared/durations";
 import { inputClasses, PasswordInput } from "../Field";
+import { PlanCards } from "../plans/PlanCards";
 import { AccessBadge } from "../previews/AccessBadge";
-import { PreviewStatusBadge } from "../previews/PreviewStatusBadge";
-import { StopPreviewButton } from "../previews/PreviewActions";
 import { Countdown } from "../previews/Countdown";
+import { StopPreviewButton } from "../previews/PreviewActions";
+import { PreviewStatusBadge } from "../previews/PreviewStatusBadge";
 import { CopyLabelButton } from "./Command";
-import { DEFAULT_DURATION_MINUTES, DURATION_OPTIONS, durationLabel, isDurationOption } from "@tunnel/shared/durations";
 import { InstallBeta } from "./InstallBeta";
 
 type SharePreview = {
@@ -40,10 +43,9 @@ type ProjectOption = {
   status: "ACTIVE" | "ARCHIVED";
   accessMode: "PUBLIC" | "PASSWORD";
   hasPassword: boolean;
-  /** The project's custom preview name (Preview Pass), if it has one. */
+  /** The project's custom preview name (7-Day Pass), if it has one. */
   customName: string | null;
 };
-type CustomUrls = { canUse: boolean; previewDomain: string; upgradeHref: string | null };
 type Access = "PUBLIC" | "PASSWORD";
 
 const PRESETS = [
@@ -55,8 +57,11 @@ const PRESETS = [
 const WAIT_HELP_AFTER_MS = 40_000;
 /** Remembered between visits in this browser (never the password). */
 const PREFS_KEY = "localians.share.v1";
-type Prefs = { port?: number; projectId?: string; access?: Access; durationMinutes?: number };
-const FREE_DURATIONS = DURATION_OPTIONS.filter((o) => o.plan === "free");
+type Prefs = { port?: number; projectId?: string; access?: Access; durationMinutes?: number | null };
+/** Optional auto-stops shorter than the plan (null = until the free preview / pass ends). */
+const AUTO_STOPS = DURATION_OPTIONS.filter((o) => o.minutes < FREE_MAX_MINUTES);
+/** With a pass: also 24 hours and 3 days (7 days is the whole pass). */
+const PASS_AUTO_STOPS = DURATION_OPTIONS.filter((o) => o.minutes === FREE_MAX_MINUTES || o.minutes === 3 * 24 * 60);
 
 function readPrefs(): Prefs {
   try {
@@ -75,9 +80,9 @@ function writePrefs(prefs: Prefs) {
 }
 
 /**
- * Share App: Select project → Configure preview (port, duration) → Start sharing. Choices are saved to a single-use setup code that the
- * command carries, so the CLI asks nothing. The dashboard can't reach the developer's computer; it waits for this
- * user's own preview to connect and then shows the link.
+ * Share App: Select project → Configure preview (port, Free or 7-Day Pass, auto-stop, link) → Start sharing. Choices are
+ * saved to a single-use setup code that the command carries, so the CLI asks nothing. What a project may do (its one
+ * free 24-hour preview, or a 7-Day Pass) is decided by the server; the cards here only show it.
  */
 export function ShareWizard({
   openedAt,
@@ -90,7 +95,10 @@ export function ShareWizard({
   projects,
   setup,
   initialStatus,
-  customUrls,
+  customUrlsRouting,
+  plans,
+  payment,
+  previewDomain,
 }: {
   openedAt: number;
   initialPort: number;
@@ -103,29 +111,39 @@ export function ShareWizard({
   projects: ProjectOption[];
   setup: { id: string; code: string };
   initialStatus: ShareStatus;
-  customUrls: CustomUrls;
+  /** Whether this server routes custom URLs (gateways updated). */
+  customUrlsRouting: boolean;
+  plans: { byProject: Record<string, PlanSummary>; newProject: PlanSummary };
+  payment: PaymentInfo;
+  previewDomain: string;
 }) {
   const router = useRouter();
   // Previews started after this moment are "this visit". Reset by Share again.
   const [since, setSince] = useState(openedAt);
   const active = projects.filter((p) => p.status === "ACTIVE");
   const byPort = (port: number | null) => (port ? active.find((p) => p.defaultPort === port) : undefined);
-  const ids = { project: useId(), name: useId(), port: useId(), password: useId(), access: useId(), duration: useId() };
+  const ids = { project: useId(), name: useId(), port: useId(), password: useId(), access: useId(), stop: useId(), url: useId() };
 
   // ---- choices ---------------------------------------------------------------------------------
   const [portText, setPortText] = useState(String(initialPort));
-  const [projectId, setProjectId] = useState(() => byPort(initialPort)?.id ?? ""); // "" = new project
+  const [projectId, setProjectId] = useState(() => byPort(initialPort)?.id ?? (active.length ? active[0].id : "")); // "" = new project
   const [projectTouched, setProjectTouched] = useState(false);
   const [projectName, setProjectName] = useState("");
-  const [access, setAccess] = useState<Access>(() => byPort(initialPort)?.accessMode ?? "PUBLIC");
+  const [access, setAccess] = useState<Access>(() => (byPort(initialPort) ?? active[0])?.accessMode ?? "PUBLIC");
   const [password, setPassword] = useState("");
-  const [duration, setDuration] = useState(DEFAULT_DURATION_MINUTES);
+  const [duration, setDuration] = useState<number | null>(null);
   const [urlChoice, setUrlChoice] = useState<"custom" | "random">("custom");
 
+  const creating = projectId === "";
   const selected = active.find((p) => p.id === projectId);
-  /** The link the preview will get: the project's custom name when the pass allows it and it's chosen. */
-  const customName = customUrls.canUse && selected?.customName ? selected.customName : null;
+  const plan = selected ? (plans.byProject[selected.id] ?? plans.newProject) : plans.newProject;
+  const passActive = Boolean(plan.pass);
+  /** The link the preview will get: the project's custom name when its pass allows it and it's chosen. */
+  const customName = customUrlsRouting && passActive && selected?.customName ? selected.customName : null;
   const url: "custom" | "random" = customName && urlChoice === "custom" ? "custom" : "random";
+  // A shorter auto-stop than the plan is optional; pass-only lengths disappear without a pass.
+  const stopOptions = passActive ? [...AUTO_STOPS, ...PASS_AUTO_STOPS] : AUTO_STOPS;
+  const autoStop = duration !== null && stopOptions.some((o) => o.minutes === duration) ? duration : null;
   const portNumber = Number(portText);
   const portValid = /^\d{1,5}$/.test(portText) && portNumber >= 1 && portNumber <= 65535;
   const port = portValid ? portNumber : null;
@@ -134,9 +152,9 @@ export function ShareWizard({
     setPortText(text);
     if (projectTouched) return; // the developer picked a project on purpose
     const match = byPort(next);
-    setProjectId(match?.id ?? "");
-    if (match) setAccess(match.accessMode);
-    else if (selected) setAccess("PUBLIC"); // leaving a matched project; a choice made for the new project stays
+    if (!match) return; // keep the current project; it just shares another port
+    setProjectId(match.id);
+    setAccess(match.accessMode);
   }
   function chooseProject(id: string) {
     setProjectTouched(true);
@@ -156,15 +174,17 @@ export function ShareWizard({
     const remembered = prefs.projectId ? active.find((p) => p.id === prefs.projectId) : undefined;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore from browser storage
     if (prefs.port && prefs.port >= 1 && prefs.port <= 65535) setPortText(String(prefs.port));
-    if (FREE_DURATIONS.some((o) => o.minutes === prefs.durationMinutes)) setDuration(prefs.durationMinutes!);
+    if (prefs.durationMinutes === null || isDurationOption(prefs.durationMinutes)) setDuration(prefs.durationMinutes ?? null);
     if (remembered) {
       setProjectId(remembered.id);
       setProjectTouched(true);
       setAccess(remembered.accessMode);
     } else if (prefs.port) {
       const match = byPort(prefs.port);
-      setProjectId(match?.id ?? "");
-      setAccess(match?.accessMode ?? (prefs.access === "PASSWORD" ? "PASSWORD" : "PUBLIC"));
+      if (match) {
+        setProjectId(match.id);
+        setAccess(match.accessMode);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per mount
   }, []);
@@ -202,7 +222,7 @@ export function ShareWizard({
       try {
         result = await saveShareSetupAction(setup.id, {
           port,
-          durationMinutes: isDurationOption(duration) ? duration : DEFAULT_DURATION_MINUTES,
+          durationMinutes: autoStop,
           url,
           project: projectId ? { kind: "existing", id: projectId } : { kind: "new", name: projectName.trim() },
           access: access === "PASSWORD" ? { mode: "PASSWORD", ...(password.length >= 8 ? { password } : {}) } : { mode: "PUBLIC" },
@@ -214,9 +234,9 @@ export function ShareWizard({
       setSave(result.ok ? { state: "saved", passwordSaved: result.data.passwordSaved } : { state: "error", message: result.error });
     }, 400);
     return () => window.clearTimeout(saveTimer.current);
-  }, [setup.id, port, projectId, projectName, access, password, passwordTooShort, duration, url, retry]);
+  }, [setup.id, port, projectId, projectName, access, password, passwordTooShort, autoStop, url, retry]);
 
-  const ready = portValid && passwordReady && !passwordTooShort && save.state !== "error";
+  const ready = portValid && passwordReady && !passwordTooShort && save.state !== "error" && plan.canShare;
   const command = `${run} share ${port ?? "<port>"} --setup ${setup.code}`;
 
   // ---- live status of this user's preview ---------------------------------------------------------
@@ -265,113 +285,149 @@ export function ShareWizard({
           ? "waiting"
           : "idle";
 
-  const commandNote = !portValid
-    ? "Enter a valid port to get your command."
-    : access === "PASSWORD" && !passwordReady
-      ? "Enter a password (8+ characters) to get the command."
-      : save.state === "error"
-        ? save.message
-        : save.state === "saving"
-          ? "Saving your choices…"
-          : `Your link will work for ${durationLabel(duration)}. The command works once, for the next 30 minutes.`;
+  const length =
+    autoStop !== null
+      ? `for ${durationLabel(autoStop)}`
+      : passActive
+        ? `until the pass ends (${formatDateTime(new Date(plan.pass!.endsAt))})`
+        : plan.free.state === "active"
+          ? `until the free preview ends (${formatDateTime(new Date(plan.free.endsAt))})`
+          : "for up to 24 hours";
+  const commandNote = !plan.canShare
+    ? plan.free.state === "limit_reached"
+      ? `You've used ${plan.freeLimit} free previews in 30 days. Upgrade this project for $5, or try again later.`
+      : "This project's free preview has ended. Upgrade for $5 to share it for 7 more days."
+    : !portValid
+      ? "Enter a valid port to get your command."
+      : access === "PASSWORD" && !passwordReady
+        ? "Enter a password (8+ characters) to get the command."
+        : save.state === "error"
+          ? save.message
+          : save.state === "saving"
+            ? "Saving your choices…"
+            : `Your link will work ${length}. The command works once, for the next 30 minutes.`;
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-card shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]">
       <ol className="divide-y divide-line">
         {/* ---------------------------------------------------------------------- 1. Project */}
-        <Step n={1} title="Select project" done={passwordReady && !passwordTooShort}>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor={ids.project} className="text-[13px] font-medium text-fg">
-                Project
-              </label>
-              <select id={ids.project} value={projectId} onChange={(e) => chooseProject(e.target.value)} className={cn(inputClasses, "h-11 text-[14px]")}>
-                <option value="">New project</option>
-                {active.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                    {p.defaultPort ? ` · port ${p.defaultPort}` : ""}
-                  </option>
-                ))}
-              </select>
-              {projectId ? (
-                <p className="text-[12px] text-fg-3" data-testid="project-hint">
-                  {!projectTouched && selected?.defaultPort === port ? `Matched by port ${port}.` : "Your preview is added to this project."}
-                </p>
+        <Step n={1} title="Select project">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={creating ? ids.name : ids.project} className="text-[13px] font-medium text-fg">
+              Project
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {creating ? (
+                <input
+                  id={ids.name}
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value.slice(0, 80))}
+                  placeholder="Project name (optional)"
+                  autoComplete="off"
+                  className={cn(inputClasses, "h-10 w-full min-w-0 text-[14px] sm:flex-1")}
+                  data-testid="new-project-name"
+                />
               ) : (
-                <>
-                  <label htmlFor={ids.name} className="sr-only">
-                    Project name (optional)
-                  </label>
-                  <input
-                    id={ids.name}
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value.slice(0, 80))}
-                    placeholder="Project name (optional)"
-                    autoComplete="off"
-                    className={cn(inputClasses, "h-10 text-[13.5px]")}
-                  />
-                </>
+                <select id={ids.project} value={projectId} onChange={(e) => chooseProject(e.target.value)} className={cn(inputClasses, "h-10 w-full min-w-0 text-[14px] sm:flex-1")}>
+                  {active.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.defaultPort ? ` · :${p.defaultPort}` : ""}
+                    </option>
+                  ))}
+                </select>
               )}
-            </div>
-
-            <fieldset className="flex min-w-0 flex-col gap-1.5">
-              <legend className="mb-1.5 text-[13px] font-medium text-fg">Who can open the link</legend>
-              <div className="grid grid-cols-2 gap-2">
-                {(
-                  [
-                    { value: "PUBLIC", icon: Globe, label: "Public", sub: "Anyone with the link" },
-                    { value: "PASSWORD", icon: Lock, label: "Password", sub: "Visitors enter a password" },
-                  ] as const
-                ).map((o) => (
-                  <label
-                    key={o.value}
-                    className={cn(
-                      "relative flex cursor-pointer flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
-                      access === o.value ? "border-accent/50 bg-accent/[0.06]" : "border-line-strong hover:border-tint/25",
-                    )}
-                  >
-                    <input type="radio" name={ids.access} value={o.value} checked={access === o.value} onChange={() => setAccess(o.value)} className="absolute inset-0 cursor-pointer appearance-none rounded-xl opacity-0" />
-                    <span className="flex items-center gap-1.5 text-[13.5px] font-medium text-fg">
-                      <o.icon className={cn("size-3.5", access === o.value ? "text-accent-ink" : "text-fg-3")} aria-hidden="true" />
-                      {o.label}
-                    </span>
-                    <span className="text-[11.5px] leading-snug text-fg-3">{o.sub}</span>
-                  </label>
-                ))}
-              </div>
-              {access === "PASSWORD" ? (
-                <div className="mt-1 flex flex-col gap-1 motion-safe:animate-[menu-in_160ms_ease-out]">
-                  <label htmlFor={ids.password} className="sr-only">
-                    Preview password
-                  </label>
-                  <PasswordInput
-                    id={ids.password}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={selected?.hasPassword ? "Keep the current password" : "Password (8+ characters)"}
-                    autoComplete="new-password"
-                    maxLength={128}
-                    aria-invalid={passwordTooShort}
-                    className="h-10 text-[13.5px]"
-                  />
-                  <p className={cn("text-[12px]", passwordTooShort ? "text-danger" : "text-fg-3")}>
-                    {passwordTooShort ? "Use at least 8 characters." : "Send it separately from the link."}
-                  </p>
-                </div>
+              {active.length ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (creating) return chooseProject(byPort(port)?.id ?? active[0].id);
+                    setProjectTouched(true);
+                    setProjectId("");
+                    setAccess("PUBLIC");
+                  }}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-line-strong px-3.5 text-[13px] text-fg-2 transition-colors hover:border-tint/25 hover:text-fg focus-visible:shadow-[0_0_0_3px_var(--accent-glow)] focus-visible:outline-none"
+                >
+                  {creating ? (
+                    "Choose existing"
+                  ) : (
+                    <>
+                      <Plus className="size-3.5" aria-hidden="true" />
+                      New project
+                    </>
+                  )}
+                </button>
               ) : null}
-            </fieldset>
+            </div>
+            <p className="text-[12px] text-fg-3" data-testid="project-hint">
+              {creating
+                ? "A new project is created when you run the command (named after your app if you leave this empty)."
+                : !projectTouched && selected?.defaultPort === port
+                  ? `Matched by port ${port}.`
+                  : "Your preview is added to this project."}
+            </p>
           </div>
+
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="mb-1.5 text-[13px] font-medium text-fg">Who can open the link</legend>
+            <div className="inline-flex w-full rounded-xl border border-line-strong bg-tint/[0.02] p-1 sm:w-fit" role="radiogroup" aria-label="Who can open the link">
+              {(
+                [
+                  { value: "PUBLIC", icon: Globe, label: "Public" },
+                  { value: "PASSWORD", icon: Lock, label: "Password protected" },
+                ] as const
+              ).map((o) => (
+                <label
+                  key={o.value}
+                  className={cn(
+                    "relative flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[13px] transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)] sm:flex-none",
+                    access === o.value ? "bg-accent/[0.12] font-medium text-fg" : "text-fg-2 hover:text-fg",
+                  )}
+                >
+                  <input type="radio" name={ids.access} value={o.value} checked={access === o.value} onChange={() => setAccess(o.value)} className="absolute inset-0 cursor-pointer appearance-none rounded-lg opacity-0" />
+                  <o.icon className={cn("size-3.5", access === o.value ? "text-accent-ink" : "text-fg-3")} aria-hidden="true" />
+                  {o.value === "PASSWORD" ? (
+                    <>
+                      <span className="sm:hidden">Password</span>
+                      <span className="hidden sm:inline">Password protected</span>
+                    </>
+                  ) : (
+                    o.label
+                  )}
+                </label>
+              ))}
+            </div>
+            {access === "PASSWORD" ? (
+              <div className="flex max-w-sm flex-col gap-1 motion-safe:animate-[menu-in_160ms_ease-out]">
+                <label htmlFor={ids.password} className="sr-only">
+                  Preview password
+                </label>
+                <PasswordInput
+                  id={ids.password}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={selected?.hasPassword ? "Keep the current password" : "Password (8+ characters)"}
+                  autoComplete="new-password"
+                  maxLength={128}
+                  aria-invalid={passwordTooShort}
+                  className="h-10 text-[13.5px]"
+                />
+                <p className={cn("text-[12px]", passwordTooShort ? "text-danger" : "text-fg-3")}>{passwordTooShort ? "Use at least 8 characters." : "Send it separately from the link."}</p>
+              </div>
+            ) : (
+              <p className="text-[12px] text-fg-3">Anyone with the link can open your app while it&apos;s shared.</p>
+            )}
+          </fieldset>
         </Step>
 
         {/* ---------------------------------------------------------------------- 2. Configure preview */}
-        <Step n={2} title="Configure preview" done={portValid}>
+        <Step n={2} title="Configure preview">
           <div className="flex flex-wrap items-center gap-2">
             <label htmlFor={ids.port} className="sr-only">
               Port
             </label>
-            <div className="flex h-11 items-center rounded-xl border border-line-strong bg-tint/[0.03] pl-3.5 focus-within:border-accent/70 focus-within:shadow-[0_0_0_3px_var(--accent-glow)]">
-              <span className="select-none font-mono text-[13px] text-fg-3">localhost:</span>
+            <div className="flex h-10 items-center rounded-xl border border-line-strong bg-tint/[0.03] pl-3 focus-within:border-accent/70 focus-within:shadow-[0_0_0_3px_var(--accent-glow)]">
+              <span className="select-none font-mono text-[12.5px] text-fg-3">localhost:</span>
               <input
                 id={ids.port}
                 inputMode="numeric"
@@ -384,7 +440,7 @@ export function ShareWizard({
                 }}
                 aria-invalid={!portValid}
                 aria-describedby={`${ids.port}-hint`}
-                className="h-full w-20 bg-transparent pr-3 font-mono text-[15px] text-fg outline-none"
+                className="h-full w-16 bg-transparent pr-3 font-mono text-[14.5px] text-fg outline-none"
               />
             </div>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Common ports">
@@ -395,7 +451,7 @@ export function ShareWizard({
                   onClick={() => choosePort(p.port)}
                   aria-pressed={port === p.port}
                   className={cn(
-                    "h-9 rounded-full border px-3 text-[12.5px] transition-colors",
+                    "h-8 rounded-full border px-2.5 text-[12px] transition-colors",
                     port === p.port ? "border-accent/40 bg-accent/[0.07] text-fg" : "border-line text-fg-2 hover:border-line-strong hover:text-fg",
                   )}
                 >
@@ -404,98 +460,76 @@ export function ShareWizard({
               ))}
             </div>
           </div>
-          <p id={`${ids.port}-hint`} className={cn("text-[12.5px]", portValid ? "text-fg-3" : "text-danger")}>
-            {portValid ? (
-              <>
-                The port your dev server prints — check{" "}
-                <a href={`http://localhost:${port}`} target="_blank" rel="noopener noreferrer" className="font-mono text-fg-2 underline underline-offset-2">
-                  localhost:{port}
-                </a>{" "}
-                opens.
-              </>
-            ) : (
-              "Enter a port from 1 to 65535."
-            )}
+          <p id={`${ids.port}-hint`} className={cn("-mt-1 text-[12px]", portValid ? "text-fg-3" : "text-danger")}>
+            {portValid ? `The port your dev server prints — check that localhost:${port} opens.` : "Enter a port from 1 to 65535."}
           </p>
 
-          <fieldset className="flex min-w-0 flex-col gap-2" aria-describedby={`${ids.duration}-hint`}>
-            <legend className="mb-1 flex items-center gap-1.5 text-[13px] font-medium text-fg">
-              <Clock className="size-3.5 text-fg-3" aria-hidden="true" />
-              How long the link works
-            </legend>
-            <div className="flex flex-wrap gap-1.5" data-testid="duration-options">
-              {FREE_DURATIONS.map((o) => (
-                <label
-                  key={o.minutes}
-                  className={cn(
-                    "relative flex h-9 cursor-pointer items-center rounded-full border px-3 text-[12.5px] transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
-                    duration === o.minutes ? "border-accent/50 bg-accent/[0.08] text-fg" : "border-line text-fg-2 hover:border-line-strong hover:text-fg",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name={ids.duration}
-                    value={o.minutes}
-                    checked={duration === o.minutes}
-                    onChange={() => setDuration(o.minutes)}
-                    aria-label={o.label}
-                    className="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
-                  />
-                  {o.label}
-                </label>
-              ))}
-            </div>
-            <p id={`${ids.duration}-hint`} className="text-[12.5px] text-fg-3">
-              The link stops working after this time, even if your app is still running. Share again any time for a new one.
-            </p>
-          </fieldset>
+          <PlanCards
+            plan={plan}
+            project={selected ? { id: selected.id, name: selected.name } : null}
+            payment={payment}
+            previewDomain={previewDomain}
+            hasCustomName={Boolean(selected?.customName)}
+          />
 
-          <fieldset className="flex min-w-0 flex-col gap-2" data-testid="url-options">
-            <legend className="mb-1 flex items-center gap-1.5 text-[13px] font-medium text-fg">
-              <Link2 className="size-3.5 text-fg-3" aria-hidden="true" />
-              Preview link
-            </legend>
-            {customName ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    { value: "custom", icon: Link2, label: `${customName}.${customUrls.previewDomain}`, sub: "Your custom URL — the same every time" },
-                    { value: "random", icon: Shuffle, label: "Random link", sub: "A new, unguessable link for this share" },
-                  ] as const
-                ).map((o) => (
-                  <label
-                    key={o.value}
-                    className={cn(
-                      "relative flex min-w-0 cursor-pointer flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
-                      urlChoice === o.value ? "border-accent/50 bg-accent/[0.06]" : "border-line-strong hover:border-tint/25",
-                    )}
-                  >
-                    <input type="radio" name={`${ids.duration}-url`} value={o.value} checked={urlChoice === o.value} onChange={() => setUrlChoice(o.value)} aria-label={o.value === "custom" ? "Custom URL" : "Random link"} className="absolute inset-0 cursor-pointer appearance-none rounded-xl opacity-0" />
-                    <span className={cn("flex min-w-0 items-center gap-1.5 text-[13.5px] font-medium text-fg", o.value === "custom" && "font-mono text-[13px]")}>
-                      <o.icon className={cn("size-3.5 shrink-0", urlChoice === o.value ? "text-accent-ink" : "text-fg-3")} aria-hidden="true" />
-                      <span className="truncate">{o.label}</span>
-                    </span>
-                    <span className="text-[11.5px] leading-snug text-fg-3">{o.sub}</span>
-                  </label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6">
+            <div className="flex flex-col gap-1">
+              <label htmlFor={ids.stop} className="flex items-center gap-1.5 text-[13px] font-medium text-fg">
+                <Clock className="size-3.5 text-fg-3" aria-hidden="true" />
+                Auto-stop
+              </label>
+              <select
+                id={ids.stop}
+                value={autoStop === null ? "" : String(autoStop)}
+                onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : null)}
+                className={cn(inputClasses, "h-9 w-full pr-8 text-[13px] sm:w-auto sm:min-w-[15.5rem]")}
+                data-testid="auto-stop"
+              >
+                <option value="">{passActive ? "When the pass ends" : "When the free preview ends"}</option>
+                {stopOptions.map((o) => (
+                  <option key={o.minutes} value={o.minutes}>
+                    After {o.label}
+                  </option>
                 ))}
-              </div>
-            ) : (
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-relaxed text-fg-3" data-testid="url-random-note">
-                <span className="text-fg-2">A random, unguessable link.</span>
-                {customUrls.canUse && selected ? (
-                  <Link href={`/dashboard/projects/${selected.id}#custom-url`} className="text-fg-2 underline underline-offset-2">
-                    Choose a custom URL for {selected.name}
-                  </Link>
-                ) : customUrls.canUse ? (
-                  <span>Pick an existing project to use its custom URL.</span>
-                ) : customUrls.upgradeHref ? (
-                  <Link href={customUrls.upgradeHref} className="font-medium text-accent-ink underline underline-offset-2">
-                    Get a custom URL — Upgrade for $5
-                  </Link>
-                ) : null}
+              </select>
+            </div>
+            {customName ? (
+              <fieldset className="flex min-w-0 flex-col gap-1" data-testid="url-options">
+                <legend className="mb-1 flex items-center gap-1.5 text-[13px] font-medium text-fg">
+                  <Link2 className="size-3.5 text-fg-3" aria-hidden="true" />
+                  Preview link
+                </legend>
+                <div className="inline-flex rounded-xl border border-line-strong p-1">
+                  {(
+                    [
+                      { value: "custom", icon: Link2, label: `${customName}.${previewDomain}` },
+                      { value: "random", icon: Shuffle, label: "Random link" },
+                    ] as const
+                  ).map((o) => (
+                    <label
+                      key={o.value}
+                      className={cn(
+                        "relative flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[12.5px] has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
+                        urlChoice === o.value ? "bg-accent/[0.12] text-fg" : "text-fg-2 hover:text-fg",
+                        o.value === "custom" && "font-mono",
+                      )}
+                    >
+                      <input type="radio" name={ids.url} value={o.value} checked={urlChoice === o.value} onChange={() => setUrlChoice(o.value)} aria-label={o.value === "custom" ? "Custom URL" : "Random link"} className="absolute inset-0 cursor-pointer appearance-none opacity-0" />
+                      <o.icon className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{o.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : passActive && selected && customUrlsRouting ? (
+              <p className="text-[12.5px] text-fg-3 sm:pt-6">
+                <Link href={`/dashboard/projects/${selected.id}#custom-url`} className="text-fg-2 underline underline-offset-2">
+                  Choose your custom URL
+                </Link>{" "}
+                — included in your pass.
               </p>
-            )}
-          </fieldset>
+            ) : null}
+          </div>
         </Step>
 
         {/* ---------------------------------------------------------------------- 3. Start sharing */}
@@ -517,8 +551,8 @@ export function ShareWizard({
                 </code>
                 {ready ? <CopyLabelButton value={command} label="Copy Command" onCopied={() => setCopied(true)} /> : null}
               </div>
-              <p className={cn("flex items-center gap-1.5 text-[12.5px]", save.state === "error" ? "text-danger" : "text-fg-3")} aria-live="polite" data-testid="setup-state">
-                {save.state === "error" ? <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" /> : null}
+              <p className={cn("flex items-center gap-1.5 text-[12.5px]", save.state === "error" || !plan.canShare ? "text-danger" : "text-fg-3")} aria-live="polite" data-testid="setup-state">
+                {save.state === "error" || !plan.canShare ? <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" /> : null}
                 {commandNote}
                 {save.state === "error" ? (
                   <button type="button" onClick={() => setRetry((n) => n + 1)} className="ml-1 font-medium text-fg underline underline-offset-2">
@@ -531,47 +565,48 @@ export function ShareWizard({
 
           <div aria-live="polite" data-testid="share-result">
             <div key={phase} className="motion-safe:animate-[menu-in_200ms_ease-out]">
-            {phase === "live" || phase === "unstable" ? (
-              <LivePreview preview={preview!} selectedPort={port} />
-            ) : phase === "ended" ? (
-              <StateCard
-                tone="bad"
-                icon={preview!.status === "EXPIRED" ? <Clock className="size-4" aria-hidden="true" /> : <WifiOff className="size-4" aria-hidden="true" />}
-                title={preview!.status === "EXPIRED" ? "Preview time ended" : preview!.status === "OFFLINE" ? "Your computer went offline" : "Sharing stopped"}
-              >
-                <p>
-                  {preview!.status === "EXPIRED"
-                    ? `${preview!.project.name} was shared for ${preview!.durationMinutes ? durationLabel(preview!.durationMinutes) : "its full time"}. That link no longer works — start a new preview to keep sharing.`
-                    : preview!.status === "OFFLINE"
-                      ? `${preview!.project.name} stopped because the share command or this computer lost its connection. That link no longer works.`
-                      : `${preview!.project.name}${preview!.endReason ? ` — ${preview!.endReason.toLowerCase()}` : ""}. That link no longer works.`}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSince(Date.now());
-                    setCopied(false);
-                    setWaitingLong(false);
-                    router.refresh(); // a fresh one-time code
-                  }}
-                  className={buttonClasses({ variant: "secondary", size: "sm", className: "mt-1 h-9 w-fit" })}>
-                  <RefreshCw className="size-3.5" aria-hidden="true" />
-                  Share again
-                </button>
-              </StateCard>
-            ) : (
-              <StateCard tone={phase === "waiting" ? "wait" : "idle"} title={phase === "waiting" ? "Waiting for your app to connect…" : "Your link appears here"}>
-                <p>
-                  {status.cliLoggedIn ? (
-                    "This computer is signed in, so sharing starts as soon as you run the command."
-                  ) : (
-                    <>
-                      First time on this computer? Your browser opens once — approve it for <strong className="font-medium text-fg-2">{workspaceName}</strong>.
-                    </>
-                  )}
-                </p>
-              </StateCard>
-            )}
+              {phase === "live" || phase === "unstable" ? (
+                <LivePreview preview={preview!} selectedPort={port} />
+              ) : phase === "ended" ? (
+                <StateCard
+                  tone="bad"
+                  icon={preview!.status === "EXPIRED" ? <Clock className="size-4" aria-hidden="true" /> : <WifiOff className="size-4" aria-hidden="true" />}
+                  title={preview!.status === "EXPIRED" ? "Preview time ended" : preview!.status === "OFFLINE" ? "Your computer went offline" : "Sharing stopped"}
+                >
+                  <p>
+                    {preview!.status === "EXPIRED"
+                      ? `${preview!.project.name}'s preview time ended. That link no longer works.`
+                      : preview!.status === "OFFLINE"
+                        ? `${preview!.project.name} stopped because the share command or this computer lost its connection. That link no longer works.`
+                        : `${preview!.project.name}${preview!.endReason ? ` — ${preview!.endReason.toLowerCase()}` : ""}. That link no longer works.`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSince(Date.now());
+                      setCopied(false);
+                      setWaitingLong(false);
+                      router.refresh(); // a fresh one-time code
+                    }}
+                    className={buttonClasses({ variant: "secondary", size: "sm", className: "mt-1 h-9 w-fit" })}
+                  >
+                    <RefreshCw className="size-3.5" aria-hidden="true" />
+                    Share again
+                  </button>
+                </StateCard>
+              ) : (
+                <StateCard tone={phase === "waiting" ? "wait" : "idle"} title={phase === "waiting" ? "Waiting for your app to connect…" : "Your link appears here"}>
+                  <p>
+                    {status.cliLoggedIn ? (
+                      "This computer is signed in, so sharing starts as soon as you run the command."
+                    ) : (
+                      <>
+                        First time on this computer? Your browser opens once — approve it for <strong className="font-medium text-fg-2">{workspaceName}</strong>.
+                      </>
+                    )}
+                  </p>
+                </StateCard>
+              )}
             </div>
           </div>
           {offline ? (
@@ -592,6 +627,7 @@ export function ShareWizard({
                   Your app must be running: <code className="font-mono text-[12px]">localhost:{port ?? "port"}</code> opens in your browser.
                 </li>
                 <li>Keep the command running while you share. Press Ctrl+C in that terminal to stop.</li>
+                <li>Your computer and app must stay on and connected — the preview shows Offline when they aren&apos;t, even with a pass.</li>
                 <li>First time? Approve the request that opened in your browser (Authorize CLI).</li>
                 <li>Don&apos;t share apps with real customer data or secrets.</li>
               </ul>
@@ -632,9 +668,7 @@ function LivePreview({ preview, selectedPort }: { preview: SharePreview; selecte
           <ArrowUpRight className="size-4" aria-hidden="true" />
           Open
         </a>
-        {preview.canStop ? (
-          <StopPreviewButton preview={{ id: preview.id, publicUrl: url, active: preview.active, canStop: preview.canStop, projectName: preview.project.name }} size="sm" />
-        ) : null}
+        {preview.canStop ? <StopPreviewButton preview={{ id: preview.id, publicUrl: url, active: preview.active, canStop: preview.canStop, projectName: preview.project.name }} size="sm" /> : null}
       </div>
       <ul className="flex flex-col gap-1 text-[12.5px] leading-relaxed text-fg-3">
         {!live ? <li className="text-warn">Connection dropped — reconnecting. Keep the command running.</li> : null}
@@ -653,12 +687,7 @@ function LivePreview({ preview, selectedPort }: { preview: SharePreview; selecte
 
 function StateCard({ tone, icon, title, children }: { tone: "idle" | "wait" | "bad"; icon?: ReactNode; title: string; children: ReactNode }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-1.5 rounded-xl border p-4 text-[13px] leading-relaxed text-fg-3",
-        tone === "bad" ? "border-danger/30 bg-danger/[0.04]" : "border-dashed border-line-strong",
-      )}
-    >
+    <div className={cn("flex flex-col gap-1.5 rounded-xl border p-4 text-[13px] leading-relaxed text-fg-3", tone === "bad" ? "border-danger/30 bg-danger/[0.04]" : "border-dashed border-line-strong")}>
       <p className={cn("flex items-center gap-2 text-[14px] font-medium", tone === "bad" ? "text-danger" : "text-fg")}>
         {icon ??
           (tone === "wait" ? (
@@ -677,7 +706,8 @@ function StateCard({ tone, icon, title, children }: { tone: "idle" | "wait" | "b
   );
 }
 
-function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: ReactNode }) {
+/** A numbered section. Only the last step shows a check (when the preview is live), so progress reads clearly. */
+function Step({ n, title, done = false, children }: { n: number; title: string; done?: boolean; children: ReactNode }) {
   const id = useId();
   return (
     <li className="flex gap-4 p-5 sm:gap-5 sm:p-6">
@@ -690,7 +720,7 @@ function Step({ n, title, done, children }: { n: number; title: string; done: bo
       >
         {done ? <Check className="size-3.5" /> : n}
       </span>
-      <section aria-labelledby={id} className="flex min-w-0 flex-1 flex-col gap-3 text-[14px] leading-relaxed text-fg-2">
+      <section aria-labelledby={id} className="flex min-w-0 flex-1 flex-col gap-4 text-[14px] leading-relaxed text-fg-2">
         <h2 id={id} className="text-[16px] font-semibold leading-7 tracking-[-0.015em] text-fg">
           {title}
         </h2>

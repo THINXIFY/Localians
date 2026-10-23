@@ -13,6 +13,10 @@ import { getProjectAccess } from "@/server/access";
 import { ProjectAccessPanel } from "@/components/app/previews/ProjectAccessPanel";
 import { CustomUrlPanel } from "@/components/app/names/CustomUrlPanel";
 import { getProjectName } from "@/server/preview-names";
+import { PlanCards } from "@/components/app/plans/PlanCards";
+import { planSummary } from "@/server/plan-summaries";
+import { paymentInfo } from "@/server/upgrades";
+import { getTunnelConfig } from "@/server/cli/config";
 import { cliInfo } from "@/server/cli/config";
 import { getProjectForUser } from "@/server/projects";
 import { requireUser } from "@/server/session";
@@ -40,10 +44,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const session = await requireUser();
   const { projectId } = await params;
   const [project, workspace] = await Promise.all([loadProject(session.user.id, projectId), getCurrentWorkspace(session.user.id)]);
-  const [previews, access, customUrl] = await Promise.all([
+  const [previews, access, customUrl, plan] = await Promise.all([
     getProjectPreviews(session.user.id, project.id),
     getProjectAccess(session.user.id, project.id),
     getProjectName(session.user.id, project.id),
+    planSummary(project, session.user.id),
   ]);
   const renderedAt = renderTime();
 
@@ -106,7 +111,27 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         livePreviews={previews.active.length}
       />
 
-      {project.status === "ACTIVE" ? <CustomUrlPanel projectId={project.id} projectName={project.name} state={customUrl} upgradeHref={null} /> : null}
+      {project.status === "ACTIVE" ? (
+        <section id="plan" aria-labelledby="plan-title" className="scroll-mt-24 rounded-[var(--radius-card)] border border-line bg-card">
+          <div className="flex flex-col gap-1 border-b border-line px-5 py-4 sm:px-6">
+            <h2 id="plan-title" className="text-[15px] font-semibold text-fg">
+              Plan
+            </h2>
+            <p className="text-[13px] leading-relaxed text-fg-2">One free 24-hour preview per project, then the 7-Day Pass for $5. Your computer and app must stay running while you share.</p>
+          </div>
+          <div className="px-5 py-5 sm:px-6">
+            <PlanCards
+              plan={plan}
+              project={{ id: project.id, name: project.name }}
+              payment={paymentInfo()}
+              previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
+              hasCustomName={Boolean(customUrl.name)}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {project.status === "ACTIVE" ? <CustomUrlPanel projectId={project.id} projectName={project.name} state={customUrl} upgradeHref="#plan" /> : null}
 
       <ProjectPreviews
         project={{ id: project.id, defaultPort: project.defaultPort, archived: project.status === "ARCHIVED" }}

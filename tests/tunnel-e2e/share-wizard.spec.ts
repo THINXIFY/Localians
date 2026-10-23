@@ -31,7 +31,7 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   await expect(page.getByTestId("setup-state")).toHaveText("Enter a password (8+ characters) to get the command.");
   await expect(page.getByRole("button", { name: "Copy Command" })).toHaveCount(0); // no command that would share publicly by mistake
   await page.getByPlaceholder("Password (8+ characters)").fill("client-pass-123");
-  await page.getByRole("radio", { name: "15 minutes" }).check(); // how long the link works
+  await page.getByTestId("auto-stop").selectOption("15"); // optional auto-stop
   await expect(page.getByTestId("setup-state")).toHaveText("Your link will work for 15 minutes. The command works once, for the next 30 minutes.");
 
   // ---- 3. Start sharing: copy and run the command ------------------------------------------------

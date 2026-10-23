@@ -332,3 +332,16 @@ export async function upgradeCounts() {
 }
 
 export { BSC };
+
+/** What the customer's payment step shows. The QR appears only when its image passed verification. */
+export function paymentInfo(): import("@/lib/plans").PaymentInfo {
+  return {
+    enabled: paymentsEnabled(),
+    amountLabel: PASS_PRICE.label,
+    networkLabel: PASS_PRICE.networkLabel,
+    recipient: PASS_PRICE.recipient,
+    qrUrl: paymentQrUrl(),
+    supportEmail: SUPPORT_EMAIL,
+    afterPaymentMessage: AFTER_PAYMENT_MESSAGE,
+  };
+}

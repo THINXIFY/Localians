@@ -4,7 +4,9 @@ import { DEFAULT_LOCAL_PORT } from "@/lib/previews";
 import { ShareWizard } from "@/components/app/share/ShareWizard";
 import { cliInfo, customNamesRouting, getTunnelConfig } from "@/server/cli/config";
 import { getShareStatus } from "@/server/previews";
+import { getSharePlans } from "@/server/plan-summaries";
 import { getProjectOptions } from "@/server/projects";
+import { paymentInfo } from "@/server/upgrades";
 import { createShareSetup } from "@/server/share-setup";
 import { getCurrentWorkspace } from "@/server/workspaces";
 import { requireUser } from "@/server/session";
@@ -19,11 +21,12 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
   const requested = Number(portParam);
   const portFromUrl = Number.isInteger(requested) && requested >= 1 && requested <= 65535;
   const initialPort = portFromUrl ? requested : DEFAULT_LOCAL_PORT;
-  const [projects, status, setup, workspace] = await Promise.all([
+  const [projects, status, setup, workspace, plans] = await Promise.all([
     getProjectOptions(session.user.id),
     getShareStatus(session.user.id, new Date(openedAt)),
     createShareSetup(session.user.id),
     getCurrentWorkspace(session.user.id),
+    getSharePlans(session.user.id),
   ]);
   const cli = cliInfo();
 
@@ -31,7 +34,7 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-8">
       <PageHeader
         title="Share a local app"
-        description="Pick a project, choose your port and how long the link works, then run one command. No deployment needed."
+        description="Pick a project, choose Free or the 7-Day Pass, then run one command. No deployment needed."
       />
       <ShareWizard
         openedAt={openedAt}
@@ -44,7 +47,10 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
         workspaceName={workspace.name}
         setup={{ id: setup.id, code: setup.code }}
         initialStatus={status}
-        customUrls={{ canUse: customNamesRouting(), previewDomain: getTunnelConfig()?.previewDomain ?? "preview.localians.com", upgradeHref: null }}
+        customUrlsRouting={customNamesRouting()}
+        plans={plans}
+        payment={paymentInfo()}
+        previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
       />
     </div>
   );
