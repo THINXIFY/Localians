@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_OFFER, makeOffer } from "@/lib/offer";
 import { qrPath } from "@/lib/payment-qr";
 import type { PaymentInfo, PlanSummary } from "@/lib/plans";
 
@@ -14,6 +15,7 @@ const WALLET = "0x2f94b75535eff533378c90f8dda29cf10208b174";
 const plan = (request: PlanSummary["request"] = null): PlanSummary => ({ free: { state: "used", endedAt: new Date().toISOString() }, pass: null, graceUntil: null, request, canShare: false, freeLimit: 3 });
 const payment = (enabled: boolean): PaymentInfo => ({
   enabled,
+  offer: DEFAULT_OFFER,
   amountLabel: "5 USDT",
   networkLabel: "BNB Smart Chain (BEP20)",
   recipient: enabled ? WALLET : null,
@@ -88,5 +90,20 @@ describe("Upgrade dialog", () => {
     expect(html).toContain("Under review");
     expect(html).toContain("We&#x27;ll verify the transfer on BSC");
     expect(html).not.toContain("Cancel this order");
+  });
+
+  it("an open order keeps the price and length it was created with, even after the admin changes pricing", () => {
+    const current = { ...payment(true), offer: makeOffer(12_000_000n, 30), amountLabel: "12 USDT" };
+    const html = render(current, plan({ orderId: "ORD-OLDPRICE", status: "PENDING", txHash: null, note: null, payTo: { ...payTo, offer: DEFAULT_OFFER } }));
+    expect(html).toContain("7-Day Preview Pass");
+    expect(html).toContain("$5");
+    expect(html).toContain("5 USDT");
+    expect(html).not.toContain("$12");
+    expect(html).not.toContain("30-Day");
+  });
+
+  it("a new order shows the current admin price", () => {
+    const html = render({ ...payment(true), offer: makeOffer(12_000_000n, 30), amountLabel: "12 USDT" }, plan());
+    for (const text of ["30-Day Preview Pass", "$12", "12 USDT", "30 more days of sharing for this project"]) expect(html, text).toContain(text);
   });
 });

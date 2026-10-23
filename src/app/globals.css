@@ -398,3 +398,71 @@ html[data-js] .reveal:not(.is-in) {
     animation: none;
   }
 }
+
+/* ----------------------------------------------------------------- dropdowns (components/app/Field.tsx <Select>)
+   The chevron turns while the list is open. Browsers with customizable selects (appearance: base-select) also get a
+   styled menu: same surface and radius as the app, roomy rows, a lime check on the selected item. Others keep their
+   native menu, which is still fully keyboard- and screen-reader-accessible. */
+@supports selector(:open) {
+  .ui-select:open + .ui-select-chevron {
+    transform: translateY(-50%) rotate(180deg);
+    color: var(--fg);
+  }
+}
+
+@supports (appearance: base-select) {
+  .ui-select,
+  .ui-select::picker(select) {
+    appearance: base-select;
+  }
+  .ui-select {
+    display: flex;
+    align-items: center;
+  }
+  .ui-select::picker-icon {
+    display: none;
+  }
+  .ui-select::picker(select) {
+    margin-block: 6px;
+    padding: 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--fg);
+    box-shadow: 0 18px 48px -16px rgb(0 0 0 / 0.55);
+    max-height: min(320px, 60dvh);
+    overflow-y: auto;
+  }
+  .ui-select option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: var(--fg-2);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .ui-select option:hover,
+  .ui-select option:focus-visible {
+    background: color-mix(in srgb, var(--tint) 7%, transparent);
+    color: var(--fg);
+    outline: none;
+  }
+  .ui-select option:checked {
+    color: var(--fg);
+    font-weight: 500;
+  }
+  .ui-select option::checkmark {
+    order: 1;
+    margin-inline-start: auto;
+    color: var(--accent-ink);
+  }
+  .ui-select option:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

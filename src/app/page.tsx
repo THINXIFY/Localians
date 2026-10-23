@@ -20,12 +20,12 @@ import { launchFlags, type LaunchFlags } from "@/server/launch";
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { payments } = await launchFlags();
+  const { payments, offer } = await launchFlags();
   return pageMetadata({
     title: "Share Localhost Online with Secure HTTPS Links | Localians",
     absoluteTitle: true,
     description: payments
-      ? "Share localhost apps with one command: free 24-hour HTTPS preview links with password protection, or a $5 7-Day Pass with a custom URL. A simple ngrok alternative."
+      ? `Share localhost apps with one command: free 24-hour HTTPS preview links with password protection, or a ${offer.priceLabel} ${offer.shortName} with a custom URL. A simple ngrok alternative.`
       : "Share localhost apps with one command: free 24-hour HTTPS preview links with password protection and auto-stop timers. A simple ngrok alternative for previews.",
     path: "/",
   });
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 function structuredData(flags: LaunchFlags) {
   const offers = [
     { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD", description: "One 24-hour preview window per project" },
-    ...(flags.payments ? [{ "@type": "Offer", name: "7-Day Preview Pass", price: "5", priceCurrency: "USD", description: "One-time payment: 7 more days for one project and a custom URL" }] : []),
+    ...(flags.payments ? [{ "@type": "Offer", name: flags.offer.name, price: flags.offer.priceLabel.slice(1), priceCurrency: "USD", description: `One-time payment: ${flags.offer.moreLabel} for one project and a custom URL` }] : []),
   ];
   return [
     {
@@ -85,7 +85,7 @@ export default async function Home() {
         <HowItWorks />
         <Frameworks />
         <UseCases />
-        <Pricing payments={flags.payments} customUrls={flags.customUrls} vscode={flags.vscode} />
+        <Pricing payments={flags.payments} customUrls={flags.customUrls} vscode={flags.vscode} offer={flags.offer} />
         <FinalCta />
       </main>
       <Footer />

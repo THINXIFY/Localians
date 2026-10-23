@@ -214,6 +214,13 @@ are not sent to the browser at all and the dialog shows "Payments coming soon".
   Terms and Privacy Policy are static pages; a change revalidates them immediately (and they refresh every 5 minutes).
   The row is created on first use from `PAYMENTS_ENABLED`; after that the variable is ignored.
   `PAYMENTS_EMERGENCY_DISABLE=on` in `web.env` is a server-side kill switch that forces payments off (restart to apply).
+- *Pricing* — the Preview Pass price (USD, whole cents, $1–$500) and length (1–60 days) for NEW orders, stored in
+  `payment_settings` (`priceMicros`, `passDays`). Policy: USD prices are charged 1:1 in USDT ($5.00 = 5 USDT; no exchange
+  rate). Changing them asks for confirmation (old → new) and the admin password, is audited, and refreshes the
+  homepage, Terms and checkout. Each order snapshots `amountMicros` and `passDays`; the on-chain check requires the
+  order's own amount and the approved pass lasts the order's own number of days, so price changes never affect
+  existing orders or passes and can't bypass verification. All labels ("$5", "7-Day Preview Pass") come from
+  `src/lib/offer.ts`.
 - *USDT wallet (BNB Smart Chain, BEP20)* — new orders pay to it. Changing it validates the address (format + EIP-55
   checksum), shows old → new, requires the admin's password again, audits both values and emails hello@thinxify.com
   (and `ADMIN_NOTIFY_EMAIL`). Each order stores its own wallet and QR snapshot (`upgrade_requests.recipient`,

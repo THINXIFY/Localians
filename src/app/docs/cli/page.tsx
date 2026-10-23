@@ -66,7 +66,7 @@ export default function CliGuidePage() {
         <CodeLine>npx localians share 5173 --project client-dashboard</CodeLine>
         <p>
           <strong>Preview time:</strong> every project gets one free 24-hour preview window, starting with its first share; restarting or reconnecting
-          stays within it. A 7-Day Preview Pass adds 7 more days for one project. By default a share runs until that window ends — add{" "}
+          stays within it. A Preview Pass adds more days for one project. By default a share runs until that window ends — add{" "}
           <code className="font-mono">--duration</code> to stop it sooner.
         </p>
         <CodeLine>npx localians share 5173 --duration 1h</CodeLine>

@@ -3,6 +3,7 @@ import { verifyPassword } from "better-auth/crypto";
 import { revalidatePath } from "next/cache";
 import { cache } from "react";
 import { Prisma } from "@/generated/prisma/client";
+import { makeOffer, parsePassDays, parseUsdPrice, type PassOffer } from "@/lib/offer";
 import { checkBscAddress } from "@/lib/wallet";
 import type { AdminUser } from "./admin";
 import { audit } from "./audit";
@@ -26,7 +27,8 @@ import { rateLimit } from "./rate-limit";
  *   changing settings never alters what an existing order shows or how it is checked.
  */
 export const DEFAULT_RECIPIENT = "0x2f94b75535eff533378c90f8dda29cf10208b174";
-const PUBLIC_PATHS = ["/", "/terms", "/privacy-policy"];
+/** Static pages that show whether payments are on, or the pass price and length. */
+const PUBLIC_PATHS = ["/", "/terms", "/privacy-policy", "/ngrok-alternative", "/share-localhost", "/docs/cli", "/docs/security"];
 
 export class PaymentSettingsError extends Error {}
 
@@ -51,6 +53,12 @@ export const getPaymentSettings = cache(loadSettings);
 export async function paymentsEnabled() {
   if (emergencyDisabled()) return false;
   return (await getPaymentSettings()).enabled;
+}
+
+/** The Preview Pass offered to NEW orders (price and length). Existing orders keep their own snapshot. */
+export async function getPassOffer(): Promise<PassOffer> {
+  const settings = await getPaymentSettings();
+  return makeOffer(settings.priceMicros, settings.passDays);
 }
 
 /** The uploaded QR to use for new orders: only if it was verified to encode the current wallet. */
@@ -86,6 +94,8 @@ export async function getPaymentSettingsView() {
     qrImageUrl: paymentQrImageUrl(qrImageId),
     updatedAt: settings.updatedAt.toISOString(),
     updatedBy: updatedBy?.email ?? null,
+    offer: makeOffer(settings.priceMicros, settings.passDays),
+    pricingUpdatedAt: settings.pricingUpdatedAt?.toISOString() ?? null,
   };
 }
 
@@ -175,4 +185,36 @@ export async function resetPaymentQr(admin: AdminUser) {
     await tx.paymentSetting.update({ where: { id: 1 }, data: { qrImageId: null, updatedById: admin.id } });
     await audit(tx, { actor: { type: "ADMIN", id: admin.id }, action: "payments.qr_reset", subject: { type: "payment_settings", id: "1" }, detail: { previous: row.qrImageId } });
   });
+}
+
+/**
+ * Changes the Preview Pass price (USD, charged 1:1 in USDT) and/or length for NEW orders. Requires the admin's
+ * password, validates both values on the server, and audits old and new values. Existing orders and passes keep the
+ * price and length they were created with (each order stores its own amount and days; verification checks the
+ * order's amount on chain).
+ */
+export async function updatePricing(admin: AdminUser, input: { price: string; days: string | number; password: string }) {
+  const price = parseUsdPrice(input.price);
+  if (!price.ok) throw new PaymentSettingsError(price.error);
+  const days = parsePassDays(input.days);
+  if (!days.ok) throw new PaymentSettingsError(days.error);
+  await confirmAdminPassword(admin, String(input.password ?? ""));
+  await loadSettings();
+  const change = await prisma.$transaction(async (tx) => {
+    const [row] = await tx.$queryRaw<{ priceMicros: bigint; passDays: number }[]>`SELECT "priceMicros", "passDays" FROM payment_settings WHERE id = 1 FOR UPDATE`;
+    if (BigInt(row.priceMicros) === price.micros && row.passDays === days.days) throw new PaymentSettingsError("That's already the current price and length.");
+    await tx.paymentSetting.update({ where: { id: 1 }, data: { priceMicros: price.micros, passDays: days.days, pricingUpdatedAt: new Date(), updatedById: admin.id } });
+    const previous = makeOffer(row.priceMicros, row.passDays);
+    const next = makeOffer(price.micros, days.days);
+    await audit(tx, {
+      actor: { type: "ADMIN", id: admin.id },
+      action: "payments.pricing_changed",
+      subject: { type: "payment_settings", id: "1" },
+      detail: { previous: { priceMicros: previous.priceMicros, days: previous.days }, next: { priceMicros: next.priceMicros, days: next.days } },
+    });
+    return { previous, next };
+  });
+  log("warn", "pass pricing changed", { admin: admin.publicId, previous: change.previous.priceLabel, next: change.next.priceLabel, days: change.next.days });
+  refreshPublicPages();
+  return change;
 }

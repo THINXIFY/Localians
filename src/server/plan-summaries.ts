@@ -10,7 +10,7 @@ import { getCurrentWorkspace } from "./workspaces";
 export async function planSummary(project: { id: string; workspaceId: string }, userId: string): Promise<PlanSummary> {
   const [plan, request, enabled] = await Promise.all([
     getProjectPlan(project, userId),
-    prisma.upgradeRequest.findFirst({ where: { projectId: project.id }, orderBy: { createdAt: "desc" }, select: { orderId: true, status: true, txHash: true, reviewNote: true, recipient: true, qrImageId: true } }),
+    prisma.upgradeRequest.findFirst({ where: { projectId: project.id }, orderBy: { createdAt: "desc" }, select: { orderId: true, status: true, txHash: true, reviewNote: true, recipient: true, qrImageId: true, amountMicros: true, passDays: true } }),
     paymentsEnabled(),
   ]);
   const open = request?.status === "PENDING" || request?.status === "UNDER_REVIEW";

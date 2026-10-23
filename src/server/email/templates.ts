@@ -115,13 +115,13 @@ export function changeEmailMessage({ to, name, newEmail, url }: { to: string; na
 
 /** To the administrator: a new upgrade request, or a customer submitted a transaction hash. */
 export function upgradeRequestAdminMessage(input: { to: string; orderId: string; username: string; email: string; projectName: string; txHash?: string | null; url: string }): EmailMessage {
-  const what = input.txHash ? "submitted a transaction hash" : "requested a 7-Day Pass";
+  const what = input.txHash ? "submitted a transaction hash" : "requested a Preview Pass";
   return {
     kind: "upgrade-request-admin",
     to: input.to,
     subject: `${input.orderId}: ${input.username} ${what}`,
     html: layout({
-      heading: input.txHash ? "Transaction hash submitted" : "New 7-Day Pass request",
+      heading: input.txHash ? "Transaction hash submitted" : "New Preview Pass request",
       body: `<strong style="color:#F7F8F5;">${escapeHtml(input.orderId)}</strong> · ${escapeHtml(input.username)} (${escapeHtml(input.email)}) · project ${escapeHtml(input.projectName)}${
         input.txHash ? `<br />Transaction: <span style="font-family:monospace;word-break:break-all;">${escapeHtml(input.txHash)}</span>` : ""
       }<br /><br />Verify the transfer on BNB Smart Chain in the admin panel before approving.`,
@@ -133,15 +133,16 @@ export function upgradeRequestAdminMessage(input: { to: string; orderId: string;
   };
 }
 
-/** To the customer: their 7-Day Pass is active. */
-export function passActivatedMessage(input: { to: string; name: string; orderId: string; projectName: string; endsAt: Date; customUrl: string | null; url: string }): EmailMessage {
+/** To the customer: their pass is active (named with the order's own length, e.g. "7-Day Preview Pass"). */
+export function passActivatedMessage(input: { to: string; name: string; orderId: string; projectName: string; endsAt: Date; customUrl: string | null; url: string; passName?: string }): EmailMessage {
+  const passName = input.passName ?? "Preview Pass";
   const until = input.endsAt.toUTCString();
   return {
     kind: "pass-activated",
     to: input.to,
-    subject: `Your 7-Day Preview Pass is active (${input.orderId})`,
+    subject: `Your ${passName} is active (${input.orderId})`,
     html: layout({
-      heading: "Your 7-Day Pass is active",
+      heading: `Your ${passName} is active`,
       body: `Hi ${escapeHtml(input.name)}, payment for <strong style="color:#F7F8F5;">${escapeHtml(input.orderId)}</strong> is verified. You can share <strong style="color:#F7F8F5;">${escapeHtml(input.projectName)}</strong> until ${escapeHtml(until)}${
         input.customUrl ? `, at <span style="font-family:monospace;">${escapeHtml(input.customUrl)}</span>` : ""
       }.<br /><br />Your computer and app must stay running and connected for the preview to work.`,
@@ -164,7 +165,7 @@ export function upgradeRejectedMessage(input: { to: string; name: string; orderI
       body: `Hi ${escapeHtml(input.name)}, order <strong style="color:#F7F8F5;">${escapeHtml(input.orderId)}</strong> wasn't approved: ${escapeHtml(input.reason)}<br /><br />If you believe this is a mistake, reply to hello@thinxify.com with your transaction hash, username and order ID.`,
       cta: "Open dashboard",
       url: input.url,
-      footnote: "No 7-Day Pass was activated for this order.",
+      footnote: "No Preview Pass was activated for this order.",
     }),
     text: `Hi ${input.name},\n\nOrder ${input.orderId} wasn't approved: ${input.reason}\nContact hello@thinxify.com with your transaction hash, username and order ID if you believe this is a mistake.\n\n${input.url}`,
   };
@@ -178,7 +179,7 @@ export function paymentDestinationChangedMessage(input: { to: string; adminEmail
     subject: "Localians payment wallet changed",
     html: layout({
       heading: "Payment wallet changed",
-      body: `${escapeHtml(input.adminEmail)} changed the USDT (BNB Smart Chain, BEP20) wallet that new 7-Day Pass orders pay to, at ${escapeHtml(input.at.toUTCString())}.<br /><br />Previous: <span style="font-family:monospace;word-break:break-all;">${escapeHtml(input.previous)}</span><br />New: <span style="font-family:monospace;word-break:break-all;color:#F7F8F5;">${escapeHtml(input.next)}</span><br /><br />Orders created before the change keep their original wallet and are verified against it.`,
+      body: `${escapeHtml(input.adminEmail)} changed the USDT (BNB Smart Chain, BEP20) wallet that new Preview Pass orders pay to, at ${escapeHtml(input.at.toUTCString())}.<br /><br />Previous: <span style="font-family:monospace;word-break:break-all;">${escapeHtml(input.previous)}</span><br />New: <span style="font-family:monospace;word-break:break-all;color:#F7F8F5;">${escapeHtml(input.next)}</span><br /><br />Orders created before the change keep their original wallet and are verified against it.`,
       cta: "Review payment settings",
       url: input.url,
       footnote: "If you didn't expect this change, disable payments in the admin panel and change the admin password now.",

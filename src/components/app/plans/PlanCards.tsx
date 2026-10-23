@@ -24,7 +24,8 @@ function useNow(intervalMs = 30_000) {
 const left = (iso: string, now: number | null) => (now === null ? "" : formatRemaining(new Date(iso).getTime() - now));
 
 /**
- * The two ways to share a project: its one free 24-hour preview, and the $5 7-Day Pass. Shows where the project
+ * The two ways to share a project: its one free 24-hour preview, and the Preview Pass (price and length from the
+ * admin settings, via `payment.offer`). Shows where the project
  * stands on each (time left, used, order status, active until) and the Upgrade / Renew action.
  */
 export function PlanCards({
@@ -101,10 +102,10 @@ export function PlanCards({
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
           <h3 id="plan-pass" className="flex items-center gap-1.5 whitespace-nowrap text-[14px] font-semibold text-fg">
             <Sparkles className="size-3.5 text-accent-ink" aria-hidden="true" />
-            7-Day Preview Pass
+            {payment.offer.name}
           </h3>
           <span className="whitespace-nowrap text-[12px] text-fg-2">
-            <span className="text-[15px] font-semibold text-fg">$5</span> one-time · 7 days
+            <span className="text-[15px] font-semibold text-fg">{payment.offer.priceLabel}</span> one-time · {payment.offer.daysLabel}
           </span>
         </div>
         {passActive ? (
@@ -118,13 +119,13 @@ export function PlanCards({
           </p>
         ) : (
           <p className="text-[13px] leading-snug text-fg-2" data-testid="plan-pass-state">
-            {plan.graceUntil ? `Ended. Your custom URL is kept until ${formatDateTime(new Date(plan.graceUntil))} — renew to keep it.` : "7 more days of sharing, a custom URL, password protection."}
+            {plan.graceUntil ? `Ended. Your custom URL is kept until ${formatDateTime(new Date(plan.graceUntil))} — renew to keep it.` : `${payment.offer.moreLabel} of sharing, a custom URL, password protection.`}
           </p>
         )}
         <div className="mt-auto pt-1">
           {project ? (
             <Button size="sm" variant={passActive ? "secondary" : "primary"} className="h-9" onClick={() => setOpen(true)}>
-              {request ? "View payment details" : passActive || plan.graceUntil ? "Renew Pass" : payment.enabled ? "Upgrade for $5" : "7-Day Pass · Coming soon"}
+              {request ? "View payment details" : passActive || plan.graceUntil ? "Renew Pass" : payment.enabled ? `Upgrade for ${payment.offer.priceLabel}` : `${payment.offer.shortName} · Coming soon`}
             </Button>
           ) : (
             <p className="text-[12px] text-fg-3">Available once the project exists — share it once, or pick an existing project.</p>

@@ -15,6 +15,7 @@ export const metadata: Metadata = { title: "Billing" };
 export default async function BillingPage() {
   const session = await requireUser();
   const workspace = await getCurrentWorkspace(session.user.id);
+  const payment = await paymentInfo();
   const [projects, plans, orders] = await Promise.all([
     prisma.project.findMany({
       where: { workspaceId: workspace.id, status: "ACTIVE" },
@@ -36,11 +37,11 @@ export default async function BillingPage() {
           <h2 id="billing-plans" className="text-[17px] font-semibold text-fg">
             Plans
           </h2>
-          <p className="mt-1 text-[13.5px] text-fg-2">Every project gets one free 24-hour preview. The 7-Day Pass ($5 one-time) adds 7 days and a custom URL.</p>
+          <p className="mt-1 text-[13.5px] text-fg-2">Every project gets one free 24-hour preview. The {payment.offer.shortName} ({payment.offer.priceLabel} one-time) adds {payment.offer.daysLabel} and a custom URL.</p>
         </div>
         <BillingProjects
           projects={projects.map((p) => ({ id: p.id, name: p.name, port: p.defaultPort, hasCustomName: p.previewName?.status === "ACTIVE", plan: plans.byProject[p.id] ?? plans.newProject }))}
-          payment={await paymentInfo()}
+          payment={payment}
           previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
         />
       </section>

@@ -12,7 +12,7 @@ export default async function AdminSettingsPage() {
   const view = await getPaymentSettingsView();
   return (
     <>
-      <AdminHeader title="Settings" description="Payment collection for the 7-Day Preview Pass." />
+      <AdminHeader title="Settings" description="Payments and pricing for the Preview Pass." />
       <PaymentSettingsForm view={{ ...view, generatedQr: qrPath(view.recipient) }} />
     </>
   );

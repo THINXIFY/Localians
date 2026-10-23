@@ -44,6 +44,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const session = await requireUser();
   const { projectId } = await params;
   const [project, workspace] = await Promise.all([loadProject(session.user.id, projectId), getCurrentWorkspace(session.user.id)]);
+  const payment = await paymentInfo();
   const [previews, access, customUrl, plan] = await Promise.all([
     getProjectPreviews(session.user.id, project.id),
     getProjectAccess(session.user.id, project.id),
@@ -117,13 +118,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <h2 id="plan-title" className="text-[15px] font-semibold text-fg">
               Plan
             </h2>
-            <p className="text-[13px] leading-relaxed text-fg-2">One free 24-hour preview per project, then the 7-Day Pass for $5. Your computer and app must stay running while you share.</p>
+            <p className="text-[13px] leading-relaxed text-fg-2">One free 24-hour preview per project, then the {payment.offer.shortName} for {payment.offer.priceLabel}. Your computer and app must stay running while you share.</p>
           </div>
           <div className="px-5 py-5 sm:px-6">
             <PlanCards
               plan={plan}
               project={{ id: project.id, name: project.name }}
-              payment={await paymentInfo()}
+              payment={payment}
               previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
               hasCustomName={Boolean(customUrl.name)}
             />
@@ -131,7 +132,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </section>
       ) : null}
 
-      {project.status === "ACTIVE" ? <CustomUrlPanel projectId={project.id} projectName={project.name} state={customUrl} upgradeHref="#plan" /> : null}
+      {project.status === "ACTIVE" ? <CustomUrlPanel projectId={project.id} projectName={project.name} state={customUrl} upgradeHref={payment.enabled ? "#plan" : null} offer={payment.offer} /> : null}
 
       <ProjectPreviews
         project={{ id: project.id, defaultPort: project.defaultPort, archived: project.status === "ARCHIVED" }}

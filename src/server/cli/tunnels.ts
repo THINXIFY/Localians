@@ -111,7 +111,7 @@ async function customNameFor(tx: Prisma.TransactionClient, project: { id: string
   if (url === "random" || !customNamesRouting()) return null;
   const insist = url === "custom";
   if (tier !== "PASS") {
-    if (insist) throw new TunnelError("plan_required", "Custom URLs come with the 7-Day Pass. Your preview can use a random link instead.", 403);
+    if (insist) throw new TunnelError("plan_required", "Custom URLs come with the Preview Pass. Your preview can use a random link instead.", 403);
     return null;
   }
   const row = await tx.previewName.findFirst({ where: { projectId: project.id, status: PreviewNameStatus.ACTIVE }, select: { name: true } });
@@ -181,7 +181,7 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
             expiresAt: grant.expiresAt,
           },
         });
-        const length = grant.durationMinutes && !grant.untilPlanEnd ? durationLabel(grant.durationMinutes) : grant.tier === "PASS" ? "the 7-Day Pass" : "the free preview";
+        const length = grant.durationMinutes && !grant.untilPlanEnd ? durationLabel(grant.durationMinutes) : grant.tier === "PASS" ? "the Preview Pass" : "the free preview";
         await recordEvent(tx, { id: created.id, workspaceId: project.workspaceId }, TunnelEventType.CREATED, `Sharing localhost:${input.localPort} for ${length}`);
         return created;
       });

@@ -100,7 +100,7 @@ export function PaymentAdminActions({ request }: { request: R }) {
 
       <Dialog open={dialog === "approve"} onClose={() => setDialog(null)} title="Approve and activate?" busy={busy !== null} className="max-w-[440px]">
         <div className="flex flex-col gap-4 text-[13.5px] text-fg-2">
-          <p>The project gets a 7-Day Pass now (or right after its current pass), its custom URL is enabled, and the customer is emailed. This can&apos;t be undone here.</p>
+          <p>The project gets its Preview Pass (the length shown on the order) now (or right after its current pass), its custom URL is enabled, and the customer is emailed. This can&apos;t be undone here.</p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setDialog(null)}>
               Cancel

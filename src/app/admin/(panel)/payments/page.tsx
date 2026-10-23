@@ -24,7 +24,7 @@ export default async function AdminPaymentsPage({ searchParams }: { searchParams
     <>
       <AdminHeader
         title="Payments"
-        description={(await paymentsEnabled()) ? "7-Day Pass requests. Verify each transfer on BSC before approving." : "Taking new requests is off (Settings → Payment system). Existing requests can still be reviewed."}
+        description={(await paymentsEnabled()) ? "Preview Pass requests. Verify each transfer on BSC before approving." : "Taking new requests is off (Settings → Payment system). Existing requests can still be reviewed."}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => (

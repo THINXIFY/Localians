@@ -117,7 +117,7 @@ export type ShareGrant = { tier: "FREE" | "PASS"; expiresAt: Date; durationMinut
  */
 export async function authorizeShare(tx: Prisma.TransactionClient, project: { id: string; workspaceId: string }, userId: string, durationMinutes: unknown, now = new Date()): Promise<ShareGrant> {
   if (durationMinutes !== undefined && durationMinutes !== null && !isDurationOption(durationMinutes)) {
-    throw new PlanError("invalid_duration", "Choose a duration of 5m, 15m, 30m, 1h, 12h or 24h (3d or 7d with a 7-Day Pass).", 400);
+    throw new PlanError("invalid_duration", "Choose a duration of 5m, 15m, 30m, 1h, 12h or 24h (3d or 7d with a Preview Pass).", 400);
   }
   const minutes = (durationMinutes ?? null) as number | null;
   // Free windows are capped per workspace and per user: serialise those checks across the workspace's projects.
@@ -127,15 +127,15 @@ export async function authorizeShare(tx: Prisma.TransactionClient, project: { id
 
   if (plan.share.tier === null) {
     throw plan.share.reason === "free_used"
-      ? new PlanError("free_used", "This project's free 24-hour preview has ended. Get a 7-Day Pass ($5) to share it for 7 more days with a custom URL.", 402)
+      ? new PlanError("free_used", "This project's free 24-hour preview has ended. Get a Preview Pass to keep sharing it, with a custom URL.", 402)
       : new PlanError(
           "free_limit",
-          `You've started ${freePreviewsPer30Days()} free previews in the last 30 days. Share a project that's still in its free window, get a 7-Day Pass, or try again later.`,
+          `You've started ${freePreviewsPer30Days()} free previews in the last 30 days. Share a project that's still in its free window, get a Preview Pass, or try again later.`,
           429,
         );
   }
   if (plan.share.tier === "FREE" && minutes !== null && minutes > FREE_MAX_MINUTES) {
-    throw new PlanError("plan_required", `Free previews last up to ${durationLabel(FREE_MAX_MINUTES)}. Get a 7-Day Pass for longer sessions.`, 403);
+    throw new PlanError("plan_required", `Free previews last up to ${durationLabel(FREE_MAX_MINUTES)}. Get a Preview Pass for longer sessions.`, 403);
   }
   if (plan.share.tier === "FREE" && plan.free.state === "available") {
     await tx.freePreviewGrant.create({ data: { projectId: project.id, workspaceId: project.workspaceId, userId, startedAt: now, endsAt: new Date(now.getTime() + FREE_WINDOW_MS) } });

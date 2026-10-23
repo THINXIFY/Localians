@@ -107,7 +107,7 @@ describe("free preview: one 24-hour window per project", () => {
     await ageFreeWindow(p.id, 25);
 
     for (const attempt of [() => api.createTunnel(p.id, app.port), () => api.createTunnel(p.id, 5555, 5), () => api.createTunnel(p.id, app.port, undefined, "random")]) {
-      await expect(attempt()).rejects.toMatchObject({ status: 402, code: "free_used", message: expect.stringContaining("7-Day Pass") });
+      await expect(attempt()).rejects.toMatchObject({ status: 402, code: "free_used", message: expect.stringContaining("Preview Pass") });
     }
     // A fresh setup code doesn't help either.
     const setup = await createShareSetup(user.id);

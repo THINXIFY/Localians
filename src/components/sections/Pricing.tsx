@@ -5,28 +5,30 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { Eyebrow, SectionHeader } from "@/components/ui/SectionHeader";
 import { cn } from "@/lib/cn";
+import type { PassOffer } from "@/lib/offer";
 import { routes } from "@/lib/site";
 
-type Flags = { payments: boolean; customUrls: boolean; vscode: boolean };
+type Flags = { payments: boolean; customUrls: boolean; vscode: boolean; offer: PassOffer };
 
 /** Answers shown in the FAQ — and used for the FAQPage structured data, so markup always matches the page. */
 export function buildFaqs(flags: Flags) {
+  const o = flags.offer;
   return [
     {
       question: "How long do previews last?",
       answer:
-        "Every project gets one free 24-hour preview window that starts with its first share. Restarting or reconnecting stays within that window. With the 7-Day Pass the project can be shared for 7 more days. You can also set a shorter auto-stop, from 5 minutes.",
+        `Every project gets one free 24-hour preview window that starts with its first share. Restarting or reconnecting stays within that window. With the ${o.shortName} the project can be shared for ${o.moreLabel}. You can also set a shorter auto-stop, from 5 minutes.`,
     },
     {
-      question: "What is the $5 7-Day Preview Pass?",
+      question: `What is the ${o.priceLabel} ${o.name}?`,
       answer: flags.payments
-        ? "A one-time $5 payment for one project — not a subscription. It adds 7 days of sharing and one reserved custom URL. It starts when your payment is verified and doesn't renew by itself; renewing before it ends adds another 7 days."
-        : "A one-time $5 upgrade for one project — not a subscription — that adds 7 days of sharing and one reserved custom URL. It's coming soon.",
+        ? `A one-time ${o.priceLabel} payment for one project — not a subscription. It adds ${o.daysLabel} of sharing and one reserved custom URL. It starts when your payment is verified and doesn't renew by itself; renewing before it ends adds another ${o.daysLabel}.`
+        : `A one-time ${o.priceLabel} upgrade for one project — not a subscription — that adds ${o.daysLabel} of sharing and one reserved custom URL. It's coming soon.`,
     },
     {
       question: "What are custom preview URLs?",
       answer:
-        "A memorable link like agentaxio.preview.localians.com that stays the same every time you share the project. It comes with the 7-Day Pass." +
+        `A memorable link like agentaxio.preview.localians.com that stays the same every time you share the project. It comes with the ${o.shortName}.` +
         (flags.customUrls ? "" : " Custom URLs are coming soon."),
     },
     {
@@ -36,7 +38,7 @@ export function buildFaqs(flags: Flags) {
     {
       question: "How is the payment verified?",
       answer: flags.payments
-        ? "You pay 5 USDT on BNB Smart Chain (BEP20) using the details in your dashboard, then send us your transaction hash. We verify the transfer on the blockchain before activating your pass — usually the same day."
+        ? `You pay ${o.usdtLabel} on BNB Smart Chain (BEP20) — prices are in US dollars, paid 1:1 in USDT — using the details in your dashboard, then send us your transaction hash. We verify the transfer on the blockchain before activating your pass — usually the same day.`
         : "Payments are coming soon. When they open, you'll pay in your dashboard and your pass activates after the payment is verified.",
     },
     {
@@ -55,22 +57,22 @@ export function buildFaqs(flags: Flags) {
   ];
 }
 
-export function Pricing({ payments, customUrls, vscode }: Flags) {
-  const faqs = buildFaqs({ payments, customUrls, vscode });
+export function Pricing({ payments, customUrls, vscode, offer }: Flags) {
+  const faqs = buildFaqs({ payments, customUrls, vscode, offer });
   const soon = (on: boolean) => (on ? null : <span className="ml-1.5 rounded-full border border-line-strong px-1.5 py-px font-mono text-[9.5px] uppercase tracking-[0.12em] text-fg-3">Soon</span>);
   const free = ["One 24-hour preview window per project", "Secure HTTPS link (random)", "Password protection", "Auto-stop timers", "Projects and analytics"];
   const pass: { label: string; tag?: React.ReactNode }[] = [
-    { label: "7 more days of sharing for one project" },
+    { label: `${offer.moreLabel} of sharing for one project` },
     { label: "One reserved custom URL", tag: soon(customUrls) },
     { label: "Password protection" },
     { label: "Reconnect on the same link while active" },
   ];
   const rows: [string, string, string][] = [
-    ["Price", "$0", "$5 one-time"],
-    ["Preview time", "24 hours per project", "7 more days per project"],
+    ["Price", "$0", `${offer.priceLabel} one-time`],
+    ["Preview time", "24 hours per project", `${offer.moreLabel} per project`],
     ["Preview link", "Random HTTPS link", customUrls ? "Your custom URL" : "Custom URL (soon)"],
     ["Password protection", "✓", "✓"],
-    ["Auto-stop timers", "5 min – 24 h", "5 min – 7 days"],
+    ["Auto-stop timers", "5 min – 24 h", `5 min – ${offer.daysLabel}`],
     ["Projects & analytics", "✓", "✓"],
     ["Subscription", "—", "No, one-time"],
   ];
@@ -78,7 +80,7 @@ export function Pricing({ payments, customUrls, vscode }: Flags) {
   return (
     <section id="pricing" aria-labelledby="pricing-title" className="section-y relative">
       <div className="container-x">
-        <SectionHeader id="pricing-title" eyebrow="Pricing" title="Free to start. $5 when you need more." description="No subscriptions. Share any project free for 24 hours, then add 7 days for the projects that need it." />
+        <SectionHeader id="pricing-title" eyebrow="Pricing" title={`Free to start. ${offer.priceLabel} when you need more.`} description={`No subscriptions. Share any project free for 24 hours, then add ${offer.daysLabel} for the projects that need it.`} />
 
         <div className="mx-auto mt-14 grid max-w-[980px] gap-4 sm:mt-16 md:grid-cols-2 md:gap-5">
           {/* ------------------------------------------------------------ Free */}
@@ -112,13 +114,13 @@ export function Pricing({ payments, customUrls, vscode }: Flags) {
             <div className="relative flex items-center justify-between gap-3">
               <h3 className="flex items-center gap-2 text-[19px] font-semibold tracking-[-0.02em] text-fg">
                 <Sparkles className="size-4 text-accent" aria-hidden="true" />
-                7-Day Preview Pass
+                {offer.name}
               </h3>
               <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-accent">{payments ? "Per project" : "Coming soon"}</span>
             </div>
             <p className="relative mt-5 flex items-baseline gap-2">
-              <span className="text-[52px] font-semibold leading-none tracking-[-0.05em] text-fg">$5</span>
-              <span className="text-[14px] text-fg-3">one-time · 7 days</span>
+              <span className="text-[52px] font-semibold leading-none tracking-[-0.05em] text-fg">{offer.priceLabel}</span>
+              <span className="text-[14px] text-fg-3">one-time · {offer.daysLabel}</span>
             </p>
             <p className="relative mt-3 text-[14.5px] leading-relaxed text-fg-2">A one-time payment, not a subscription. For client reviews that take longer than a day.</p>
             <ul className="relative mt-6 space-y-3">
@@ -135,7 +137,7 @@ export function Pricing({ payments, customUrls, vscode }: Flags) {
             <div className="relative mt-8 md:mt-auto md:pt-8">
               {payments ? (
                 <ButtonLink href={routes.billing} size="lg" className="w-full">
-                  Upgrade for $5
+                  Upgrade for {offer.priceLabel}
                   <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-0.5" aria-hidden="true" />
                 </ButtonLink>
               ) : (
@@ -154,7 +156,7 @@ export function Pricing({ payments, customUrls, vscode }: Flags) {
         <Reveal className="mx-auto mt-10 max-w-[980px]">
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-line">
             <table className="w-full text-left text-[14px]" data-testid="plan-comparison">
-              <caption className="sr-only">Free compared with the 7-Day Preview Pass</caption>
+              <caption className="sr-only">Free compared with the {offer.name}</caption>
               <thead className="border-b border-line bg-tint/[0.02] text-[12.5px] text-fg-3">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-medium sm:px-6">
@@ -164,7 +166,7 @@ export function Pricing({ payments, customUrls, vscode }: Flags) {
                     Free
                   </th>
                   <th scope="col" className="px-4 py-3 font-medium text-accent sm:px-6">
-                    7-Day Pass
+                    {offer.shortName}
                   </th>
                 </tr>
               </thead>

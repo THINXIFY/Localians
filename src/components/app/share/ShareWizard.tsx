@@ -11,7 +11,7 @@ import type { PaymentInfo, PlanSummary } from "@/lib/plans";
 import { type PreviewStatusValue } from "@/lib/previews";
 import { saveShareSetupAction } from "@/server/actions/share";
 import { DURATION_OPTIONS, durationLabel, FREE_MAX_MINUTES, isDurationOption } from "@tunnel/shared/durations";
-import { inputClasses, selectClasses, PasswordInput } from "../Field";
+import { inputClasses, PasswordInput, Select } from "../Field";
 import { PlanCards } from "../plans/PlanCards";
 import { AccessBadge } from "../previews/AccessBadge";
 import { Countdown } from "../previews/Countdown";
@@ -295,8 +295,8 @@ export function ShareWizard({
           : "for up to 24 hours";
   const commandNote = !plan.canShare
     ? plan.free.state === "limit_reached"
-      ? `You've used ${plan.freeLimit} free previews in 30 days. Upgrade this project for $5, or try again later.`
-      : "This project's free preview has ended. Upgrade for $5 to share it for 7 more days."
+      ? `You've used ${plan.freeLimit} free previews in 30 days. Upgrade this project for ${payment.offer.priceLabel}, or try again later.`
+      : `This project's free preview has ended. Upgrade for ${payment.offer.priceLabel} to share it for ${payment.offer.moreLabel}.`
     : !portValid
       ? "Enter a valid port to get your command."
       : access === "PASSWORD" && !passwordReady
@@ -329,14 +329,14 @@ export function ShareWizard({
                   data-testid="new-project-name"
                 />
               ) : (
-                <select id={ids.project} value={projectId} onChange={(e) => chooseProject(e.target.value)} className={cn(selectClasses, "h-10 w-full min-w-0 text-[14px] sm:flex-1")}>
+                <Select id={ids.project} value={projectId} onChange={(e) => chooseProject(e.target.value)} density="sm" wrapperClassName="sm:flex-1" className="text-[14px]">
                   {active.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                       {p.defaultPort ? ` · :${p.defaultPort}` : ""}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
               {active.length ? (
                 <button
@@ -482,11 +482,11 @@ export function ShareWizard({
                 <Clock className="size-3.5 text-fg-3" aria-hidden="true" />
                 Auto-stop
               </label>
-              <select
+              <Select
                 id={ids.stop}
                 value={autoStop === null ? "" : String(autoStop)}
                 onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : null)}
-                className={cn(selectClasses, "h-10 w-full text-[13.5px]")}
+                density="sm"
                 data-testid="auto-stop"
               >
                 <option value="">{passActive ? "When the pass ends" : "When the free preview ends"}</option>
@@ -495,7 +495,7 @@ export function ShareWizard({
                     After {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             {customName ? (
               <fieldset className="flex min-w-0 flex-col gap-1.5" data-testid="url-options">

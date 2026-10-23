@@ -19,7 +19,7 @@ export function BillingProjects({ projects, payment, previewDomain }: { projects
         const plan = p.plan;
         const request = isOpenRequest(plan.request) ? plan.request : null;
         const state = plan.pass
-          ? `7-Day Pass · until ${formatDateTime(new Date(plan.pass.endsAt))}`
+          ? `Preview Pass · until ${formatDateTime(new Date(plan.pass.endsAt))}`
           : request
             ? `Order ${request.orderId} · ${ORDER_STATUS_LABEL[request.status]}`
             : plan.free.state === "active"
@@ -40,7 +40,7 @@ export function BillingProjects({ projects, payment, previewDomain }: { projects
             </div>
             <Button size="sm" variant={plan.pass ? "secondary" : "primary"} className="h-9 shrink-0" onClick={() => setOpenId(p.id)}>
               {!plan.pass && !request ? <Sparkles className="size-3.5" aria-hidden="true" /> : null}
-              {request ? "View payment details" : plan.pass || plan.graceUntil ? "Renew Pass" : payment.enabled ? "Upgrade for $5" : "7-Day Pass · Coming soon"}
+              {request ? "View payment details" : plan.pass || plan.graceUntil ? "Renew Pass" : payment.enabled ? `Upgrade for ${payment.offer.priceLabel}` : `${payment.offer.shortName} · Coming soon`}
             </Button>
             <UpgradeDialog open={openId === p.id} onClose={() => setOpenId(null)} project={{ id: p.id, name: p.name }} plan={plan} payment={payment} previewDomain={previewDomain} hasCustomName={p.hasCustomName} />
           </li>

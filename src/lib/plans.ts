@@ -1,3 +1,5 @@
+import type { PassOffer } from "./offer";
+
 /** Client-safe plan vocabulary (the server decides; see src/server/plans.ts). */
 export type PlanSummary = {
   free: { state: "available" } | { state: "active"; endsAt: string } | { state: "used"; endedAt: string } | { state: "limit_reached"; resetsAt: string };
@@ -20,11 +22,19 @@ export type PlanSummary = {
 };
 
 /** A payment destination: wallet address, its generated QR, and an uploaded QR image verified to encode it (if any). */
-export type PayTo = { recipient: string; qr: { size: number; d: string } | null; qrImageUrl: string | null };
+export type PayTo = {
+  recipient: string;
+  qr: { size: number; d: string } | null;
+  qrImageUrl: string | null;
+  /** The order's own price and length (snapshot). */
+  offer?: PassOffer;
+};
 
 /** What the payment step shows (the server supplies these; the QR is generated from the recipient address). */
 export type PaymentInfo = {
   enabled: boolean;
+  /** Price and length for a NEW order (admin setting). */
+  offer: PassOffer;
   amountLabel: string;
   networkLabel: string;
   /** Only sent when payments are enabled (the deposit address is never shown otherwise). */

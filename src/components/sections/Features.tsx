@@ -35,7 +35,7 @@ export function Features({ customUrls, vscode }: { customUrls: boolean; vscode: 
           <FeatureCard
             className="lg:col-span-2"
             title="Custom preview URLs."
-            description="Reserve a memorable link like agentaxio.preview.localians.com with the 7-Day Pass."
+            description="Reserve a memorable link like agentaxio.preview.localians.com with the Preview Pass."
             badge={customUrls ? undefined : "Coming soon"}
             visual={<CustomUrlVisual />}
           />

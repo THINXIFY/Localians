@@ -91,7 +91,7 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
   // Early feedback only: the share itself is authorized against the project's plan again when the CLI starts it.
   if (parsed.durationMinutes && parsed.durationMinutes > FREE_MAX_MINUTES) {
     const plan = projectId ? await getProjectPlan({ id: projectId, workspaceId: setup.workspaceId }, userId) : null;
-    if (!plan?.pass) throw new SetupError("plan_required", `Sessions longer than ${durationLabel(FREE_MAX_MINUTES)} need a 7-Day Pass.`);
+    if (!plan?.pass) throw new SetupError("plan_required", `Sessions longer than ${durationLabel(FREE_MAX_MINUTES)} need a Preview Pass.`);
   }
   const passwordHash = parsed.access.mode === "PASSWORD" && parsed.access.password ? await hashPassword(parsed.access.password) : undefined;
   await prisma.shareSetup.update({

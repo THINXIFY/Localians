@@ -69,7 +69,7 @@ function buildSections(payments: boolean): LegalSection[] {
             that include the request path but not headers, cookies or bodies.
           </li>
           <li>
-            <strong>Upgrade orders and payment records:</strong> for a 7-Day Preview Pass order, the Order ID, project, amount, currency and network, any custom URL you
+            <strong>Upgrade orders and payment records:</strong> for a Preview Pass order, the Order ID, project, amount, currency and network, any custom URL you
             requested, the transaction hash you provide, the result of our blockchain check, the review status and notes, and timestamps. See{" "}
             <a href="#payments-and-blockchain" className="text-fg underline decoration-white/25 underline-offset-4 hover:decoration-accent">Payments and blockchain</a>.
           </li>
@@ -195,8 +195,8 @@ function buildSections(payments: boolean): LegalSection[] {
       <>
         <p>
           {payments
-            ? "The 7-Day Preview Pass is paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person."
-            : "Paid upgrades are not open yet. When they open, the 7-Day Preview Pass is planned to be paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person."}{" "}
+            ? "The Preview Pass is paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person."
+            : "Paid upgrades are not open yet. When they open, the Preview Pass is planned to be paid in USDT on BNB Smart Chain (BEP20) and reviewed by a person."}{" "}
           You create an upgrade request in your dashboard, which gives you an Order ID; you send the payment
           and give us the transaction hash (or email it to us). We then check on the blockchain that the transfer exists and matches, and an administrator approves or rejects the request. We store the order,
           the transaction hash, the result of the check, the reviewer and any note, so we can activate, support and, where appropriate, revoke or correct a pass.

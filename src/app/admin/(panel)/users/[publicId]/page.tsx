@@ -63,7 +63,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ publ
                           {p.previewName?.status === "ACTIVE" ? ` · ${p.previewName.name}` : ""}
                         </span>
                       </span>
-                      <span className="shrink-0">{pass ? <Pill tone="live">7-Day Pass until {fmtDate(pass.endsAt)}</Pill> : <Pill tone="off">{free}</Pill>}</span>
+                      <span className="shrink-0">{pass ? <Pill tone="live">Pass until {fmtDate(pass.endsAt)}</Pill> : <Pill tone="off">{free}</Pill>}</span>
                     </li>
                   );
                 })}

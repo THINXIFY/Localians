@@ -30,7 +30,7 @@ async function realignLiveSessions(tx: Tx, project: { id: string; workspaceId: s
     if (s.planTier === "PASS" && (!end || s.expiresAt > end)) next = end && end > now ? end : now;
     if (next.getTime() === s.expiresAt.getTime()) continue;
     if (next <= now) {
-      await endSession(tx, { id: s.id, workspaceId: project.workspaceId }, { status: "EXPIRED", reason: "The 7-Day Pass was cancelled", event: TunnelEventType.EXPIRED, now });
+      await endSession(tx, { id: s.id, workspaceId: project.workspaceId }, { status: "EXPIRED", reason: "The Preview Pass was cancelled", event: TunnelEventType.EXPIRED, now });
       work.end.push(s);
     } else {
       await tx.tunnelSession.update({ where: { id: s.id }, data: { expiresAt: next, ...(end ? { planTier: "PASS" } : {}) } });
@@ -53,7 +53,7 @@ export async function notifyGateways(projectId: string, work: GatewayWork) {
  */
 export async function grantPassInTx(
   tx: Tx,
-  input: { projectId: string; source: "PAYMENT" | "ADMIN"; requestId?: string | null; requestedName?: string | null; actor: AuditActor; now?: Date },
+  input: { projectId: string; source: "PAYMENT" | "ADMIN"; requestId?: string | null; requestedName?: string | null; actor: AuditActor; now?: Date; /** Pass length (the order's snapshot); 7 when not given. */ days?: number },
 ) {
   const now = input.now ?? new Date();
   await lockProject(tx, input.projectId);
@@ -69,7 +69,7 @@ export async function grantPassInTx(
       projectId: project.id,
       workspaceId: project.workspaceId,
       startsAt,
-      endsAt: new Date(startsAt.getTime() + PASS_MS),
+      endsAt: new Date(startsAt.getTime() + (input.days ? input.days * 86_400_000 : PASS_MS)),
       source: input.source,
       requestId: input.requestId ?? null,
       createdById: input.actor.id ?? null,

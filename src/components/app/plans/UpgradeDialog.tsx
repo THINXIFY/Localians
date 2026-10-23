@@ -16,6 +16,7 @@ import { FormError, inputClasses } from "@/components/app/Field";
 import { Button } from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { cn } from "@/lib/cn";
+import { afterPaymentMessage } from "@/lib/offer";
 import {
   isOpenRequest,
   ORDER_STATUS_LABEL,
@@ -31,8 +32,8 @@ import {
 } from "@/server/actions/upgrades";
 import { type NameCheck, NameField } from "../names/NameField";
 
-export const PASS_BENEFITS = [
-  "7 more days of sharing for this project",
+export const passBenefits = (moreLabel: string) => [
+  `${moreLabel} of sharing for this project`,
   "One reserved custom URL",
   "Password protection",
   "Reconnect on the same link while it's active",
@@ -51,7 +52,7 @@ const FAILED = {
 };
 
 /**
- * 7-Day Preview Pass checkout: plan → (custom URL) → Order ID + USDT (BEP20) payment details → transaction hash →
+ * Preview Pass checkout (price and length from the server): plan → (custom URL) → Order ID + USDT (BEP20) payment details → transaction hash →
  * status. Nothing activates until the transfer is verified on chain and an administrator approves it. While payments
  * are off, it shows the plan and "Payments coming soon" — no deposit address, no order.
  */
@@ -83,6 +84,8 @@ export function UpgradeDialog({
       ? { ...created, ...(fromPlan ?? {}) }
       : fromPlan;
   const renewing = Boolean(plan.pass);
+  // An existing order shows the price and length it was created with; a new order the current offer.
+  const offer = order?.payTo?.offer ?? payment.offer;
   const askName = !hasCustomName && !renewing;
   const [name, setName] = useState(() => suggestName(project.name));
   const [check, setCheck] = useState<NameCheck>({ state: "idle" });
@@ -108,7 +111,7 @@ export function UpgradeDialog({
       status: result.data.status,
       txHash: result.data.txHash,
       payTo: payment.recipient
-        ? { recipient: payment.recipient, qr: payment.qr, qrImageUrl: payment.qrImageUrl }
+        ? { recipient: payment.recipient, qr: payment.qr, qrImageUrl: payment.qrImageUrl, offer: payment.offer }
         : null,
     });
     router.refresh();
@@ -145,7 +148,7 @@ export function UpgradeDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={renewing ? "Renew your 7-Day Pass" : "7-Day Preview Pass"}
+      title={renewing ? `Renew your ${offer.shortName}` : offer.name}
       busy={busy === "start" || busy === "hash"}
       className="max-w-[540px]"
     >
@@ -159,7 +162,7 @@ export function UpgradeDialog({
               {project.name}
             </p>
             <ul className="mt-2 flex flex-col gap-1">
-              {PASS_BENEFITS.map((b) => (
+              {passBenefits(offer.moreLabel).map((b) => (
                 <li key={b} className="flex items-center gap-2 text-[13px]">
                   <Check
                     className="size-3.5 shrink-0 text-accent-ink"
@@ -172,15 +175,15 @@ export function UpgradeDialog({
           </div>
           <div className="flex shrink-0 items-baseline gap-2 sm:block sm:text-right">
             <p className="text-[26px] font-semibold leading-none tracking-[-0.03em] text-fg">
-              $5
+              {offer.priceLabel}
             </p>
-            <p className="text-[11.5px] text-fg-3 sm:mt-1">one-time · 7 days</p>
+            <p className="text-[11.5px] text-fg-3 sm:mt-1">one-time · {offer.daysLabel}</p>
           </div>
         </div>
         <p className="text-[12.5px] text-fg-3">
           {renewing
-            ? "The new 7 days start when your current pass ends. "
-            : "The 7 days start when your payment is verified. "}
+            ? `The new ${offer.daysLabel} start when your current pass ends. `
+            : `The ${offer.daysLabel} start when your payment is verified. `}
           It doesn&apos;t renew by itself. Your computer and app must stay
           running for the preview to work.
         </p>
@@ -362,7 +365,7 @@ function PaymentStep({
       <p className="flex items-start gap-2 rounded-xl border border-line p-3 text-[12.5px]">
         <Mail className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden="true" />
         <span>
-          {payment.afterPaymentMessage}{" "}
+          {afterPaymentMessage(order.payTo?.offer?.name ?? payment.offer.name)}{" "}
           <a
             href={`mailto:${payment.supportEmail}?subject=${encodeURIComponent(`Payment for ${order.orderId}`)}`}
             className="text-fg underline underline-offset-2"
@@ -470,7 +473,7 @@ function PaymentDetails({
           <div>
             <dt className="text-[12px] text-fg-3">Amount</dt>
             <dd className="text-[18px] font-semibold text-fg">
-              {payment.amountLabel}
+              {payTo.offer?.usdtLabel ?? payment.amountLabel}
             </dd>
           </div>
           <div>

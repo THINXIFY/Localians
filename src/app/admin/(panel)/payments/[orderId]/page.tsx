@@ -25,7 +25,7 @@ export default async function AdminPaymentPage({ params }: { params: Promise<{ o
     ["Customer", <Link key="Customer" href={`/admin/users/${r.user.publicId}`} className="underline underline-offset-2">{r.user.username ? `@${r.user.username}` : r.user.publicId}</Link>],
     ["Email", r.user.email],
     ["Project", r.project ? r.project.name : `${r.projectName} (deleted)`],
-    ["Product", "7-Day Preview Pass"],
+    ["Product", `${r.passDays}-Day Preview Pass (price and length fixed when ordered)`],
     ["Amount", `${Number(r.amountMicros) / 1_000_000} ${r.currency} on ${r.network}`],
     ["Pay to", <span key="Pay to" className="font-mono text-[12px]">{r.recipient}</span>],
     ["Custom URL requested", r.requestedName ?? "—"],

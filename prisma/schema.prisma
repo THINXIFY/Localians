@@ -613,8 +613,10 @@ model UpgradeRequest {
   project       Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   projectName   String
   product       String
-  /// 6-decimal micro-units of USDT (5 USDT = 5000000).
+  /// 6-decimal micro-units of USDT (5 USDT = 5000000). Snapshot of the price when the order was created.
   amountMicros  BigInt
+  /// Snapshot of the pass length (days) when the order was created; the pass granted on approval uses it.
+  passDays      Int           @default(7)
   currency      String
   network       String
   recipient     String
@@ -662,6 +664,12 @@ model PaymentSetting {
   recipient   String
   /// Uploaded QR image (media_files id), accepted only when it decodes to `recipient`; null = generated QR.
   qrImageId   String?
+  /// Price of a Preview Pass for NEW orders, in USDT micro-units (6 decimals). USD prices are charged 1:1 in USDT.
+  priceMicros BigInt   @default(5000000)
+  /// Length of a Preview Pass for NEW orders, in days.
+  passDays    Int      @default(7)
+  /// When the price or length last changed (null: never changed from the defaults).
+  pricingUpdatedAt DateTime?
   updatedAt   DateTime @updatedAt
   updatedById String?
 

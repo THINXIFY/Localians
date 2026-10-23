@@ -4,7 +4,7 @@ import { CheckCircle2, Terminal, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { decideDeviceAction, lookupDeviceCodeAction } from "@/server/actions/cli";
-import { Field, FormError, TextInput } from "./Field";
+import { Field, FormError, Select, TextInput } from "./Field";
 
 type Step = { kind: "enter" } | { kind: "confirm"; userCode: string; clientName: string } | { kind: "done"; approved: boolean };
 
@@ -81,18 +81,13 @@ export function DeviceApproval({ initialCode, initialRequest, initialError, emai
               <dt className="text-fg-3">Workspace</dt>
               <dd className="min-w-0 text-right text-fg">
                 {workspaces.length > 1 ? (
-                  <select
-                    aria-label="Workspace this computer can share into"
-                    value={workspaceId}
-                    onChange={(e) => setWorkspaceId(e.target.value)}
-                    className="max-w-[220px] rounded-lg border border-line-strong bg-bg-2 px-2 py-1 text-[13.5px] text-fg"
-                  >
+                  <Select aria-label="Workspace this computer can share into" value={workspaceId} onChange={(e) => setWorkspaceId(e.target.value)} density="sm" wrapperClassName="max-w-[220px]">
                     {workspaces.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : (
                   <span className="block truncate">{workspaces[0]?.name}</span>
                 )}

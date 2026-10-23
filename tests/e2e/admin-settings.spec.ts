@@ -244,22 +244,106 @@ test("workspace avatar: preview, save, shown in the dashboard, members-only imag
   expect((await page.request.get(src)).status()).toBe(404);
 });
 
-test("Share App dropdowns keep the chevron clear of the edge and the text, on desktop and phones", async ({ page }) => {
+test("every dashboard dropdown shows a chevron 16px from the edge, clear of the text, on desktop and phones", async ({ page }) => {
   await createUserOnDashboard(page, "Dropdown User");
-  await createProject(page, { name: "Dropdown App", port: "4703" });
+  const id = await createProject(page, { name: "Dropdown App", port: "4703" });
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/dashboard/share");
-    for (const select of await page.locator("main select").all()) {
-      const style = await select.evaluate((el) => {
-        const s = getComputedStyle(el);
-        return { appearance: s.appearance, paddingRight: parseFloat(s.paddingRight), bgPos: s.backgroundPositionX, height: el.getBoundingClientRect().height };
-      });
-      expect(style.appearance).toBe("none");
-      expect(style.paddingRight).toBeGreaterThanOrEqual(40);
-      expect(style.bgPos).toMatch(/right 16px|calc\(100% - 16px\)/);
-      expect(style.height).toBe(40);
+    for (const path of ["/dashboard/share", "/dashboard/previews", "/dashboard/analytics", `/dashboard/projects/${id}`, "/dashboard/projects/new"]) {
+      await page.goto(path);
+      const selects = page.locator("main select");
+      if (path === "/dashboard/share") expect(await selects.count(), path).toBeGreaterThan(0); // others may hide filters when empty
+      for (const select of await selects.all()) {
+        if (!(await select.isVisible())) continue;
+        const chevron = select.locator("xpath=following-sibling::*[contains(@class,'ui-select-chevron')]");
+        await expect(chevron, path).toBeVisible();
+        const [box, icon] = [(await select.boundingBox())!, (await chevron.boundingBox())!];
+        const gap = box.x + box.width - (icon.x + icon.width);
+        expect(gap, path).toBeGreaterThanOrEqual(15);
+        expect(gap, path).toBeLessThanOrEqual(21);
+        expect(Math.abs(icon.y + icon.height / 2 - (box.y + box.height / 2)), path).toBeLessThanOrEqual(1.5); // vertically centred
+        const padding = await select.evaluate((el) => parseFloat(getComputedStyle(el).paddingRight));
+        expect(padding, path).toBeGreaterThanOrEqual(icon.width + gap); // text stops before the chevron
+        expect([40, 44]).toContain(Math.round(box.height));
+      }
+      await expectNoHorizontalOverflow(page);
     }
-    await expectNoHorizontalOverflow(page);
+  }
+  // Keyboard: a dropdown is reachable and changes with the arrow keys.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/dashboard/share");
+  const stop = page.getByTestId("auto-stop");
+  await stop.focus();
+  await expect(stop).toBeFocused();
+  await stop.selectOption({ index: 1 });
+  await expect(stop).not.toHaveValue("");
+});
+
+test("admin pricing: password-confirmed change reaches the homepage, Terms and checkout; existing orders keep their price", async ({ page }) => {
+  const customer = await page.context().browser()!.newContext();
+  const shop = await customer.newPage();
+  await createUserOnDashboard(shop, "Pricing Customer");
+  await createProject(shop, { name: "Pricing App", port: "4704" });
+  const projectUrl = shop.url();
+  await shop.locator("#plan").getByRole("button", { name: "Upgrade for $5" }).click();
+  await shop.getByLabel("Your custom URL (optional)").fill(`pricecase${Date.now() % 1_000_000}`);
+  await expect(shop.getByTestId("upgrade-dialog").getByTestId("name-status")).toContainText("is available");
+  await shop.getByTestId("upgrade-dialog").getByRole("button", { name: "Get my Order ID" }).click();
+  await expect(shop.getByTestId("upgrade-dialog").getByTestId("order-id")).toBeVisible();
+
+  try {
+    await adminLogin(page);
+    await page.goto("/admin/settings");
+    const pricing = page.getByTestId("pricing-settings");
+    await expect(pricing).toContainText("7-Day Preview Pass");
+    await page.getByTestId("price-input").fill("4.999");
+    await expect(pricing).toContainText("US dollars");
+    await page.getByTestId("price-input").fill("9.99");
+    await page.getByTestId("days-input").fill("14");
+    await pricing.getByRole("button", { name: "Save changes" }).click();
+    const confirm = page.getByRole("dialog", { name: "Change the pass pricing?" });
+    await expect(confirm.getByTestId("pricing-old")).toHaveText("$5 · 7 days");
+    await expect(confirm.getByTestId("pricing-new")).toHaveText("$9.99 · 14 days");
+    await confirm.getByLabel("Your admin password").fill(ADMIN_PASSWORD);
+    await confirm.getByRole("button", { name: "Change pricing" }).click();
+    await expect(page.getByText("Pricing updated.")).toBeVisible();
+
+    await shop.goto("/");
+    const section = shop.locator("#pricing");
+    await expect(section).toContainText("$9.99");
+    await expect(section).toContainText("14-Day Preview Pass");
+    await expect(section.getByRole("link", { name: "Upgrade for $9.99" })).toBeVisible();
+    await shop.goto("/terms");
+    await expect(shop.locator("main")).toContainText("14-Day Preview Pass costs $9.99");
+
+    // The order made before the change still shows 5 USDT and 7 days.
+    await shop.goto(projectUrl);
+    await shop.locator("#plan").getByRole("button", { name: "View payment details" }).click();
+    const dialog = shop.getByTestId("upgrade-dialog");
+    await expect(shop.getByRole("dialog", { name: "7-Day Preview Pass" })).toBeVisible();
+    await expect(dialog).toContainText("5 USDT");
+    await expect(dialog).toContainText("Your 7-Day Preview Pass will activate");
+    await expect(dialog).not.toContainText("9.99");
+    await expect(dialog).not.toContainText("14-Day");
+    await shop.keyboard.press("Escape");
+
+    // A new project's checkout uses the new price.
+    await createProject(shop, { name: "Pricing App Two", port: "4705" });
+    await shop.locator("#plan").getByRole("button", { name: "Upgrade for $9.99" }).click();
+    await expect(shop.getByTestId("upgrade-dialog")).toContainText("9.99 USDT");
+    await expect(shop.getByRole("dialog", { name: "14-Day Preview Pass" })).toBeVisible();
+
+    // Back to $5 / 7 days through the admin page (which also refreshes the cached public pages).
+    await page.getByTestId("price-input").fill("5");
+    await page.getByTestId("days-input").fill("7");
+    await pricing.getByRole("button", { name: "Save changes" }).click();
+    await confirm.getByLabel("Your admin password").fill(ADMIN_PASSWORD);
+    await confirm.getByRole("button", { name: "Change pricing" }).click();
+    await expect(page.getByText("Pricing updated.")).toBeVisible();
+    await shop.goto("/");
+    await expect(shop.locator("#pricing").getByRole("link", { name: "Upgrade for $5" })).toBeVisible();
+  } finally {
+    await sql(`UPDATE payment_settings SET "priceMicros" = 5000000, "passDays" = 7, "pricingUpdatedAt" = NULL WHERE id = 1`);
+    await customer.close();
   }
 });

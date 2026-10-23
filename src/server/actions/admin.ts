@@ -9,7 +9,7 @@ import { audit } from "../audit";
 import { auth } from "../auth";
 import { prisma } from "../db";
 import { ForbiddenError, NotFoundError } from "../errors";
-import { changeWallet, PaymentSettingsError, resetPaymentQr, setPaymentsEnabled, uploadPaymentQr } from "../payment-settings";
+import { changeWallet, PaymentSettingsError, resetPaymentQr, setPaymentsEnabled, updatePricing, uploadPaymentQr } from "../payment-settings";
 import { rateLimit } from "../rate-limit";
 import type { ActionResult } from "./result";
 import { adminSetTxHash, approveRequest, markUnderReview, rejectRequest, UpgradeError, verifyRequestOnChain } from "../upgrades";
@@ -155,4 +155,12 @@ export async function uploadPaymentQrAction(form: FormData) {
 
 export async function resetPaymentQrAction() {
   return adminCall("resetPaymentQr", (admin) => resetPaymentQr(admin));
+}
+
+/** Price (USD, charged 1:1 in USDT) and length of the pass for NEW orders. Needs the admin password again. */
+export async function updatePricingAction(input: { price: string; days: string; password: string }) {
+  return adminCall("updatePricing", async (admin) => {
+    const change = await updatePricing(admin, { price: String(input?.price ?? ""), days: String(input?.days ?? ""), password: String(input?.password ?? "") });
+    return { price: change.next.priceLabel, days: change.next.days };
+  });
 }

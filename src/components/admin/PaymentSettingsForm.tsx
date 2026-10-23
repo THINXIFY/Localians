@@ -8,8 +8,9 @@ import { FormError, FormNotice, inputClasses, PasswordInput } from "@/components
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
+import { DAYS_LIMITS, makeOffer, parsePassDays, parseUsdPrice, PRICE_LIMITS, type PassOffer } from "@/lib/offer";
 import { checkBscAddress } from "@/lib/wallet";
-import { changeWalletAction, resetPaymentQrAction, setPaymentsEnabledAction, uploadPaymentQrAction } from "@/server/actions/admin";
+import { changeWalletAction, resetPaymentQrAction, setPaymentsEnabledAction, updatePricingAction, uploadPaymentQrAction } from "@/server/actions/admin";
 import { Pill } from "./Ui";
 
 type View = {
@@ -21,6 +22,8 @@ type View = {
   generatedQr: { size: number; d: string };
   updatedAt: string;
   updatedBy: string | null;
+  offer: PassOffer;
+  pricingUpdatedAt: string | null;
 };
 
 const FAILED = { ok: false as const, error: "Couldn't reach the server. Check your connection and try again." };
@@ -46,6 +49,7 @@ export function PaymentSettingsForm({ view }: { view: View }) {
   return (
     <div className="flex max-w-[820px] flex-col gap-5" data-testid="payment-settings">
       <PaymentSystem view={view} />
+      <Pricing view={view} />
       <Wallet view={view} />
       <QrCode view={view} />
       <p className="text-[12.5px] text-fg-3" data-testid="settings-updated">
@@ -86,7 +90,7 @@ function PaymentSystem({ view }: { view: View }) {
   return (
     <Section
       title="Payment system"
-      description="Whether customers can start new 7-Day Pass orders."
+      description="Whether customers can start new Preview Pass orders."
       status={<Pill tone={view.effective ? "live" : "off"}>{view.effective ? "Enabled" : "Disabled"}</Pill>}
     >
       <div className="flex flex-col gap-4">
@@ -131,7 +135,7 @@ function PaymentSystem({ view }: { view: View }) {
       </div>
       <Dialog open={confirming} onClose={() => setConfirming(false)} title="Turn payments on?" busy={busy}>
         <div className="flex flex-col gap-4 text-[13.5px] text-fg-2">
-          <p>Customers will be able to create orders and see this wallet for 5 USDT on BNB Smart Chain (BEP20):</p>
+          <p>Customers will be able to create orders and see this wallet for {view.offer.usdtLabel} on BNB Smart Chain (BEP20):</p>
           <code className="break-all rounded-lg border border-line bg-bg-2 px-3 py-2 font-mono text-[12.5px] text-fg">{view.recipient}</code>
           <p>Every pass still needs an on-chain check and your approval in Payments.</p>
           <div className="flex justify-end gap-2">
@@ -143,6 +147,161 @@ function PaymentSystem({ view }: { view: View }) {
             </Button>
           </div>
         </div>
+      </Dialog>
+    </Section>
+  );
+}
+
+// ------------------------------------------------------------------ pricing
+
+function Pricing({ view }: { view: View }) {
+  const router = useRouter();
+  const id = useId();
+  const current = view.offer;
+  const [price, setPrice] = useState(current.priceLabel.slice(1));
+  const [days, setDays] = useState(String(current.days));
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  // The saved values changed (after a refresh): start from them again.
+  const [synced, setSynced] = useState(`${current.priceMicros}/${current.days}`);
+  if (synced !== `${current.priceMicros}/${current.days}`) {
+    setSynced(`${current.priceMicros}/${current.days}`);
+    setPrice(current.priceLabel.slice(1));
+    setDays(String(current.days));
+  }
+  const priceCheck = parseUsdPrice(price);
+  const daysCheck = parsePassDays(days);
+  const next = priceCheck.ok && daysCheck.ok ? makeOffer(priceCheck.micros, daysCheck.days) : null;
+  const changed = next !== null && (next.priceMicros !== current.priceMicros || next.days !== current.days);
+
+  async function save() {
+    setBusy(true);
+    setDialogError(null);
+    const result = await updatePricingAction({ price, days, password }).catch(() => FAILED);
+    setBusy(false);
+    if (!result.ok) return setDialogError(result.error);
+    setConfirming(false);
+    setPassword("");
+    setSaved(true);
+    router.refresh();
+  }
+
+  return (
+    <Section
+      title="Pricing"
+      description="The price and length of the Preview Pass for new orders. Prices are in US dollars, paid 1:1 in USDT."
+      status={<Pill tone="live">{`${current.priceLabel} · ${current.daysLabel}`}</Pill>}
+    >
+      <div className="flex flex-col gap-4" data-testid="pricing-settings">
+        <p className="text-[13px] text-fg-2">
+          Active now: <strong className="font-medium text-fg">{current.name}</strong> for <strong className="font-medium text-fg">{current.priceLabel}</strong> ({current.usdtLabel})
+          {view.pricingUpdatedAt ? <span className="text-fg-3"> · changed {formatDateTime(new Date(view.pricingUpdatedAt))}</span> : <span className="text-fg-3"> · default</span>}
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-price`} className="text-[13px] font-medium text-fg">
+              Price (USD)
+            </label>
+            <div className="relative">
+              <span aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] text-fg-3">
+                $
+              </span>
+              <input
+                id={`${id}-price`}
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  setSaved(false);
+                }}
+                aria-invalid={!priceCheck.ok}
+                className={cn(inputClasses, "h-11 pl-7 tabular-nums")}
+                data-testid="price-input"
+              />
+            </div>
+            <p className={cn("text-[12px]", priceCheck.ok ? "text-fg-3" : "text-danger")}>
+              {priceCheck.ok ? `Customers pay ${makeOffer(priceCheck.micros, 1).usdtLabel}. $${PRICE_LIMITS.minUsd}–$${PRICE_LIMITS.maxUsd}, whole cents.` : priceCheck.error}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-days`} className="text-[13px] font-medium text-fg">
+              Pass length (days)
+            </label>
+            <input
+              id={`${id}-days`}
+              inputMode="numeric"
+              value={days}
+              onChange={(e) => {
+                setDays(e.target.value);
+                setSaved(false);
+              }}
+              aria-invalid={!daysCheck.ok}
+              className={cn(inputClasses, "h-11 tabular-nums")}
+              data-testid="days-input"
+            />
+            <p className={cn("text-[12px]", daysCheck.ok ? "text-fg-3" : "text-danger")}>
+              {daysCheck.ok ? `Shown as the “${makeOffer(1_000_000, daysCheck.days).name}”. ${DAYS_LIMITS.min}–${DAYS_LIMITS.max} days.` : daysCheck.error}
+            </p>
+          </div>
+        </div>
+        <p className="text-[12.5px] text-fg-3">Orders already created keep their price and length, and are verified on chain against their own amount.</p>
+        {saved ? <FormNotice tone="success">Pricing updated. The homepage, checkout and dashboard now show the new price.</FormNotice> : null}
+        <div>
+          <Button
+            size="sm"
+            className="h-10"
+            disabled={!changed || busy}
+            onClick={() => {
+              setDialogError(null);
+              setConfirming(true);
+            }}
+          >
+            Save changes
+          </Button>
+        </div>
+      </div>
+      <Dialog open={confirming} onClose={() => setConfirming(false)} title="Change the pass pricing?" busy={busy}>
+        <form
+          className="flex flex-col gap-4 text-[13.5px] text-fg-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+        >
+          <dl className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-line bg-bg-2 px-3 py-2">
+              <dt className="text-[12px] text-fg-3">Now</dt>
+              <dd className="text-fg" data-testid="pricing-old">
+                {current.priceLabel} · {current.daysLabel}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-accent/35 bg-accent/[0.05] px-3 py-2">
+              <dt className="text-[12px] text-fg-3">New orders</dt>
+              <dd className="font-medium text-fg" data-testid="pricing-new">
+                {next ? `${next.priceLabel} · ${next.daysLabel}` : "—"}
+              </dd>
+            </div>
+          </dl>
+          <p>The new price applies to orders created from now on. Customers pay {next?.usdtLabel ?? "—"} on BNB Smart Chain (BEP20).</p>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${id}-password`} className="text-[13px] font-medium text-fg">
+              Your admin password
+            </label>
+            <PasswordInput id={`${id}-password`} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" className="h-10" />
+          </div>
+          <FormError message={dialogError} />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" size="sm" className="h-10" onClick={() => setConfirming(false)} data-autofocus>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" className="h-10" loading={busy} disabled={!password}>
+              Change pricing
+            </Button>
+          </div>
+        </form>
       </Dialog>
     </Section>
   );

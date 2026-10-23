@@ -1,6 +1,7 @@
 import "server-only";
 import { customNamesRouting } from "./cli/config";
-import { emergencyDisabled, paymentsEnabled } from "./payment-settings";
+import { DEFAULT_OFFER, type PassOffer } from "@/lib/offer";
+import { emergencyDisabled, getPassOffer, paymentsEnabled } from "./payment-settings";
 
 /**
  * What the marketing site may advertise as available today. Anything off is labelled "Coming soon" (never linked to a
@@ -10,14 +11,18 @@ import { emergencyDisabled, paymentsEnabled } from "./payment-settings";
  */
 export async function launchFlags() {
   let payments: boolean;
+  let offer: PassOffer;
   try {
-    payments = await paymentsEnabled();
+    [payments, offer] = await Promise.all([paymentsEnabled(), getPassOffer()]);
   } catch {
     payments = !emergencyDisabled() && process.env.PAYMENTS_ENABLED === "on";
+    offer = DEFAULT_OFFER;
   }
   return {
     /** 7-Day Pass purchases (admin setting in /admin/settings). */
     payments,
+    /** The Preview Pass price and length (admin setting in /admin/settings). */
+    offer,
     /** Custom preview URLs routed by the gateways (PREVIEW_CUSTOM_NAMES=on). */
     customUrls: customNamesRouting(),
     /** The VS Code extension isn't on the Marketplace yet. */

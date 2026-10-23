@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
-import { inputClasses, selectClasses } from "../Field";
+import { inputClasses, Select } from "../Field";
 
 const FILTERS = [
   { value: "all", label: "All" },
@@ -13,7 +13,6 @@ const FILTERS = [
   { value: "historical", label: "Historical" },
 ] as const;
 
-const filterSelect = cn(selectClasses, "h-10 w-full text-[13.5px] sm:w-auto");
 
 /** Status, project, search and sort — all in the URL so views are shareable and survive refresh. */
 export function PreviewFilters({ projects }: { projects: { id: string; name: string }[] }) {
@@ -77,21 +76,21 @@ export function PreviewFilters({ projects }: { projects: { id: string; name: str
           <label className="sr-only" htmlFor="preview-project">
             Project
           </label>
-          <select id="preview-project" value={params.get("project") ?? ""} onChange={(e) => update({ project: e.target.value })} className={filterSelect}>
+          <Select id="preview-project" value={params.get("project") ?? ""} onChange={(e) => update({ project: e.target.value })} density="sm" wrapperClassName="md:w-52">
             <option value="">All projects</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
           <label className="sr-only" htmlFor="preview-sort">
             Sort
           </label>
-          <select id="preview-sort" value={params.get("sort") ?? "activity"} onChange={(e) => update({ sort: e.target.value })} className={filterSelect}>
+          <Select id="preview-sort" value={params.get("sort") ?? "activity"} onChange={(e) => update({ sort: e.target.value })} density="sm" wrapperClassName="md:w-44">
             <option value="activity">Latest activity</option>
             <option value="newest">Newest first</option>
-          </select>
+          </Select>
         </div>
       </div>
     </div>

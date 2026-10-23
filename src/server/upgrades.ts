@@ -12,7 +12,8 @@ import { passActivatedMessage, upgradeRejectedMessage, upgradeRequestAdminMessag
 import { NotFoundError } from "./errors";
 import { log } from "./log";
 import { grantPassInTx, notifyGateways } from "./passes";
-import { currentQrImageId, getPaymentSettings, paymentQrImageUrl, paymentsEnabled } from "./payment-settings";
+import { afterPaymentMessage, makeOffer } from "@/lib/offer";
+import { currentQrImageId, getPassOffer, getPaymentSettings, paymentQrImageUrl, paymentsEnabled } from "./payment-settings";
 import { holdName } from "./preview-names";
 import { getProjectForUser } from "./projects";
 import { requireMembership } from "./workspaces";
@@ -28,18 +29,15 @@ import { requireMembership } from "./workspaces";
  * belong to one request only (unique). Whether requests can be taken, and the wallet new orders pay to, come from the
  * admin-managed payment settings (payment-settings.ts); each order snapshots its wallet and QR.
  */
+/** What every pass is paid in. The price and length come from the admin settings (getPassOffer) and are snapshotted per order. */
 export const PASS_PRICE = {
-  product: "PASS_7D",
-  amountMicros: 5_000_000n,
-  label: "5 USDT",
   currency: "USDT",
   network: "BSC",
   networkLabel: "BNB Smart Chain (BEP20)",
 } as const;
 
 export const SUPPORT_EMAIL = "hello@thinxify.com";
-export const AFTER_PAYMENT_MESSAGE =
-  "After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after successful payment verification.";
+export { afterPaymentMessage };
 
 const adminNotifyEmail = () => process.env.ADMIN_NOTIFY_EMAIL?.trim() || SUPPORT_EMAIL;
 
@@ -84,7 +82,7 @@ async function notifyAdmin(requestId: string, txHash?: string | null) {
  * member of the project's workspace may request; the pass applies to the project.
  */
 export async function createUpgradeRequest(userId: string, projectId: string, input: { name?: string | null } = {}) {
-  if (!(await paymentsEnabled())) throw new UpgradeError("disabled", "The 7-Day Pass isn't available to buy yet.");
+  if (!(await paymentsEnabled())) throw new UpgradeError("disabled", "The Preview Pass isn't available to buy yet.");
   // Make sure the settings row exists before the transaction reads it.
   await getPaymentSettings();
   const project = await getProjectForUser(userId, projectId);
@@ -107,8 +105,10 @@ export async function createUpgradeRequest(userId: string, projectId: string, in
           workspaceId: project.workspaceId,
           projectId: project.id,
           projectName: project.name,
-          product: PASS_PRICE.product,
-          amountMicros: PASS_PRICE.amountMicros,
+          // Price and length are taken from the server-side settings at this moment, never from the client.
+          product: `PASS_${settings.passDays}D`,
+          amountMicros: settings.priceMicros,
+          passDays: settings.passDays,
           currency: PASS_PRICE.currency,
           network: PASS_PRICE.network,
           recipient: settings.recipient,
@@ -288,7 +288,7 @@ export async function approveRequest(admin: AdminUser, orderId: string) {
       throw new UpgradeError("unverified", "Run “Verify on BSC” and make sure every check passes before approving.");
     }
     if (!request.projectId) throw new UpgradeError("project_gone", "The project was deleted. Reject the order and refund, or contact the customer.");
-    const result = await grantPassInTx(tx, { projectId: request.projectId, source: "PAYMENT", requestId: request.id, requestedName: request.requestedName, actor: { type: "ADMIN", id: admin.id } });
+    const result = await grantPassInTx(tx, { projectId: request.projectId, source: "PAYMENT", requestId: request.id, requestedName: request.requestedName, days: request.passDays, actor: { type: "ADMIN", id: admin.id } });
     await tx.upgradeRequest.update({ where: { id: request.id }, data: { status: "APPROVED", reviewedById: admin.id, reviewedAt: new Date() } });
     await audit(tx, { workspaceId: request.workspaceId, actor: { type: "ADMIN", id: admin.id }, action: "upgrade.approved", subject: { type: "upgrade_request", id: request.id }, detail: { orderId, passId: result.pass.id, txHash: request.txHash } });
     return { request, result };
@@ -305,6 +305,7 @@ export async function approveRequest(admin: AdminUser, orderId: string) {
       endsAt: outcome.result.pass.endsAt,
       customUrl: outcome.result.name && config ? previewUrl(config, outcome.result.name) : null,
       url: dashboardUrl(outcome.request.projectId),
+      passName: makeOffer(outcome.request.amountMicros, outcome.request.passDays).name,
     }),
   ).catch((error) => log("error", "pass activation email failed", { error: error instanceof Error ? error.message : "unknown" }));
   log("info", "upgrade approved", { orderId });
@@ -336,22 +337,24 @@ export { BSC };
 export async function paymentInfo(): Promise<import("@/lib/plans").PaymentInfo> {
   const enabled = await paymentsEnabled();
   const settings = await getPaymentSettings();
+  const offer = await getPassOffer();
   const qrImageId = enabled ? await currentQrImageId(settings) : null;
   return {
     enabled,
-    amountLabel: PASS_PRICE.label,
+    offer,
+    amountLabel: offer.usdtLabel,
     networkLabel: PASS_PRICE.networkLabel,
     // While payments are off, the deposit address and QR aren't sent to the browser at all.
     recipient: enabled ? settings.recipient : null,
     qr: enabled ? paymentQr(settings.recipient) : null,
     qrImageUrl: paymentQrImageUrl(qrImageId),
     supportEmail: SUPPORT_EMAIL,
-    afterPaymentMessage: AFTER_PAYMENT_MESSAGE,
+    afterPaymentMessage: afterPaymentMessage(offer.name),
   };
 }
 
 /** Where an existing order pays to: its own snapshot (never the current settings), shown only while payments are on. */
-export function orderPayTo(order: { recipient: string; qrImageId: string | null }, enabled: boolean) {
+export function orderPayTo(order: { recipient: string; qrImageId: string | null; amountMicros: bigint; passDays: number }, enabled: boolean) {
   if (!enabled) return null;
-  return { recipient: order.recipient, qr: paymentQr(order.recipient), qrImageUrl: paymentQrImageUrl(order.qrImageId) };
+  return { recipient: order.recipient, qr: paymentQr(order.recipient), qrImageUrl: paymentQrImageUrl(order.qrImageId), offer: makeOffer(order.amountMicros, order.passDays) };
 }

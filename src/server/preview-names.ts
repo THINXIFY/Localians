@@ -136,7 +136,7 @@ export async function claimName(userId: string, projectId: string, input: string
   const project = await getProjectForUser(userId, projectId);
   await requireMembership(userId, project.workspaceId);
   const plan = await getProjectPlan(project, userId);
-  if (!plan.pass) throw new NameError("plan_required", "Custom URLs come with the 7-Day Pass ($5 for 7 days).");
+  if (!plan.pass) throw new NameError("plan_required", "Custom URLs come with the Preview Pass.");
   const format = checkNameFormat(input);
   if (!format.ok) throw new NameError("invalid", format.reason);
   const now = new Date();
@@ -253,7 +253,7 @@ export async function releaseLapsedNames(now = new Date()) {
     const ended = await prisma.$transaction(async (tx) => {
       await lockName(tx, row.name);
       const still = await tx.previewName.findFirst({ where: { id: row.id, status: PreviewNameStatus.ACTIVE } });
-      return still ? release(tx, still, { type: "SYSTEM" }, "7-Day Pass ended", now) : [];
+      return still ? release(tx, still, { type: "SYSTEM" }, "Preview Pass ended", now) : [];
     });
     await Promise.all(ended.map((s) => terminateOnGateway(s.id, s.gatewayId)));
   }

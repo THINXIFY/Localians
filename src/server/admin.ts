@@ -77,7 +77,7 @@ async function planLabels(userIds: string[]) {
     select: { project: { select: { workspace: { select: { members: { select: { userId: true } } } } } } },
   });
   const paid = new Set(rows.flatMap((r) => r.project.workspace.members.map((m) => m.userId)));
-  return (id: string) => (paid.has(id) ? "7-Day Pass" : "Free");
+  return (id: string) => (paid.has(id) ? "Preview Pass" : "Free");
 }
 
 const PAGE = 50;

@@ -3,6 +3,7 @@
 import { ArrowUpRight, Link2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { PassOffer } from "@/lib/offer";
 import { useState } from "react";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { suggestName } from "@/lib/preview-names";
@@ -19,7 +20,7 @@ export type CustomUrlState = { name: string | null; url: string | null; canUse: 
  * A project's custom preview URL (7-Day Pass): claim one, change it, or release it. Every preview of the project is
  * then served on it, and the project's password protection applies to it like to any link.
  */
-export function CustomUrlPanel({ projectId, projectName, state, upgradeHref }: { projectId: string; projectName: string; state: CustomUrlState; upgradeHref: string | null }) {
+export function CustomUrlPanel({ projectId, projectName, state, upgradeHref, offer }: { projectId: string; projectName: string; state: CustomUrlState; upgradeHref: string | null; offer: PassOffer }) {
   const router = useRouter();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
@@ -90,7 +91,7 @@ export function CustomUrlPanel({ projectId, projectName, state, upgradeHref }: {
             <p className="text-[12.5px] leading-relaxed text-fg-3">
               {state.canUse
                 ? "Previews of this project use this link. When nothing is shared, visitors see that the preview is offline."
-                : "This project's 7-Day Pass has ended, so sharing is paused. The URL stays reserved for 3 days — renew the pass to keep it."}
+                : "This project's Preview Pass has ended, so sharing is paused. The URL stays reserved for 3 days — renew the pass to keep it."}
             </p>
           </>
         ) : null}
@@ -125,14 +126,16 @@ export function CustomUrlPanel({ projectId, projectName, state, upgradeHref }: {
                 Get <span className="font-mono">{suggestName(projectName) || "your-app"}.{domain}</span>
               </span>
             </p>
-            <p className="text-[13px] leading-relaxed text-fg-2">Custom URLs come with the 7-Day Pass: $5 one-time for 7 more days of sharing this project. No subscription.</p>
+            <p className="text-[13px] leading-relaxed text-fg-2">
+              Custom URLs come with the {offer.shortName}: {offer.priceLabel} one-time for {offer.moreLabel} of sharing this project. No subscription.
+            </p>
             {upgradeHref ? (
               <Link href={upgradeHref} className={buttonClasses({ size: "sm", className: "h-10 w-fit" })}>
-                Upgrade for $5
+                Upgrade for {offer.priceLabel}
                 <ArrowUpRight className="size-4" aria-hidden="true" />
               </Link>
             ) : (
-              <p className="text-[12.5px] text-fg-3">The 7-Day Pass is coming soon.</p>
+              <p className="text-[12.5px] text-fg-3">The {offer.shortName} is coming soon.</p>
             )}
           </div>
         ) : null}
@@ -142,7 +145,7 @@ export function CustomUrlPanel({ projectId, projectName, state, upgradeHref }: {
         <div className="flex flex-col gap-4 text-[13.5px] leading-relaxed text-fg-2">
           <p>
             Any preview on <span className="font-mono text-fg">{state.name}</span> stops right away, and the link stops working. Nobody else can claim it for 30 days; you can claim it again
-            while this project has a 7-Day Pass.
+            while this project has a Preview Pass.
           </p>
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-fg">

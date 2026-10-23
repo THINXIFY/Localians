@@ -4,11 +4,12 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { SubPage } from "@/components/sections/SubPage";
 import { breadcrumbs, pageMetadata } from "@/lib/seo";
 import { routes, site } from "@/lib/site";
+import type { PassOffer } from "@/lib/offer";
 import { launchFlags } from "@/server/launch";
 
 export const metadata: Metadata = pageMetadata({
   title: "Terms of Service: Using Localians Preview Links",
-  description: "The rules for using Localians: free 24-hour previews, the $5 7-Day Preview Pass, payments and verification, acceptable use, availability and account suspension.",
+  description: "The rules for using Localians: free 24-hour previews, the Preview Pass, payments and verification, acceptable use, availability and account suspension.",
   path: routes.terms,
 });
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = pageMetadata({
  *  4. Minimum age: 18 (no approved policy exists; mirrored in the privacy policy).
  *  5. The operator's legal entity name, registration and postal address are not stated anywhere in the project.
  */
-function buildSections(payments: boolean): LegalSection[] {
+function buildSections(payments: boolean, offer: PassOffer): LegalSection[] {
   return [
     {
       id: "acceptance",
@@ -86,22 +87,24 @@ function buildSections(payments: boolean): LegalSection[] {
     },
     {
       id: "preview-pass",
-      title: "7-Day Preview Pass",
+      title: "Preview Pass",
       body: (
         <>
           {!payments ? (
             <p>
-              <strong>Availability:</strong> the 7-Day Preview Pass is coming soon and can&apos;t be purchased yet. The description below explains how it will work once it is available in your dashboard.
+              <strong>Availability:</strong> the {offer.name} is coming soon and can&apos;t be purchased yet. The description below explains how it will work once it is available in your dashboard.
             </p>
           ) : null}
-          <p>The <strong>7-Day Preview Pass costs $5 (US dollars), paid once</strong>. It is not a subscription and never renews or charges you automatically. It includes:</p>
+          <p>
+            The <strong>{offer.name} costs {offer.priceLabel} (US dollars), paid once</strong>. It is not a subscription and never renews or charges you automatically. It includes:
+          </p>
           <ul>
-            <li>seven days of preview eligibility for <strong>one project you select</strong>;</li>
+            <li>{offer.daysLabel} of preview eligibility for <strong>one project you select</strong>;</li>
             <li>one reserved custom preview URL for that project while the pass is active (where custom URLs are enabled);</li>
             <li>password protection and the same dashboard features as the free plan.</li>
           </ul>
           <p>
-            <strong>When it starts.</strong> The seven days begin when we approve your payment and activate the pass, not when you place the order. If the project already has an active pass, the new one starts when the current one ends, so no paid time is lost.
+            <strong>When it starts.</strong> The {offer.daysLabel} begin when we approve your payment and activate the pass, not when you place the order. If the project already has an active pass, the new one starts when the current one ends, so no paid time is lost.
           </p>
           <p>
             <strong>Renewing.</strong> To extend, buy another pass for the project from your dashboard. Nothing renews automatically.
@@ -132,6 +135,7 @@ function buildSections(payments: boolean): LegalSection[] {
             <li><strong>Verification and approval are required.</strong> A pass is activated only after we verify your payment on the blockchain and an administrator approves the order. Submitting a transaction hash or a screenshot doesn&apos;t guarantee activation, and we may ask for more information.</li>
             <li><strong>No false or duplicate evidence.</strong> Submitting forged, altered or reused payment evidence, or a transaction already used for another order, is prohibited and may lead to rejection and account suspension.</li>
             <li><strong>Network fees</strong> and any exchange or wallet charges are yours to pay; the pass price is the amount shown, received in full.</li>
+            <li><strong>Pricing.</strong> Prices are set in US dollars and paid 1:1 in USDT (one USDT per dollar; {offer.priceLabel} is {offer.usdtLabel}). We may change the price or length for future orders; an order you have already created keeps the price and length shown when you created it.</li>
             <li><strong>Corrections and disputes.</strong> If you paid and haven&apos;t been activated, paid the wrong amount, or paid twice, email <MailLink /> with your Order ID and transaction hash. We&apos;ll review it and reply by email.</li>
           </ul>
           <p>
@@ -274,7 +278,7 @@ function buildSections(payments: boolean): LegalSection[] {
 export const revalidate = 300;
 
 export default async function TermsPage() {
-  const { payments } = await launchFlags();
+  const { payments, offer } = await launchFlags();
   return (
     <SubPage
       eyebrow="Legal"
@@ -287,7 +291,7 @@ export default async function TermsPage() {
       }
       width="wide"
     >
-      <LegalDocument sections={buildSections(payments)} />
+      <LegalDocument sections={buildSections(payments, offer)} />
       <JsonLd data={breadcrumbs([{ name: "Terms of Service", path: routes.terms }])} />
     </SubPage>
   );

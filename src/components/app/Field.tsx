@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ChevronDown } from "lucide-react";
 import { forwardRef, useId, useState, type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { passwordStrength } from "@/lib/validation/auth";
@@ -9,15 +9,14 @@ export const inputClasses =
   "w-full rounded-xl border border-line-strong bg-tint/[0.03] px-3.5 text-[14.5px] text-fg placeholder:text-fg-3 transition-[border-color,box-shadow,background-color] duration-150 outline-none hover:border-tint/25 focus-visible:border-accent/70 focus-visible:shadow-[0_0_0_3px_var(--accent-glow)] focus-visible:outline-none aria-[invalid=true]:border-danger/70 disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
- * Every dropdown in the dashboard: native <select> (keyboard and screen-reader behaviour for free) with the browser
- * arrow replaced by one chevron, 16px from the right edge, and enough right padding that long labels truncate
- * before reaching it. No height here (cn() does not merge classes): <Select> uses h-11; pass h-10 for compact rows.
+ * Every dropdown in Localians is a native <select> (keyboard, screen readers and phone pickers for free) styled the
+ * same way: the browser arrow is replaced by a chevron icon 16px from the right edge, with enough right padding that
+ * long labels truncate before reaching it. Where the browser supports customizable selects, the open menu is styled
+ * too (globals.css, .ui-select). Use <Select>; selectClasses is exported only for tests and rare custom cases.
  */
 export const selectClasses = cn(
   inputClasses,
-  "min-w-0 cursor-pointer appearance-none truncate bg-no-repeat pl-3.5 pr-11 leading-tight",
-  "bg-[length:16px_16px] bg-[position:right_16px_center]",
-  "bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23858F84' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")]",
+  "ui-select peer min-w-0 cursor-pointer appearance-none truncate pl-3.5 pr-11 leading-tight",
   "disabled:cursor-not-allowed [&>option]:bg-card [&>option]:text-fg",
 );
 
@@ -65,15 +64,24 @@ export const TextArea = forwardRef<HTMLTextAreaElement, ComponentProps<"textarea
   return <textarea ref={ref} className={cn(inputClasses, "min-h-[96px] resize-y py-2.5 leading-relaxed", className)} {...props} />;
 });
 
-export const Select = forwardRef<HTMLSelectElement, ComponentProps<"select">>(function Select({ className, children, ...props }, ref) {
+type SelectProps = ComponentProps<"select"> & {
+  /** "md" (h-11, forms) or "sm" (h-10, toolbars and compact rows). */
+  density?: "md" | "sm";
+  /** Layout classes for the wrapper (width, flex). The select itself always fills it. */
+  wrapperClassName?: string;
+};
+
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select({ className, wrapperClassName, density = "md", children, ...props }, ref) {
   return (
-    <select
-      ref={ref}
-      className={cn(selectClasses, "h-11", className)}
-      {...props}
-    >
-      {children}
-    </select>
+    <span className={cn("group relative inline-flex w-full min-w-0 align-middle", wrapperClassName)}>
+      <select ref={ref} className={cn(selectClasses, "w-full", density === "sm" ? "h-10 text-[13.5px]" : "h-11", className)} {...props}>
+        {children}
+      </select>
+      <ChevronDown
+        aria-hidden="true"
+        className="ui-select-chevron pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-fg-3 transition-[transform,color] duration-200 group-hover:text-fg-2 peer-focus-visible:text-accent-ink peer-disabled:opacity-50"
+      />
+    </span>
   );
 });
 

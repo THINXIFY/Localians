@@ -8,7 +8,7 @@ import { type AdminUser, deleteUser, getUserDetail, listUsers, reactivateUser, s
 import { authenticateCli } from "@/server/cli/credentials";
 import { prisma } from "@/server/db";
 import { getProjectPlan } from "@/server/plans";
-import { DEFAULT_RECIPIENT } from "@/server/payment-settings";
+import { DEFAULT_RECIPIENT, getPassOffer } from "@/server/payment-settings";
 import { createProject } from "@/server/projects";
 import {
   adminSetTxHash,
@@ -204,7 +204,8 @@ describe("7-Day Pass upgrade requests and verification", () => {
     } finally {
       await setPayments(true);
     }
-    expect(PASS_PRICE).toMatchObject({ amountMicros: 5_000_000n, currency: "USDT", network: "BSC" });
+    expect(PASS_PRICE).toMatchObject({ currency: "USDT", network: "BSC" });
+    expect(await getPassOffer()).toMatchObject({ priceMicros: "5000000", days: 7 }); // the default offer
     expect(DEFAULT_RECIPIENT).toBe("0x2f94b75535eff533378c90f8dda29cf10208b174");
   });
 
