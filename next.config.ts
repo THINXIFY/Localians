@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
         ],
       },
       // Never in search results: the signed-in app, sign-in flows, CLI approval and every API response.
-      ...["/dashboard", "/dashboard/:path*", "/onboarding", "/cli/:path*", "/api/:path*", "/login", "/forgot-password", "/reset-password", "/verify-email"].map((source) => ({
+      ...["/dashboard", "/dashboard/:path*", "/onboarding", "/cli/:path*", "/api/:path*", "/login", "/forgot-password", "/reset-password", "/verify-email", "/username", "/admin", "/admin/:path*"].map((source) => ({
         source,
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       })),

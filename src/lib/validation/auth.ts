@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { usernameSchema } from "./username";
 
 export const PASSWORD_MIN = 10;
 export const PASSWORD_MAX = 128;
@@ -21,6 +22,7 @@ export const nameSchema = z.string().trim().min(1, "Enter your name.").max(80, "
 export const signupSchema = z
   .object({
     name: nameSchema,
+    username: usernameSchema,
     email: emailSchema,
     password: newPasswordSchema,
     confirmPassword: z.string().min(1, "Confirm your password."),

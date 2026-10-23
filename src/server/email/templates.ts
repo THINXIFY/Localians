@@ -112,3 +112,60 @@ export function changeEmailMessage({ to, name, newEmail, url }: { to: string; na
     text: `Hi ${name},\n\nA request was made to change your Localians email to ${newEmail}. Approve it here:\n${url}\n\nIf you didn't request this, ignore this email.`,
   };
 }
+
+/** To the administrator: a new upgrade request, or a customer submitted a transaction hash. */
+export function upgradeRequestAdminMessage(input: { to: string; orderId: string; username: string; email: string; projectName: string; txHash?: string | null; url: string }): EmailMessage {
+  const what = input.txHash ? "submitted a transaction hash" : "requested a 7-Day Pass";
+  return {
+    kind: "upgrade-request-admin",
+    to: input.to,
+    subject: `${input.orderId}: ${input.username} ${what}`,
+    html: layout({
+      heading: input.txHash ? "Transaction hash submitted" : "New 7-Day Pass request",
+      body: `<strong style="color:#F7F8F5;">${escapeHtml(input.orderId)}</strong> · ${escapeHtml(input.username)} (${escapeHtml(input.email)}) · project ${escapeHtml(input.projectName)}${
+        input.txHash ? `<br />Transaction: <span style="font-family:monospace;word-break:break-all;">${escapeHtml(input.txHash)}</span>` : ""
+      }<br /><br />Verify the transfer on BNB Smart Chain in the admin panel before approving.`,
+      cta: "Review in admin",
+      url: input.url,
+      footnote: "Approval activates the pass immediately. Never approve on a screenshot or hash alone — run the on-chain check.",
+    }),
+    text: `${input.orderId}: ${input.username} (${input.email}) ${what} for project ${input.projectName}.${input.txHash ? `\nTransaction: ${input.txHash}` : ""}\n\nReview: ${input.url}`,
+  };
+}
+
+/** To the customer: their 7-Day Pass is active. */
+export function passActivatedMessage(input: { to: string; name: string; orderId: string; projectName: string; endsAt: Date; customUrl: string | null; url: string }): EmailMessage {
+  const until = input.endsAt.toUTCString();
+  return {
+    kind: "pass-activated",
+    to: input.to,
+    subject: `Your 7-Day Preview Pass is active (${input.orderId})`,
+    html: layout({
+      heading: "Your 7-Day Pass is active",
+      body: `Hi ${escapeHtml(input.name)}, payment for <strong style="color:#F7F8F5;">${escapeHtml(input.orderId)}</strong> is verified. You can share <strong style="color:#F7F8F5;">${escapeHtml(input.projectName)}</strong> until ${escapeHtml(until)}${
+        input.customUrl ? `, at <span style="font-family:monospace;">${escapeHtml(input.customUrl)}</span>` : ""
+      }.<br /><br />Your computer and app must stay running and connected for the preview to work.`,
+      cta: "Start sharing",
+      url: input.url,
+      footnote: "The pass doesn't renew by itself. Renew before it ends to keep sharing and keep your custom URL.",
+    }),
+    text: `Hi ${input.name},\n\nPayment for ${input.orderId} is verified. You can share ${input.projectName} until ${until}${input.customUrl ? ` at ${input.customUrl}` : ""}.\nYour computer and app must stay running for the preview to work.\n\n${input.url}`,
+  };
+}
+
+/** To the customer: the request couldn't be approved. */
+export function upgradeRejectedMessage(input: { to: string; name: string; orderId: string; reason: string; url: string }): EmailMessage {
+  return {
+    kind: "upgrade-rejected",
+    to: input.to,
+    subject: `Update on your Localians order ${input.orderId}`,
+    html: layout({
+      heading: "We couldn't verify this payment",
+      body: `Hi ${escapeHtml(input.name)}, order <strong style="color:#F7F8F5;">${escapeHtml(input.orderId)}</strong> wasn't approved: ${escapeHtml(input.reason)}<br /><br />If you believe this is a mistake, reply to hello@thinxify.com with your transaction hash, username and order ID.`,
+      cta: "Open dashboard",
+      url: input.url,
+      footnote: "No 7-Day Pass was activated for this order.",
+    }),
+    text: `Hi ${input.name},\n\nOrder ${input.orderId} wasn't approved: ${input.reason}\nContact hello@thinxify.com with your transaction hash, username and order ID if you believe this is a mistake.\n\n${input.url}`,
+  };
+}

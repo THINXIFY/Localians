@@ -40,7 +40,7 @@ async function realignLiveSessions(tx: Tx, project: { id: string; workspaceId: s
   return work;
 }
 
-async function notifyGateways(projectId: string, work: GatewayWork) {
+export async function notifyGateways(projectId: string, work: GatewayWork) {
   if (!work.push.length && !work.end.length) return;
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { accessMode: true, accessVersion: true, accessTtlMinutes: true } });
   await Promise.all([...work.push.map((s) => pushPolicyToGateway(s.id, s.gatewayId, policyFor(project, s))), ...work.end.map((s) => terminateOnGateway(s.id, s.gatewayId))]);

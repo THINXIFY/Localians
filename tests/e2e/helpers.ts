@@ -6,6 +6,8 @@ import { TEST_DATABASE_URL } from "../setup/test-env";
 let n = 0;
 export const uniqueEmail = (label = "e2e") => `${label}-${Date.now()}-${++n}@example.test`;
 export const PASSWORD = "e2e-password-123";
+/** A fresh, valid username (3–24 chars: lowercase letters, digits, underscores; starts with a letter). */
+export const uniqueUsername = () => `u${Date.now().toString(36)}_${++n}`.slice(0, 24);
 
 /** Runs a single SQL statement against the test database (for setting up edge cases like expired sessions). */
 export async function sql(text: string, values: unknown[] = []) {
@@ -22,6 +24,7 @@ export async function sql(text: string, values: unknown[] = []) {
 export async function signUpAndVerify(page: Page, name = "E2E User", email = uniqueEmail()) {
   await page.goto("/signup");
   await page.getByLabel("Full name").fill(name);
+  await page.getByLabel("Username").fill(uniqueUsername());
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirm password").fill(PASSWORD);

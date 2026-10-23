@@ -8,7 +8,7 @@ import { site } from "@/lib/site";
  */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/dashboard", "/onboarding", "/cli/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/dashboard", "/onboarding", "/cli/", "/admin"] },
     sitemap: new URL("/sitemap.xml", site.url).toString(),
   };
 }

@@ -19,3 +19,17 @@ export async function getLinkedProviders(userId: string) {
   });
   return accounts.map(({ password, ...rest }) => ({ ...rest, hasPassword: rest.providerId === "credential" && !!password }));
 }
+
+export class UsernameError extends Error {}
+
+/** Sets a user's username once (accounts from before usernames, or GitHub sign-ups). Unique; stored lowercase. */
+export async function setUsername(userId: string, username: string) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true } });
+  if (user.username) throw new UsernameError("You already have a username.");
+  try {
+    await prisma.user.update({ where: { id: userId }, data: { username } });
+  } catch (error) {
+    if ((error as { code?: string }).code === "P2002") throw new UsernameError("That username is taken. Try another.");
+    throw error;
+  }
+}

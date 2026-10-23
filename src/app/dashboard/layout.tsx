@@ -15,6 +15,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const session = await requireUser();
   const [profile, workspace] = await Promise.all([getUserProfile(session.user.id), getCurrentWorkspace(session.user.id)]);
   if (!profile.onboardedAt) redirect("/onboarding");
+  if (!profile.username) redirect("/username"); // accounts from before usernames, and GitHub sign-ups
 
   return (
     // Theme is rendered on the server from the saved preference, so there is no flash on load.

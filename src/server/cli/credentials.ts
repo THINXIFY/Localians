@@ -31,10 +31,11 @@ export async function authenticateCli(request: Request): Promise<CliAuth | null>
       expiresAt: true,
       revokedAt: true,
       lastUsedAt: true,
-      user: { select: { email: true, name: true } },
+      user: { select: { email: true, name: true, status: true } },
     },
   });
   if (!credential || credential.revokedAt || credential.expiresAt <= new Date()) return null;
+  if (credential.user.status !== "ACTIVE") return null; // suspended or deactivated account
 
   const member = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId: credential.workspaceId, userId: credential.userId } },
@@ -46,7 +47,7 @@ export async function authenticateCli(request: Request): Promise<CliAuth | null>
   if (!credential.lastUsedAt || Date.now() - credential.lastUsedAt.getTime() > 60_000) {
     await prisma.cliCredential.update({ where: { id: credential.id }, data: { lastUsedAt: new Date() } });
   }
-  return { credentialId: credential.id, userId: credential.userId, workspaceId: credential.workspaceId, user: credential.user };
+  return { credentialId: credential.id, userId: credential.userId, workspaceId: credential.workspaceId, user: { email: credential.user.email, name: credential.user.name } };
 }
 
 export async function listCliCredentials(userId: string) {

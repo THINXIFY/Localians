@@ -26,7 +26,8 @@
     "cli:release": "node scripts/build-tunnel.mjs --release",
     "vscode:build": "npm --prefix extensions/vscode run build",
     "vscode:typecheck": "npm --prefix extensions/vscode run typecheck",
-    "vscode:package": "npm --prefix extensions/vscode run package"
+    "vscode:package": "npm --prefix extensions/vscode run package",
+    "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",

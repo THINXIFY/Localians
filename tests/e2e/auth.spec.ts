@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { waitForEmailLink } from "../setup/outbox";
-import { createUserOnDashboard, login, PASSWORD, signUpAndVerify, sql, uniqueEmail } from "./helpers";
+import { createUserOnDashboard, login, PASSWORD, signUpAndVerify, sql, uniqueEmail, uniqueUsername } from "./helpers";
 
 test("sign up → verify email → onboarding → first project", async ({ page }) => {
   await signUpAndVerify(page, "Onboard Person");
@@ -45,6 +45,7 @@ test("unverified users can't sign in", async ({ page }) => {
   const email = uniqueEmail("unverified");
   await page.goto("/signup");
   await page.getByLabel("Full name").fill("Not Verified");
+  await page.getByLabel("Username").fill(uniqueUsername());
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirm password").fill(PASSWORD);

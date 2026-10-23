@@ -32,6 +32,18 @@ model User {
   /// Set once the user finishes (or skips) onboarding.
   onboardedAt     DateTime?
 
+  /// Permanent public ID shown to people (support, admin), e.g. LOC-000001. Assigned by a database sequence; never
+  /// the internal auth ID.
+  publicId    String     @unique @default(dbgenerated("('LOC-'::text || lpad((nextval('users_public_id_seq'::regclass))::text, 6, '0'::text))"))
+  /// Unique, lowercase handle (3–24 chars: a-z, 0-9, _). Null for accounts from before usernames (asked on next visit).
+  username    String?    @unique
+  status      UserStatus @default(ACTIVE)
+  /// ADMIN may use /admin. Never settable by clients; created by scripts/create-admin.ts.
+  role        UserRole   @default(USER)
+  suspendedAt DateTime?
+  /// Accounts are deactivated and anonymised, not deleted, so payment and audit records stay intact.
+  deletedAt   DateTime?
+
   sessions        Session[]
   accounts        Account[]
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
@@ -39,6 +51,7 @@ model User {
   cliCredentials  CliCredential[]
   shareSetups     ShareSetup[]
   tunnelSessions  TunnelSession[]
+  upgradeRequests UpgradeRequest[]
 
   @@map("users")
 }
@@ -117,14 +130,15 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members        WorkspaceMember[]
-  projects       Project[]
-  cliCredentials CliCredential[]
-  tunnelEvents   TunnelEvent[]
-  shareSetups    ShareSetup[]
-  tunnelMetrics  TunnelMetric[]
-  previewNames   PreviewName[]
-  freeGrants     FreePreviewGrant[]
+  members         WorkspaceMember[]
+  projects        Project[]
+  cliCredentials  CliCredential[]
+  tunnelEvents    TunnelEvent[]
+  shareSetups     ShareSetup[]
+  tunnelMetrics   TunnelMetric[]
+  previewNames    PreviewName[]
+  freeGrants      FreePreviewGrant[]
+  upgradeRequests UpgradeRequest[]
 
   @@index([ownerId])
   @@map("workspaces")
@@ -173,11 +187,12 @@ model Project {
   accessTtlMinutes   Int           @default(1440)
   accessUpdatedAt    DateTime?
 
-  tunnelSessions TunnelSession[]
-  shareSetups    ShareSetup[]
-  previewName    PreviewName?
-  freeGrant      FreePreviewGrant?
-  passes         PreviewPass[]
+  tunnelSessions  TunnelSession[]
+  shareSetups     ShareSetup[]
+  previewName     PreviewName?
+  freeGrant       FreePreviewGrant?
+  passes          PreviewPass[]
+  upgradeRequests UpgradeRequest[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status, updatedAt])
@@ -540,20 +555,21 @@ model FreePreviewGrant {
 /// 7 days of preview access for one project (plus its custom URL). Non-recurring: a renewal is a new row that starts
 /// when the current one ends. Never created from a client claim — only by verified payment or an operator.
 model PreviewPass {
-  id           String     @id @default(cuid())
+  id           String          @id @default(cuid())
   projectId    String
-  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   workspaceId  String
   startsAt     DateTime
   endsAt       DateTime
-  status       PassStatus @default(ACTIVE)
+  status       PassStatus      @default(ACTIVE)
   source       PassSource
   /// The approved upgrade request that created it (one pass per request, enforced by the database).
-  requestId    String?    @unique
+  requestId    String?         @unique
+  request      UpgradeRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
   createdById  String?
   revokedAt    DateTime?
   revokeReason String?
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime        @default(now())
 
   @@index([projectId, status, endsAt])
   @@map("preview_passes")
@@ -567,4 +583,67 @@ enum PassStatus {
 enum PassSource {
   PAYMENT
   ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+/// A request to buy a 7-Day Pass for one project (manual USDT payment, approved by an administrator after verifying
+/// the transfer on BNB Smart Chain). Nothing is activated by the request or a submitted hash alone.
+model UpgradeRequest {
+  id            String        @id @default(cuid())
+  /// Public order ID shown to the customer and in emails, e.g. ORD-7K2M9QXA.
+  orderId       String        @unique
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  workspaceId   String
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  /// Kept if the project is deleted (money records outlive projects); projectName is a snapshot.
+  projectId     String?
+  project       Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectName   String
+  product       String
+  /// 6-decimal micro-units of USDT (5 USDT = 5000000).
+  amountMicros  BigInt
+  currency      String
+  network       String
+  recipient     String
+  /// Custom URL the customer chose at checkout (applied when the pass activates, if still free).
+  requestedName String?
+  status        UpgradeStatus @default(PENDING)
+  /// Lowercase 0x-prefixed transaction hash; unique across all requests (a transfer pays for one request only).
+  txHash        String?       @unique
+  txSubmittedAt DateTime?
+  /// Last on-chain check (token, recipient, amount, success, confirmations, time), recorded by the server.
+  verification  Json?
+  verifiedAt    DateTime?
+  verifiedOk    Boolean       @default(false)
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNote    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  pass PreviewPass?
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([projectId])
+  @@map("upgrade_requests")
+}
+
+enum UpgradeStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
 }

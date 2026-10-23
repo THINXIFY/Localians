@@ -22,14 +22,15 @@ export function SignupForm() {
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: { name: "", username: "", email: "", password: "", confirmPassword: "" },
   });
 
   const password = useWatch({ control, name: "password" });
 
-  const onSubmit = handleSubmit(async ({ name, email, password }) => {
+  const onSubmit = handleSubmit(async ({ name, username, email, password }) => {
     setError(null);
-    const { error } = await authClient.signUp.email({ name, email, password, callbackURL: "/verify-email?verified=1" });
+    // username is an additional field of the user (validated and checked for uniqueness on the server).
+    const { error } = await authClient.signUp.email({ name, email, password, username, callbackURL: "/verify-email?verified=1" } as Parameters<typeof authClient.signUp.email>[0]);
     if (error) {
       setError(authErrorMessage(error, "We couldn't create your account. Please try again."));
       return;
@@ -43,6 +44,9 @@ export function SignupForm() {
       <FormError message={error} />
       <Field label="Full name" error={errors.name?.message}>
         {(p) => <TextInput {...p} {...register("name")} autoComplete="name" placeholder="Ada Lovelace" />}
+      </Field>
+      <Field label="Username" error={errors.username?.message} hint="Lowercase letters, numbers and underscores. Shown to support, not on your previews.">
+        {(p) => <TextInput {...p} {...register("username")} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="ada_l" />}
       </Field>
       <Field label="Email" error={errors.email?.message}>
         {(p) => <TextInput {...p} {...register("email")} type="email" autoComplete="email" inputMode="email" placeholder="you@company.com" />}

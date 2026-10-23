@@ -33,6 +33,6 @@ export async function requireUser(fallbackPath = "/dashboard") {
 export const getUserProfile = cache(async (userId: string) =>
   prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { id: true, name: true, email: true, image: true, emailVerified: true, themePreference: true, onboardedAt: true, createdAt: true },
+    select: { id: true, name: true, email: true, image: true, emailVerified: true, themePreference: true, onboardedAt: true, createdAt: true, username: true, publicId: true },
   }),
 );

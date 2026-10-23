@@ -1,6 +1,8 @@
 import "server-only";
 import { authCookiePrefix, authCookiesSecure } from "@/lib/auth-cookies";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
+import { usernameSchema } from "@/lib/validation/username";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./db";
@@ -73,6 +75,10 @@ export const auth = betterAuth({
   },
 
   user: {
+    // Chosen at sign-up (unique, lowercase). role / status / publicId are never accepted from clients.
+    additionalFields: {
+      username: { type: "string", required: false, input: true },
+    },
     changeEmail: {
       enabled: true,
       // Approval link goes to the *current* address; the new address is then verified.
@@ -121,8 +127,28 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user) => {
+          // Only a valid, free username is stored (the database also enforces format and uniqueness).
+          const raw = (user as { username?: unknown }).username;
+          if (raw === undefined || raw === null || raw === "") return { data: { ...user, username: null } };
+          const parsed = usernameSchema.safeParse(raw);
+          if (!parsed.success) throw new APIError("BAD_REQUEST", { message: parsed.error.issues[0]?.message ?? "Choose another username." });
+          if (await prisma.user.findUnique({ where: { username: parsed.data }, select: { id: true } })) {
+            throw new APIError("BAD_REQUEST", { message: "That username is taken. Try another." });
+          }
+          return { data: { ...user, username: parsed.data } };
+        },
         after: async (user) => {
           await createPersonalWorkspace(user);
+        },
+      },
+    },
+    session: {
+      create: {
+        // Suspended or deactivated accounts can't sign in (existing sessions are removed when an admin suspends).
+        before: async (session) => {
+          const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { status: true } });
+          if (!user || user.status !== "ACTIVE") throw new APIError("FORBIDDEN", { message: "This account is suspended. Contact hello@thinxify.com." });
         },
       },
     },
