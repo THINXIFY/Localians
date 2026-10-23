@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Layers, LifeBuoy, ShieldCheck, TerminalSquare } from "lucide-react";
 import { Prose, SubPage } from "@/components/sections/SubPage";
-import { routes } from "@/lib/site";
+import { guideLinks, routes } from "@/lib/site";
+import { pageMetadata, breadcrumbs } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Documentation",
-  description: "Learn how to share a locally running web app with a secure Localians preview link.",
-  alternates: { canonical: routes.docs },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Documentation: Share Localhost with HTTPS Preview Links",
+  description: "Localians documentation: share a local dev server with one command, protect previews with a password, use the CLI, and fix common problems.",
+  path: routes.docs,
+});
 
 const guides = [
   {
@@ -74,6 +76,21 @@ export default function DocsPage() {
         ))}
       </ul>
 
+      <nav aria-labelledby="guides-title" className="mt-12">
+        <h2 id="guides-title" className="text-[17px] font-semibold text-fg">
+          Guides
+        </h2>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {guideLinks.map((g) => (
+            <li key={g.href}>
+              <Link href={g.href} className="inline-flex rounded-full border border-line px-3.5 py-1.5 text-[14px] text-fg-2 transition-colors hover:border-line-strong hover:text-fg">
+                {g.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       <div className="mt-14">
         <Prose>
           <h2>How Localians works</h2>
@@ -88,6 +105,7 @@ export default function DocsPage() {
           </p>
         </Prose>
       </div>
+      <JsonLd data={breadcrumbs([{ name: "Documentation", path: routes.docs }])} />
     </SubPage>
   );
 }

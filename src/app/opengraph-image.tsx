@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 
-export const alt = "Localians — Your localhost. Anyone's browser.";
+export const alt = "Localians — Share your localhost. Securely. One command.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -32,10 +32,8 @@ export default async function OpengraphImage() {
           <img src={logoSrc} width={290} height={48} alt="Localians" />
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 86, fontWeight: 700, letterSpacing: -3, lineHeight: 1.02 }}>Your localhost.</div>
-          <div style={{ fontSize: 86, fontWeight: 700, letterSpacing: -3, lineHeight: 1.02, color: "#B8FF3B" }}>
-            Anyone&apos;s browser.
-          </div>
+          <div style={{ fontSize: 78, fontWeight: 700, letterSpacing: -3, lineHeight: 1.04 }}>Share your localhost.</div>
+          <div style={{ fontSize: 78, fontWeight: 700, letterSpacing: -3, lineHeight: 1.04, color: "#B8FF3B" }}>Securely. One command.</div>
         </div>
         <div
           style={{

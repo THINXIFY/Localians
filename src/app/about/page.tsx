@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Prose, SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About",
-  description: "Localians helps developers share locally running web apps without deploying.",
-  alternates: { canonical: routes.about },
-};
+  description: "Localians helps developers share a locally running web app with clients and teammates through a secure HTTPS link — without deploying it.",
+  path: routes.about,
+});
 
 export default function AboutPage() {
   return (

@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      // Never in search results: the signed-in app, sign-in flows, CLI approval and every API response.
+      ...["/dashboard", "/dashboard/:path*", "/onboarding", "/cli/:path*", "/api/:path*", "/login", "/forgot-password", "/reset-password", "/verify-email"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      })),
     ];
   },
 };

@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CodeLine, Prose, SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata, breadcrumbs } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Framework Guides",
-  description: "How to share Next.js, React (Vite), Vue, Angular and other local dev servers with Localians.",
-  alternates: { canonical: routes.frameworks },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Framework Guides: Next.js, Vite, Angular, Django and More",
+  description: "Which port to share and what to configure for hot reload when sharing Next.js, Vite, Vue, Angular, Django, Rails, Flask and Express from localhost.",
+  path: routes.frameworks,
+});
 
 const frameworks = [
   { id: "nextjs", name: "Next.js" },
@@ -44,11 +46,17 @@ export default function FrameworksPage() {
         <p>Usually port 3000.</p>
         <CodeLine>{"npm run dev\nlocalians share 3000"}</CodeLine>
         <p>
-          <strong>Hot reload:</strong> Next.js blocks its development resources for other origins. Allow your preview domain in{" "}
-          <code className="font-mono">next.config.js</code> (for the local beta server that&apos;s <code className="font-mono">*.preview.localhost</code>):
+          <strong>Hot reload:</strong> Next.js blocks its development resources for other origins. Allow Localians preview links in{" "}
+          <code className="font-mono">next.config.js</code>:
         </p>
-        <CodeLine>{`allowedDevOrigins: ["*.preview.localhost"]`}</CodeLine>
-        <p>Without it, pages still load, but edits won&apos;t appear live for the person viewing the preview.</p>
+        <CodeLine>{`allowedDevOrigins: ["*.preview.localians.com"]`}</CodeLine>
+        <p>
+          Without it, pages still load, but edits won&apos;t appear live for the person viewing the preview. More in{" "}
+          <Link href={routes.shareNextjs} className="text-fg underline underline-offset-4">
+            sharing a Next.js app
+          </Link>
+          .
+        </p>
 
         <h2 id="vite">React with Vite</h2>
         <p>Usually port 5173. Works without changes, hot reload included.</p>
@@ -103,6 +111,7 @@ export default function FrameworksPage() {
           Something not working? See <Link href={routes.troubleshooting} className="text-fg underline underline-offset-4">Troubleshooting</Link>.
         </p>
       </Prose>
+      <JsonLd data={breadcrumbs([{ name: "Documentation", path: routes.docs }, { name: "Framework Guides", path: routes.frameworks }])} />
     </SubPage>
   );
 }

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact",
-  description: "Get in touch with the Localians team.",
-  alternates: { canonical: routes.contact },
-};
+  description: "Questions, feedback or a problem with sharing your localhost? Get in touch with the Localians team.",
+  path: routes.contact,
+});
 
 export default function ContactPage() {
   return (

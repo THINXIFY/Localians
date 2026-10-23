@@ -1,8 +1,8 @@
 export const site = {
   name: "Localians",
-  title: "Localians — Your localhost. Anywhere.",
+  title: "Localians — Share localhost apps securely with one command",
   description:
-    "Share your local web apps with clients and teammates in seconds. Secure HTTPS previews, real-time updates, and zero deployment hassle.",
+    "Share the app running on your computer with a secure HTTPS preview link — public or password protected. One command for Next.js, Vite and any local dev server. No deployment.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://localians.com",
   command: "npx localians share 5173",
   demoUrl: "https://demo.preview.localians.com",
@@ -31,7 +31,19 @@ export const routes = {
   contact: "/contact",
   privacy: "/privacy",
   terms: "/terms",
+  shareLocalhost: "/share-localhost",
+  ngrokAlternative: "/ngrok-alternative",
+  shareNextjs: "/share-nextjs-localhost",
+  shareVite: "/share-vite-localhost",
 } as const;
+
+/** Guides for developers looking for a way to share localhost (linked from the footer and the docs). */
+export const guideLinks = [
+  { label: "Share localhost online", href: routes.shareLocalhost },
+  { label: "Share a Next.js app", href: routes.shareNextjs },
+  { label: "Share a Vite app", href: routes.shareVite },
+  { label: "ngrok alternative", href: routes.ngrokAlternative },
+] as const;
 
 export const footerColumns = [
   {
@@ -52,6 +64,10 @@ export const footerColumns = [
     ],
   },
   {
+    title: "Guides",
+    links: guideLinks,
+  },
+  {
     title: "Company",
     links: [
       { label: "About", href: routes.about },
@@ -65,4 +81,24 @@ export const footerColumns = [
       { label: "Terms of Service", href: routes.terms },
     ],
   },
+] as const;
+
+/** Every public page meant for search engines: the sitemap lists them, and tests check each is indexable. */
+export const indexablePaths = [
+  "/",
+  routes.shareLocalhost,
+  routes.shareNextjs,
+  routes.shareVite,
+  routes.ngrokAlternative,
+  routes.docs,
+  routes.gettingStarted,
+  routes.cliGuide,
+  routes.frameworks,
+  routes.security,
+  routes.troubleshooting,
+  routes.getStarted,
+  routes.about,
+  routes.contact,
+  routes.privacy,
+  routes.terms,
 ] as const;

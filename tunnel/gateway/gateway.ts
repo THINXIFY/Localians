@@ -57,6 +57,9 @@ type CheckAccess = (request: AccessCheckRequest) => Promise<AccessCheckResponse 
 
 export type Gateway = ReturnType<typeof createGateway>;
 
+/** Sent on every response from a preview host. */
+const PREVIEW_ROBOTS = "noindex, nofollow, noarchive";
+
 /** Disconnect reports that couldn't be delivered are retried with the next heartbeat (bounded). */
 const MAX_UNDELIVERED = 1000;
 
@@ -189,7 +192,7 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
   }
 
   function redirect(res: http.ServerResponse, location: string, cookie?: string) {
-    res.writeHead(303, { location, "cache-control": "no-store", ...(cookie ? { "set-cookie": cookie } : {}) });
+    res.writeHead(303, { location, "cache-control": "no-store", "x-robots-tag": PREVIEW_ROBOTS, ...(cookie ? { "set-cookie": cookie } : {}) });
     res.end();
   }
 
@@ -408,7 +411,8 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
         return sendError(res, failure === "local-timeout" ? "local-timeout" : "local-unreachable");
       }
       const status = Number(h[":status"]) || 502;
-      res.writeHead(status, sanitizeResponseHeaders(h));
+      // Previews are someone's development app: never in search results, whatever the app itself says.
+      res.writeHead(status, { ...sanitizeResponseHeaders(h), "x-robots-tag": PREVIEW_ROBOTS });
       const out = counter((n) => {
         tunnel.totals.bytesOut += n;
       }, config.limits.maxResponseBytes);

@@ -6,11 +6,14 @@ import { GithubButton } from "@/components/auth/GithubButton";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { githubConfigured } from "@/server/auth";
 import { getSession } from "@/server/session";
+import { pageMetadata } from "@/lib/seo";
+import { routes } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Create your account",
-  description: "Create a free Localians account and start sharing your localhost.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Create a Free Account",
+  description: "Create a free Localians account and share your localhost with a secure HTTPS preview link in about a minute.",
+  path: routes.getStarted,
+});
 
 export default async function SignupPage() {
   if (await getSession()) redirect("/dashboard");

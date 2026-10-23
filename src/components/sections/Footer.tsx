@@ -19,7 +19,7 @@ export function Footer() {
             </p>
           </div>
 
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-5">
             {footerColumns.map((col) => (
               <div key={col.title}>
                 <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-fg-3">{col.title}</h2>

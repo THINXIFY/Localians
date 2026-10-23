@@ -274,6 +274,9 @@ describe("forwarding through a live tunnel", () => {
     expect(res.body.toString()).toContain("q=hello world");
     expect(res.headers["set-cookie"]).toEqual(["app=1; Path=/", "theme=dark; Path=/"]);
     expect(app.seen.at(-1)).toMatchObject({ host: `localhost:${app.port}`, custom: "abc" });
+    // Previews are development apps: never indexed by search engines, whatever the app sends.
+    expect(res.headers["x-robots-tag"]).toBe("noindex, nofollow, noarchive");
+    expect((await publicRequest(gatewayPort, "nothing-here.preview.test", "/")).headers["x-robots-tag"]).toBe("noindex, nofollow, noarchive");
   });
 
   it.each(["POST", "PUT", "PATCH", "DELETE"])("forwards %s request bodies", async (method) => {

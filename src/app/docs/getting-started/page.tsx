@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CodeLine, Prose, SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata, breadcrumbs } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Getting Started",
-  description: "Share your first locally running web app with a Localians preview link.",
-  alternates: { canonical: routes.gettingStarted },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Getting Started: Share Your Localhost in a Minute",
+  description: "Step by step: start your app, run npx localians share with its port, approve the login once, and send the HTTPS preview link.",
+  path: routes.gettingStarted,
+});
 
 export default function GettingStartedPage() {
   return (
@@ -89,6 +91,7 @@ export default function GettingStartedPage() {
           or the <Link href={routes.frameworks} className="text-fg underline underline-offset-4">framework guides</Link>.
         </p>
       </Prose>
+      <JsonLd data={breadcrumbs([{ name: "Documentation", path: routes.docs }, { name: "Getting Started", path: routes.gettingStarted }])} />
     </SubPage>
   );
 }

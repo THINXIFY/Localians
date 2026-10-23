@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CodeLine, Prose, SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata, breadcrumbs } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "CLI Guide",
-  description: "Reference for the Localians CLI: install, share, login, status and logout.",
-  alternates: { canonical: routes.cliGuide },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "CLI Guide: localians share, login, status and logout",
+  description: "Reference for the Localians CLI: share a local port over HTTPS, choose the project, protect it, check status and stop sharing. Windows, macOS and Linux.",
+  path: routes.cliGuide,
+});
 
 export default function CliGuidePage() {
   return (
@@ -119,6 +121,7 @@ export default function CliGuidePage() {
           <Link href={routes.security} className="text-fg underline underline-offset-4">security</Link>.
         </p>
       </Prose>
+      <JsonLd data={breadcrumbs([{ name: "Documentation", path: routes.docs }, { name: "CLI Guide", path: routes.cliGuide }])} />
     </SubPage>
   );
 }

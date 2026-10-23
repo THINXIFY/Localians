@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of Service",
-  description: "Localians terms of service.",
-  alternates: { canonical: routes.terms },
-};
+  description: "The terms for using Localians to share locally running web apps through preview links.",
+  path: routes.terms,
+});
 
 export default function TermsPage() {
   return (

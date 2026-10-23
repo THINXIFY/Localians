@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy Policy",
-  description: "Localians privacy policy.",
-  alternates: { canonical: routes.privacy },
-};
+  description: "How Localians handles your account data, CLI logins and preview traffic metadata.",
+  path: routes.privacy,
+});
 
 export default function PrivacyPage() {
   return (

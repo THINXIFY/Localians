@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Prose, SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata, breadcrumbs } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Security",
-  description: "Public and password-protected previews, what Localians protects, and how to stop and revoke sharing.",
-  alternates: { canonical: routes.security },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Security: Public and Password-Protected Preview Links",
+  description: "Who can open a Localians preview, how password protection works, what is and isn't stored, and how to stop sharing or revoke a CLI login.",
+  path: routes.security,
+});
 
 export default function SecurityPage() {
   return (
@@ -95,6 +97,7 @@ export default function SecurityPage() {
           </li>
         </ul>
       </Prose>
+      <JsonLd data={breadcrumbs([{ name: "Documentation", path: routes.docs }, { name: "Security", path: routes.security }])} />
     </SubPage>
   );
 }

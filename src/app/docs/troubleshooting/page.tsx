@@ -3,12 +3,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { CodeLine, Prose, SubPage } from "@/components/sections/SubPage";
 import { routes } from "@/lib/site";
+import { pageMetadata, breadcrumbs } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/JsonLd";
 
-export const metadata: Metadata = {
-  title: "Troubleshooting",
-  description: "Fixes for common Localians problems: app not running, wrong port, login, offline previews, hot reload, certificates and more.",
-  alternates: { canonical: routes.troubleshooting },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Troubleshooting Localhost Sharing",
+  description: "Fixes for common problems when sharing localhost with Localians: app not running, wrong port, login, offline previews, hot reload and certificates.",
+  path: routes.troubleshooting,
+});
 
 function Problem({ id, title, symptom, children }: { id: string; title: string; symptom?: ReactNode; children: ReactNode }) {
   return (
@@ -76,8 +78,8 @@ export default function TroubleshootingPage() {
               link starts working again.
             </li>
             <li>
-              <strong>The address can&apos;t be found</strong> — during the beta, links on the local test server (<code className="font-mono">*.preview.localhost</code>)
-              only open on the computer running it. Public links need the Localians service to be deployed.
+              <strong>The address can&apos;t be found</strong> — check the whole link was copied. Preview links look like{" "}
+              <code className="font-mono">https://abcd2efgh3jk.preview.localians.com</code>; a cut-off link points nowhere.
             </li>
           </ul>
         </Problem>
@@ -172,6 +174,7 @@ export default function TroubleshootingPage() {
           access token).
         </p>
       </Prose>
+      <JsonLd data={breadcrumbs([{ name: "Documentation", path: routes.docs }, { name: "Troubleshooting", path: routes.troubleshooting }])} />
     </SubPage>
   );
 }

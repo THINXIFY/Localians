@@ -7,7 +7,7 @@ test("landing page renders all sections without overflow", async ({ page }) => {
   for (const width of [390, 820, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Your localhost.");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Share your localhost.");
     await expect(page.locator("main > section")).toHaveCount(10);
     await expectNoHorizontalOverflow(page);
   }

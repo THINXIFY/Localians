@@ -10,16 +10,16 @@ const included = [
   "Localhost preview sharing",
   "Public HTTPS preview links",
   "Project dashboard",
-  "Basic access protection",
+  "Password-protected previews",
   "Connection monitoring",
   "Basic usage visibility",
 ];
 
-const faqs = [
+export const faqs = [
   {
     question: "What is Localians?",
     answer:
-      "Localians lets developers share locally running web applications through secure HTTPS preview links without repeatedly deploying their code.",
+      "Localians lets you share a web app running on your computer through a secure HTTPS preview link, with one command and without deploying it. It works like a localhost tunnel built for showing work to clients and teammates.",
   },
   {
     question: "Do my clients need to install anything?",
@@ -31,7 +31,8 @@ const faqs = [
   },
   {
     question: "Can I protect my preview?",
-    answer: "Stage 1 includes basic preview access protection to help control who can view your work.",
+    answer:
+      "Yes. Make a project password protected and visitors must enter the password before they see your app. Changing the password signs everyone out right away, and you can stop a preview from the dashboard at any time.",
   },
   {
     question: "Does Localians host my application?",
@@ -39,9 +40,13 @@ const faqs = [
       "No. Localians connects visitors to your locally running development server. It is not a replacement for production hosting.",
   },
   {
+    question: "Can I share from VS Code?",
+    answer: "A Localians extension for VS Code is coming soon. Until then, run the share command in VS Code's terminal — it works the same way.",
+  },
+  {
     question: "Which frameworks does it support?",
     answer:
-      "Localians is designed for HTTP-based development servers, including common workflows using Next.js, React, Vue, and Vite. Compatibility depends on the development server and features being used.",
+      "Any local server that speaks HTTP: Next.js, Vite (React, Vue, Svelte), Angular, Django, Rails, Express and more. WebSockets and hot reload work through the preview link. Next.js and Vite are covered by our automated end-to-end tests.",
   },
 ];
 

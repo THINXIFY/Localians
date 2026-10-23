@@ -1,8 +1,13 @@
 import type { MetadataRoute } from "next";
-import { routes, site } from "@/lib/site";
+import { indexablePaths, routes, site } from "@/lib/site";
 
+const PRIORITY: Record<string, number> = { "/": 1, [routes.shareLocalhost]: 0.9, [routes.docs]: 0.8, [routes.gettingStarted]: 0.8 };
+
+/** Public, indexable pages only (canonical production URLs). Sign-in, account and app pages are intentionally absent. */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const paths = ["/", routes.docs, routes.gettingStarted, routes.cliGuide, routes.frameworks, routes.troubleshooting, routes.security, routes.getStarted, routes.about, routes.contact, routes.privacy, routes.terms];
-  // routes.getStarted is the public /signup page; /login and /dashboard are intentionally excluded.
-  return paths.map((path) => ({ url: new URL(path, site.url).toString() }));
+  return indexablePaths.map((path) => ({
+    url: new URL(path, site.url).toString(),
+    changeFrequency: path === routes.privacy || path === routes.terms ? "yearly" : "monthly",
+    priority: PRIORITY[path] ?? 0.6,
+  }));
 }

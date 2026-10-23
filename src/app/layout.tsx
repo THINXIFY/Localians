@@ -15,8 +15,14 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono-jb",
   display: "swap",
+  // Code snippets aren't the largest paint: don't let this font compete with the page's CSS and body font.
+  preload: false,
 });
 
+/**
+ * Site-wide defaults. Deliberately no canonical URL or og:url here: they would be inherited by every page that doesn't
+ * set its own. Public pages use pageMetadata() (src/lib/seo.ts); private pages set robots: noIndex.
+ */
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
@@ -25,20 +31,14 @@ export const metadata: Metadata = {
   },
   description: site.description,
   applicationName: site.name,
-  keywords: ["localhost sharing", "preview links", "HTTPS tunnel", "developer tools", "share localhost", "dev server preview"],
-  openGraph: {
-    type: "website",
-    siteName: site.name,
-    title: site.title,
-    description: site.description,
-    url: "/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: site.title,
-    description: site.description,
-  },
-  alternates: { canonical: "/" },
+  creator: "Thinxify Technologies",
+  publisher: site.name,
+  formatDetection: { telephone: false, email: false, address: false },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
+  // Google Search Console ownership verification for https://localians.com.
+  verification: { google: "iXvhd5hOPWfiz1lhpSC8k6aCHeh37V1mJVrQgw1UD1Y" },
+  openGraph: { type: "website", siteName: site.name, locale: "en_US", title: site.title, description: site.description },
+  twitter: { card: "summary_large_image", title: site.title, description: site.description },
 };
 
 export const viewport: Viewport = {
@@ -48,7 +48,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Scroll-reveal styles only hide content once JavaScript runs, so pages are always readable without it. */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.js=''" }} />
+      </head>
       <body className="min-h-dvh">
         <a
           href="#main"

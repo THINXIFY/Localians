@@ -363,3 +363,38 @@ html:has(.theme-scope[data-theme="light"]) {
     transition: none;
   }
 }
+
+/* ----------------------------------------------------------------- scroll reveal (components/ui/Reveal.tsx)
+   Hidden only while JavaScript runs (html[data-js], set in the root layout), so content is never lost without it. */
+.reveal {
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0s),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0s);
+}
+html[data-js] .reveal:not(.is-in) {
+  opacity: 0;
+  transform: translateY(var(--reveal-y, 18px));
+}
+
+/* Above the fold: the text paints immediately (it is the largest contentful paint); only a short rise is animated. */
+@keyframes hero-rise {
+  from {
+    transform: translateY(14px);
+  }
+}
+.hero-rise {
+  animation: hero-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--rise-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transition: opacity 0.4s ease var(--reveal-delay, 0s);
+  }
+  html[data-js] .reveal:not(.is-in) {
+    transform: none;
+  }
+  .hero-rise {
+    animation: none;
+  }
+}

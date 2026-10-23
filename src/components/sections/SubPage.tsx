@@ -21,7 +21,7 @@ export function SubPage({ eyebrow, title, intro, notice, back = { href: "/", lab
     <>
       <Navbar />
       <main id="main" className="relative isolate">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px]">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
           <div className="bg-grid mask-fade-y absolute inset-0" />
           <div className="absolute left-1/2 top-[-260px] h-[480px] w-[min(900px,130vw)] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(184,255,59,0.1),transparent)]" />
         </div>
@@ -79,7 +79,7 @@ export function CodeLine({ children, label }: { children: string; label?: string
 
 export function Prose({ children }: { children: ReactNode }) {
   return (
-    <div className="space-y-5 text-[15.5px] leading-relaxed text-fg-2 [&_h2]:mt-12 [&_h2]:text-[22px] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-fg [&_li]:pl-1 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_strong]:font-medium [&_strong]:text-fg [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
+    <div className="space-y-5 text-[15.5px] leading-relaxed text-fg-2 [&_h2]:mt-12 [&_h2]:text-[22px] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-fg [&_li]:pl-1 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_code]:[overflow-wrap:anywhere] [&_strong]:font-medium [&_strong]:text-fg [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
       {children}
     </div>
   );
