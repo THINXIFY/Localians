@@ -64,10 +64,14 @@ minutes), install it in a clean VS Code profile and share an app.
 
 ## 4. A direct VSIX download (manual install, before or without the Marketplace)
 
-The site's **Download VSIX** section is ready and disabled until you approve the release. The checksum it shows is the SHA-256
+The website serves the file itself: `public/downloads/vscode/localians-0.1.0.vsix` (+ `.sha256`), so **Download VSIX** works on
+localhost and on every deployment (`vsix.hosted = true`). A unit test requires that copy to be byte-for-byte the recorded file, and you can
+check a deployment with `npm run vscode:verify-release -- --url https://localians.com/downloads/vscode/localians-0.1.0.vsix`.
+The GitHub Release below is an optional mirror: the site links it once `vsix.released = true`. The checksum is the SHA-256
 of one specific file: the release candidate built on 2026-10-24 (`localians-0.1.0.vsix`, kept at
 `extensions/vscode/dist/` and `~/.cache/localians-vsix-release/0.1.0/`). **Every rebuild has a different checksum**, so release that exact
-file (or rebuild and update `src/lib/vscode-extension.ts` first; `npm run vscode:package` tells you when they differ).
+file (or rebuild, copy the new file and its `.sha256` to `public/downloads/vscode/` and update `src/lib/vscode-extension.ts`;
+`npm run vscode:package` tells you when they differ).
 
 1. **Draft the release** (not public). Either:
    - on the web: GitHub → Releases → **Draft a new release** → choose a new tag `vscode-v0.1.0` (created when published), target `main`,
@@ -79,7 +83,8 @@ file (or rebuild and update `src/lib/vscode-extension.ts` first; `npm run vscode
 2. **Review** the draft, then **Publish release** in GitHub (this is the public step and needs the owner's approval).
 3. **Verify the public asset**: `npm run vscode:verify-release` downloads the URL recorded in `src/lib/vscode-extension.ts`, and checks its
    SHA-256, the `.sha256` file and the package contents.
-4. **Enable the button**: set `vsix.released = true` in `src/lib/vscode-extension.ts`, run the site tests, commit, push and deploy.
+4. **Show the mirror**: set `vsix.released = true` in `src/lib/vscode-extension.ts` (adds a "GitHub mirror" link next to the
+   site's Download button), run the site tests, commit, push and deploy.
 
 Tags and release files are never replaced; to fix a bad release, publish a new version.
 

@@ -37,7 +37,7 @@ const steps = [
 ];
 
 export default function VsCodeExtensionPage() {
-  const { installable, downloadable, comingSoon } = vscodeAvailability();
+  const { installable, downloadable, downloadHref, comingSoon } = vscodeAvailability();
   const { marketplace } = vscodeExtension;
 
   const structured: object[] = [breadcrumbs([{ name: "VS Code Extension", path: routes.vscodeExtension }])];
@@ -51,7 +51,7 @@ export default function VsCodeExtensionPage() {
       operatingSystem: "Windows, macOS, Linux",
       softwareVersion: vscodeExtension.version,
       url: absoluteUrl(routes.vscodeExtension),
-      ...(installable ? { installUrl: marketplace.listingUrl } : { downloadUrl: vscodeExtension.vsix.url }),
+      ...(installable ? { installUrl: marketplace.listingUrl } : { downloadUrl: downloadHref.startsWith("/") ? absoluteUrl(downloadHref) : downloadHref }),
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       publisher: { "@type": "Organization", name: "THINXIFY", url: site.operator.url },
     });
@@ -189,23 +189,33 @@ export default function VsCodeExtensionPage() {
               title="Download VSIX"
               description="Install Localians for VS Code from a file now, or from the Marketplace once it is published there."
             />
-            <div className="mx-auto mt-12 grid max-w-[1000px] grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
+            <div className="mx-auto mt-12 flex max-w-[1040px] min-w-0 flex-col gap-10 sm:gap-12">
               <Reveal className="min-w-0">
-                <VsixDownload className="h-full" />
+                <VsixDownload />
               </Reveal>
-              <Reveal delay={0.06} className="flex min-w-0 flex-col gap-6">
-                <div>
-                  <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-fg">Install from a .vsix file</h3>
-                  <VsixInstallSteps className="mt-4" />
-                </div>
-                <div className="rounded-xl border border-line p-4" data-testid="marketplace-note">
-                  <h3 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-fg">
-                    Install from Marketplace
-                    {installable ? null : <span className="rounded-full border border-line-strong px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-3">Coming soon</span>}
-                  </h3>
-                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
-                    {installable ? "Search for Localians in the Extensions view, or use the Install from Marketplace button above." : "The extension isn't on the Visual Studio Marketplace yet. When it is, you'll be able to install it with one click and get automatic updates."}
-                  </p>
+              <Reveal delay={0.06} className="min-w-0">
+                <h3 className="text-[18px] font-semibold tracking-[-0.01em] text-fg">Install from a .vsix file</h3>
+                <p className="mt-1.5 text-[14px] text-fg-2">Four steps, about a minute.</p>
+                <VsixInstallSteps className="mt-5" />
+              </Reveal>
+              <Reveal delay={0.1} className="min-w-0">
+                <div className="flex flex-col gap-3 rounded-xl border border-line p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6" data-testid="marketplace-note">
+                  <div className="min-w-0">
+                    <h3 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-fg">
+                      Install from Marketplace
+                      {installable ? null : <span className="rounded-full border border-line-strong px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-3">Coming soon</span>}
+                    </h3>
+                    <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+                      {installable
+                        ? "Search for Localians in the Extensions view, or use the Install from Marketplace button above."
+                        : "The extension isn't on the Visual Studio Marketplace yet. When it is, you'll be able to install it with one click and get automatic updates."}
+                    </p>
+                  </div>
+                  {installable ? (
+                    <a href={marketplace.installUri} className={buttonClasses({ variant: "secondary", size: "md", className: "w-full shrink-0 sm:w-auto" })}>
+                      Install from Marketplace
+                    </a>
+                  ) : null}
                 </div>
               </Reveal>
             </div>

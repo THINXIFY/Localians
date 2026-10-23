@@ -27,14 +27,29 @@ describe("website ↔ extension consistency (nothing on the site can point at so
     const { marketplace, vsix } = vscodeExtension;
     const a = vscodeAvailability();
     expect(a.installable).toBe(marketplace.published);
-    expect(a.downloadable).toBe(vsix.released);
-    expect(a.comingSoon).toBe(!marketplace.published && !vsix.released);
+    expect(a.downloadable).toBe(vsix.hosted || vsix.released);
+    expect(a.downloadHref).toBe(vsix.hosted ? vsix.hostedPath : vsix.url);
+    expect(a.githubMirror).toBe(vsix.released);
+    expect(a.comingSoon).toBe(!marketplace.published && !vsix.hosted && !vsix.released);
     // The recorded file: this extension's version, a versioned file on GitHub Releases, and a SHA-256.
     expect(vsix.version).toBe(manifest.version);
     expect(vsix.fileName).toBe(`localians-${manifest.version}.vsix`);
     expect(vsix.url).toBe(`https://github.com/THINXIFY/Localians/releases/download/vscode-v${vsix.version}/${vsix.fileName}`);
     expect(vsix.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(vsix.size).toMatch(/^\d+ KB$/);
+  });
+
+  it("the site-hosted .vsix is exactly the recorded file (checksum, .sha256 file, size, package contents)", () => {
+    const { vsix } = vscodeExtension;
+    expect(vsix.hostedPath).toBe(`/downloads/vscode/${vsix.fileName}`);
+    if (!vsix.hosted) return;
+    const file = path.join(root, "public", ...vsix.hostedPath.split("/").filter(Boolean));
+    const bytes = fs.readFileSync(file);
+    expect(crypto.createHash("sha256").update(bytes).digest("hex")).toBe(vsix.sha256);
+    expect(fs.readFileSync(`${file}.sha256`, "utf8")).toBe(`${vsix.sha256}  ${vsix.fileName}\n`);
+    expect(`${Math.round(bytes.length / 1024)} KB`).toBe(vsix.size);
+    const verified = spawnSync(process.execPath, [path.join(root, "scripts", "verify-vsix.mjs"), file], { encoding: "utf8" });
+    expect(verified.status, verified.stderr).toBe(0);
   });
 });
 

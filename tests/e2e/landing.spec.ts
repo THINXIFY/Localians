@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createUserOnDashboard, expectNoHorizontalOverflow } from "./helpers";
+import { vscodeAvailability } from "@/lib/vscode-extension";
 
 // Regression checks for the approved Phase 1 marketing page.
 
@@ -69,7 +70,11 @@ test("pricing: Free vs 7-Day Pass, honest about what's live, never a wallet addr
   else await expect(pricing.getByTestId("pass-coming-soon")).toHaveText("Coming Soon"); // payments off: no checkout link
   await expect(page.getByTestId("plan-comparison")).toContainText("No, one-time");
   expect(await page.content()).not.toContain("0x2f94b75535eff533378c90f8dda29cf10208b174");
-  await expect(page.locator("#features")).toContainText("Coming soon"); // VS Code isn't released yet
+  // The VS Code card says Coming soon only while there is nothing to install or download.
+  const { installable, downloadable } = vscodeAvailability();
+  const vscodeCard = page.locator("#features").getByRole("heading", { level: 3, name: /Share from VS Code/ });
+  if (installable || downloadable) await expect(vscodeCard).not.toContainText("Coming soon");
+  else await expect(vscodeCard).toContainText("Coming soon");
   await page.setViewportSize({ width: 390, height: 844 });
   await expectNoHorizontalOverflow(page);
 });

@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 import { createUserOnDashboard, expectNoHorizontalOverflow } from "./helpers";
 import { vscodeAvailability, vscodeExtension } from "@/lib/vscode-extension";
 
-// The VS Code extension page, its docs, and every place that points to them. While the extension is unreleased
-// (src/lib/vscode-extension.ts), nothing may link to an install or a download.
+// The VS Code extension page, its docs, and every place that points to them. Only what src/lib/vscode-extension.ts
+// says is live may be linked: the site-hosted .vsix, the GitHub mirror once released, the Marketplace once published.
 
-const { installable, downloadable } = vscodeAvailability();
+const { installable, downloadable, downloadHref, comingSoon } = vscodeAvailability();
 
 test("extension page: hero, capabilities, steps, and only real buttons are enabled", async ({ page }) => {
   await page.goto("/vscode-extension");
@@ -23,11 +23,11 @@ test("extension page: hero, capabilities, steps, and only real buttons are enabl
   } else {
     // Unreleased: a disabled button, never a link to a listing that doesn't exist.
     await expect(page.getByTestId("install-disabled")).toBeDisabled();
-    await expect(page.getByTestId("vscode-status")).toContainText("Coming soon");
+    await expect(page.getByTestId("vscode-status")).toContainText(comingSoon ? "Coming soon" : "Manual install");
     await expect(page.locator('a[href^="vscode:"], a[href*="marketplace.visualstudio.com"]')).toHaveCount(0);
   }
   if (downloadable) {
-    await expect(actions.getByRole("link", { name: "Download VSIX" })).toHaveAttribute("href", vscodeExtension.vsix.url);
+    await expect(actions.getByRole("link", { name: "Download VSIX" })).toHaveAttribute("href", downloadHref);
   } else {
     await expect(actions.getByTestId("vsix-disabled")).toBeDisabled();
     await expect(page.locator('a[href$=".vsix"]')).toHaveCount(0);
@@ -47,8 +47,10 @@ test("Download VSIX section: version, publisher, supported VS Code, checksum, ma
   await expect(page.getByTestId("vsix-sha256")).toHaveText(vsix.sha256);
   await expect(card.getByTestId("vsix-status")).toHaveText(vscodeAvailability().downloadable ? "Available" : "Release pending");
   const download = card.locator('[data-testid="vsix-download"], [data-testid="vsix-disabled"]');
-  if (vscodeAvailability().downloadable) await expect(download).toHaveAttribute("href", vsix.url);
+  if (vscodeAvailability().downloadable) await expect(download).toHaveAttribute("href", downloadHref);
   else await expect(download).toBeDisabled();
+  // The GitHub mirror appears only once that release is public.
+  await expect(card.getByTestId("vsix-github")).toHaveCount(vsix.released ? 1 : 0);
 
   const steps = page.getByTestId("vsix-steps");
   await expect(steps).toContainText("Install from VSIX…");
@@ -57,6 +59,20 @@ test("Download VSIX section: version, publisher, supported VS Code, checksum, ma
   await expect(steps).toContainText("shasum -a 256");
   await expect(page.getByTestId("vsix-updates-note")).toContainText("does not receive automatic updates from the");
   await expect(page.getByTestId("marketplace-note")).toContainText(vscodeAvailability().installable ? "Search for Localians" : "Coming soon");
+});
+
+test("Download VSIX saves the exact verified file, from this site", async ({ page, request }) => {
+  test.skip(!vscodeExtension.vsix.hosted, "the site doesn't host the file");
+  await page.goto("/vscode-extension#download");
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("vsix-card").getByTestId("vsix-download").click()]);
+  expect(download.suggestedFilename()).toBe(vscodeExtension.vsix.fileName);
+  const { createHash } = await import("node:crypto");
+  const { readFile } = await import("node:fs/promises");
+  expect(createHash("sha256").update(await readFile(await download.path())).digest("hex")).toBe(vscodeExtension.vsix.sha256);
+  const response = await request.get(downloadHref);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-disposition"]).toBe("attachment");
+  expect((await request.get(`${downloadHref}.sha256`).then((r) => r.text())).split(/\s+/)[0]).toBe(vscodeExtension.vsix.sha256);
 });
 
 test("extension page: SEO, structured data and sitemap", async ({ page, request }) => {
@@ -68,7 +84,8 @@ test("extension page: SEO, structured data and sitemap", async ({ page, request 
   const types = ld.flatMap((t) => (JSON.parse(t) as { "@type": string } | { "@type": string }[])).flat().map((o) => (o as { "@type": string })["@type"]);
   expect(types).toContain("BreadcrumbList");
   // It is only described as an available application once it is.
-  expect(types.includes("SoftwareApplication")).toBe(installable);
+  expect(types.includes("SoftwareApplication")).toBe(installable || downloadable);
+  if (downloadable && !installable) expect(ld.join("")).toContain(`"downloadUrl":"http`); // absolute, the hosted file
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap).toContain("/vscode-extension</loc>");
   expect(sitemap).toContain("/docs/vscode</loc>");
@@ -88,7 +105,7 @@ test("docs page, docs index, footer, homepage and dashboard all lead to the exte
 
   await page.goto("/");
   const band = page.locator('section[aria-labelledby="vscode-band-title"]');
-  await expect(band.getByRole("link", { name: installable ? "Get the extension" : "Learn more" })).toHaveAttribute("href", "/vscode-extension");
+  await expect(band.getByRole("link", { name: installable || downloadable ? "Get the extension" : "Learn more" })).toHaveAttribute("href", "/vscode-extension");
   if (!installable && !downloadable) await expect(band).toContainText("Coming soon");
 
   await createUserOnDashboard(page, "Editor Person");

@@ -30,6 +30,15 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      // The VS Code extension file (public/downloads/vscode): always saved as a file, never opened in the browser.
+      {
+        source: "/downloads/vscode/:file*.vsix",
+        headers: [
+          { key: "Content-Type", value: "application/octet-stream" },
+          { key: "Content-Disposition", value: "attachment" },
+          { key: "X-Robots-Tag", value: "noindex" },
+        ],
+      },
       // Never in search results: the signed-in app, sign-in flows, CLI approval and every API response.
       ...["/dashboard", "/dashboard/:path*", "/onboarding", "/cli/:path*", "/api/:path*", "/login", "/forgot-password", "/reset-password", "/verify-email", "/username", "/admin", "/admin/:path*"].map((source) => ({
         source,

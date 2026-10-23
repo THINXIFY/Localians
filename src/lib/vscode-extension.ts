@@ -3,10 +3,11 @@
  * and structured data read it, and a test (tests/unit/vscode-extension.unit.test.ts) checks it against the extension's
  * own package.json, so nothing on the website can link to an install or download that doesn't exist.
  *
- * To open each door (after the owner approves, see extensions/vscode/PUBLISHING.md):
- *   - the GitHub Release is public  → vsix.released = true (after `npm run vscode:verify-release` passes)
+ * The .vsix is served by the website itself (public/downloads/vscode, so it works on localhost and on every deployment);
+ * a test requires that file to be the exact one described here. The other doors open after the owner approves (see
+ * extensions/vscode/PUBLISHING.md):
+ *   - the GitHub Release is public  → vsix.released = true (after `npm run vscode:verify-release` passes): GitHub mirror link
  *   - a Marketplace listing is live → marketplace.published = true
- * Until then the site shows the file's details and says "Coming soon"; only the documentation link is live.
  */
 export const vscodeExtension = {
   /** Must equal extensions/vscode/package.json: publisher.name, displayName, version and engines.vscode (tested). */
@@ -24,16 +25,20 @@ export const vscodeExtension = {
     installUri: "vscode:extension/thinxify.localians",
   },
   /**
-   * The manual-install file. The checksum is the SHA-256 of the exact file attached to the GitHub Release `vscode-v<version>`
-   * (not of a later rebuild: every build differs by timestamps). `released` stays false until that release is public.
+   * The manual-install file. The checksum is the SHA-256 of the exact release-candidate file (not of a later rebuild:
+   * every build differs by timestamps); the site's copy and the GitHub Release asset must both be that file.
    */
   vsix: {
     version: "0.1.0",
     fileName: "localians-0.1.0.vsix",
+    /** The GitHub Release asset (a mirror). `released` stays false until that release is public. */
     url: "https://github.com/THINXIFY/Localians/releases/download/vscode-v0.1.0/localians-0.1.0.vsix",
     sha256: "b9fc9fbe3677eedb546d6ca3c33df56d7914790b8c0c58a9df085f10995cded8",
     size: "40 KB",
     released: false,
+    /** Served by this website from public/ (with a .sha256 file next to it). */
+    hostedPath: "/downloads/vscode/localians-0.1.0.vsix",
+    hosted: true,
   },
 } as const;
 
@@ -43,9 +48,13 @@ export function vscodeAvailability() {
   return {
     /** "Install from Marketplace" is live (a published Marketplace listing). */
     installable: marketplace.published,
-    /** "Download VSIX" is live (the release is public and its asset was verified). */
-    downloadable: vsix.released,
-    /** Neither is live yet: the page says Coming soon. */
-    comingSoon: !marketplace.published && !vsix.released,
+    /** "Download VSIX" is live: the website serves the file, or the GitHub Release is public. */
+    downloadable: vsix.hosted || vsix.released,
+    /** Where the Download button points (the website's copy first). */
+    downloadHref: vsix.hosted ? vsix.hostedPath : vsix.url,
+    /** The GitHub Release is public: show it as a mirror. */
+    githubMirror: vsix.released,
+    /** Nothing is live yet: the page says Coming soon. */
+    comingSoon: !marketplace.published && !vsix.hosted && !vsix.released,
   };
 }
