@@ -9,6 +9,8 @@ export type ApiProject = {
   /** Reported by newer servers (GET /api/cli/me). */
   access?: "public" | "password";
   hasPassword?: boolean;
+  /** The project's custom link (Preview Pass); absent from older servers. */
+  customUrl?: string | null;
 };
 
 export class ApiError extends Error {
@@ -71,25 +73,30 @@ export function createApi(apiUrl: string, token: string | null, userAgent: strin
     me: () => call<{ user: { email: string; name: string }; workspace: { id: string; name: string }; projects: ApiProject[] }>("GET", "/api/cli/me"),
     createProject: (input: { name: string; framework: string | null; defaultPort: number }) => call<{ project: ApiProject }>("POST", "/api/cli/projects", input),
     redeemSetup: (code: string, port: number, detected?: { name: string; framework: string | null }) =>
-      call<{ project: ApiProject | null; access: "public" | "password"; durationMinutes?: number | null }>("POST", "/api/cli/setup", {
+      call<{ project: ApiProject | null; access: "public" | "password"; durationMinutes?: number | null; url?: "random" | "custom" | null }>("POST", "/api/cli/setup", {
         code,
         port,
         projectName: detected?.name,
         framework: detected?.framework,
       }),
     /** durationMinutes is optional: the server then uses its default, and always checks it against the plan. */
-    createTunnel: (projectId: string, localPort: number, durationMinutes?: number) =>
+    createTunnel: (projectId: string, localPort: number, durationMinutes?: number, url?: "random" | "custom") =>
       call<{
         sessionId: string;
         label: string;
         publicUrl: string;
         gatewayUrl: string;
         expiresAt: string;
-        durationMinutes?: number;
+        /** The chosen auto-stop, or null when it runs until the free preview / pass ends. */
+        durationMinutes?: number | null;
+        /** Which plan the preview runs on (newer servers). */
+        plan?: "free" | "pass";
+        /** The project's custom name when the preview is served on it (Preview Pass). */
+        customName?: string | null;
         project: { id: string; name: string; slug: string };
         access?: "public" | "password";
         connectToken: string;
-      }>("POST", "/api/cli/tunnels", { projectId, localPort, ...(durationMinutes !== undefined ? { durationMinutes } : {}) }),
+      }>("POST", "/api/cli/tunnels", { projectId, localPort, ...(durationMinutes !== undefined ? { durationMinutes } : {}), ...(url ? { url } : {}) }),
     connectToken: async (sessionId: string) => {
       try {
         return (await call<{ connectToken: string }>("POST", `/api/cli/tunnels/${encodeURIComponent(sessionId)}/connect-token`)).connectToken;

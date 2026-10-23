@@ -123,6 +123,8 @@ model Workspace {
   tunnelEvents   TunnelEvent[]
   shareSetups    ShareSetup[]
   tunnelMetrics  TunnelMetric[]
+  previewNames   PreviewName[]
+  freeGrants     FreePreviewGrant[]
 
   @@index([ownerId])
   @@map("workspaces")
@@ -173,6 +175,9 @@ model Project {
 
   tunnelSessions TunnelSession[]
   shareSetups    ShareSetup[]
+  previewName    PreviewName?
+  freeGrant      FreePreviewGrant?
+  passes         PreviewPass[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status, updatedAt])
@@ -244,9 +249,16 @@ model TunnelSession {
   /// Random preview label (`<label>.<preview domain>`). Unique forever, so an
   /// ended session's URL can never be claimed by anyone else.
   hostname            String         @unique
+  /// Custom name this session is served on instead of `hostname` (Preview Pass), or null for the random URL.
+  /// Several sessions over time share a name; at most one of them is active.
+  customName          String?
   localPort           Int
   /// Length chosen when it started (null for sessions from before timers). expiresAt is the authority.
   durationMinutes     Int?
+  /// FREE (the project's free preview) or PASS (a 7-Day Pass); null for sessions from before plans.
+  planTier            String?
+  /// Runs until the free window / pass ends (no shorter auto-stop chosen): extended when a pass is renewed.
+  untilPlanEnd        Boolean        @default(false)
   status              TunnelStatus   @default(CONNECTING)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @default(now()) @updatedAt
@@ -273,6 +285,7 @@ model TunnelSession {
   @@index([userId, status])
   @@index([status, lastHeartbeatAt])
   @@index([projectId, lastActivityAt])
+  @@index([customName, status])
   @@map("tunnel_sessions")
 }
 
@@ -415,6 +428,8 @@ model ShareSetup {
   project            Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   newProjectName     String?
   port               Int?
+  /// "random" or "custom" preview URL chosen in the wizard (null = the project's default).
+  urlMode            String?
   /// Session length chosen in the wizard (checked against the plan again when the CLI starts the session).
   durationMinutes    Int?
   accessMode         PreviewAccess?
@@ -439,4 +454,117 @@ model RateLimitWindow {
   @@id([key, windowStart])
   @@index([expiresAt])
   @@map("rate_limit_windows")
+}
+
+// ---------------------------------------------------------------------------
+// Custom preview URLs (Preview Pass)
+// ---------------------------------------------------------------------------
+
+/// A reserved custom preview name (`<name>.<preview domain>`), owned by a workspace and bound to one project,
+/// independently of tunnel sessions. One row per name, forever: ownership moves only through explicit, audited
+/// transitions (hold → active → released → quarantine → claimable), so a link can't silently change hands.
+model PreviewName {
+  id            String            @id @default(cuid())
+  /// Lowercase, 3–32 chars of a-z 0-9 and single hyphens (see src/lib/preview-names.ts).
+  name          String            @unique
+  workspaceId   String
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// The project it routes to. Unique: a project has at most one custom name.
+  projectId     String?           @unique
+  project       Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  status        PreviewNameStatus
+  /// HELD: reserved for this workspace's checkout until then (at most 15 minutes).
+  heldUntil     DateTime?
+  claimedAt     DateTime?
+  releasedAt    DateTime?
+  /// RELEASED: nobody else may claim it before this (the previous owner may reclaim it any time).
+  availableAt   DateTime?
+  releaseReason String?
+  createdById   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([status, heldUntil])
+  @@map("preview_names")
+}
+
+enum PreviewNameStatus {
+  HELD
+  ACTIVE
+  RELEASED
+}
+
+/// Append-only record of security- and money-relevant changes (custom names, entitlements, payments, admin actions).
+/// Details are short structured facts — never passwords, tokens, keys or full request data.
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  /// USER (a signed-in member), ADMIN (an operator), SYSTEM (sweeps, reconciliation).
+  actorType   String
+  actorId     String?
+  action      String
+  subjectType String
+  subjectId   String
+  detail      Json?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([subjectType, subjectId, createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Preview plans: one free 24-hour preview per project, then 7-Day Passes ($5)
+// ---------------------------------------------------------------------------
+
+/// A project's one free preview: a 24-hour window that starts with its first share. Shares inside the window are
+/// allowed (restarts, reconnects, another port) but never outlive it. Kept when the project is deleted (projectId set
+/// to null) so deleting and re-creating projects doesn't reset the per-workspace / per-user free allowance.
+model FreePreviewGrant {
+  id          String    @id @default(cuid())
+  projectId   String?   @unique
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  /// Who started it (no foreign key: the record must outlive the user for abuse limits).
+  userId      String
+  startedAt   DateTime  @default(now())
+  endsAt      DateTime
+
+  @@index([workspaceId, startedAt])
+  @@index([userId, startedAt])
+  @@map("free_preview_grants")
+}
+
+/// 7 days of preview access for one project (plus its custom URL). Non-recurring: a renewal is a new row that starts
+/// when the current one ends. Never created from a client claim — only by verified payment or an operator.
+model PreviewPass {
+  id           String     @id @default(cuid())
+  projectId    String
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspaceId  String
+  startsAt     DateTime
+  endsAt       DateTime
+  status       PassStatus @default(ACTIVE)
+  source       PassSource
+  /// The approved upgrade request that created it (one pass per request, enforced by the database).
+  requestId    String?    @unique
+  createdById  String?
+  revokedAt    DateTime?
+  revokeReason String?
+  createdAt    DateTime   @default(now())
+
+  @@index([projectId, status, endsAt])
+  @@map("preview_passes")
+}
+
+enum PassStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum PassSource {
+  PAYMENT
+  ADMIN
 }

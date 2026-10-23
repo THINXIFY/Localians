@@ -30,6 +30,7 @@ export async function startControlPlane() {
   const gatewayAccess = await import("@/app/api/internal/gateway/access/route");
   const setup = await import("@/app/api/cli/setup/route");
   const projectAccess = await import("@/app/api/cli/projects/[projectId]/access/route");
+  const labelState = await import("@/app/api/internal/gateway/label-state/route");
 
   add("POST", /^\/api\/cli\/device\/code$/, deviceCode.POST as RouteHandler);
   add("POST", /^\/api\/cli\/device\/token$/, deviceToken.POST as RouteHandler);
@@ -44,6 +45,7 @@ export async function startControlPlane() {
   add("POST", /^\/api\/internal\/gateway\/access$/, gatewayAccess.POST as RouteHandler);
   add("POST", /^\/api\/cli\/setup$/, setup.POST as RouteHandler);
   add("POST", /^\/api\/cli\/projects\/(?<projectId>[^/]+)\/access$/, projectAccess.POST as RouteHandler);
+  add("POST", /^\/api\/internal\/gateway\/label-state$/, labelState.POST as RouteHandler);
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://control-plane.test");

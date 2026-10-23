@@ -1,4 +1,5 @@
 import { ProjectStatus } from "@/generated/prisma/enums";
+import { getTunnelConfig, previewUrl } from "@/server/cli/config";
 import { json, withCliAuth } from "@/server/cli/http";
 import { prisma } from "@/server/db";
 
@@ -11,17 +12,29 @@ export const GET = withCliAuth(async (_request, auth) => {
       name: true,
       projects: {
         where: { status: ProjectStatus.ACTIVE },
-        select: { id: true, name: true, slug: true, framework: true, defaultPort: true, accessMode: true, accessPasswordHash: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          framework: true,
+          defaultPort: true,
+          accessMode: true,
+          accessPasswordHash: true,
+          previewName: { select: { name: true, status: true } },
+        },
         orderBy: { updatedAt: "desc" },
         take: 200,
       },
     },
   });
   // Access is reported as public/password (+ whether a password exists); the hash itself never leaves the server.
-  const projects = workspace.projects.map(({ accessMode, accessPasswordHash, ...p }) => ({
+  const config = getTunnelConfig();
+  const projects = workspace.projects.map(({ accessMode, accessPasswordHash, previewName, ...p }) => ({
     ...p,
     access: accessMode === "PASSWORD" ? ("password" as const) : ("public" as const),
     hasPassword: accessPasswordHash !== null,
+    // The project's custom link (Preview Pass), if it has one.
+    customUrl: previewName?.status === "ACTIVE" && config ? previewUrl(config, previewName.name) : null,
   }));
   return json({ user: auth.user, workspace: { id: workspace.id, name: workspace.name }, projects });
 });

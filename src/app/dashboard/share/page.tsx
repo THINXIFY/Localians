@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/app/Primitives";
 import { DEFAULT_LOCAL_PORT } from "@/lib/previews";
 import { ShareWizard } from "@/components/app/share/ShareWizard";
-import { cliInfo } from "@/server/cli/config";
+import { cliInfo, customNamesRouting, getTunnelConfig } from "@/server/cli/config";
 import { getShareStatus } from "@/server/previews";
 import { getProjectOptions } from "@/server/projects";
 import { createShareSetup } from "@/server/share-setup";
@@ -44,6 +44,7 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
         workspaceName={workspace.name}
         setup={{ id: setup.id, code: setup.code }}
         initialStatus={status}
+        customUrls={{ canUse: customNamesRouting(), previewDomain: getTunnelConfig()?.previewDomain ?? "preview.localians.com", upgradeHref: null }}
       />
     </div>
   );

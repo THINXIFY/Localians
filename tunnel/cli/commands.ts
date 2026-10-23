@@ -22,6 +22,8 @@ type Options = {
   project?: string;
   setup?: string;
   durationMinutes?: number;
+  /** From the dashboard setup: serve on the project's custom name, or a random link. */
+  url?: "random" | "custom";
   hostHeader: "rewrite" | "preserve";
   browser: boolean;
   verbose: boolean;
@@ -339,6 +341,7 @@ export async function share(port: number, options: Options): Promise<number> {
       project = setup.project;
       // The dashboard's duration, unless --duration was given too.
       if (setup.durationMinutes && options.durationMinutes === undefined) options = { ...options, durationMinutes: setup.durationMinutes };
+      if (setup.url) options = { ...options, url: setup.url };
       verbose(project ? `using project "${project.name}" from the dashboard setup` : "dashboard setup: project chosen automatically");
     } catch (error) {
       fail(error instanceof Error ? error.message : "Couldn't use that setup code.", `Or run \`localians share ${port}\` without --setup.`);
@@ -363,7 +366,7 @@ export async function share(port: number, options: Options): Promise<number> {
   // 5–7. Tunnel session + preview hostname.
   let session;
   try {
-    session = await api.createTunnel(project.id, port, options.durationMinutes);
+    session = await api.createTunnel(project.id, port, options.durationMinutes, options.url);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       fail("Your CLI login has expired or was revoked.", "Run `localians login` to sign in again.");
@@ -373,7 +376,12 @@ export async function share(port: number, options: Options): Promise<number> {
       fail("You don't have access to that project.", "Check the project in the dashboard, or omit --project.");
       return EXIT.auth;
     }
-    if (error instanceof ApiError && (error.code === "plan_required" || error.code === "invalid_duration")) {
+    if (error instanceof ApiError && (error.code === "free_used" || error.code === "free_limit")) {
+      // The project's one free preview is over (or the free allowance is used up): point to the 7-Day Pass.
+      fail(error.message, `Get a 7-Day Pass in the dashboard: ${apiUrl}/dashboard/projects/${project.id}#plan`);
+      return EXIT.error;
+    }
+    if (error instanceof ApiError && (error.code === "plan_required" || error.code === "invalid_duration" || error.code === "no_custom_name")) {
       fail(error.message, `For example: localians share ${port} --duration 1h`);
       return EXIT.usage;
     }

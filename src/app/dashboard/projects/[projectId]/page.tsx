@@ -11,6 +11,8 @@ import { NotFoundError } from "@/server/errors";
 import { getProjectPreviews } from "@/server/previews";
 import { getProjectAccess } from "@/server/access";
 import { ProjectAccessPanel } from "@/components/app/previews/ProjectAccessPanel";
+import { CustomUrlPanel } from "@/components/app/names/CustomUrlPanel";
+import { getProjectName } from "@/server/preview-names";
 import { cliInfo } from "@/server/cli/config";
 import { getProjectForUser } from "@/server/projects";
 import { requireUser } from "@/server/session";
@@ -38,7 +40,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const session = await requireUser();
   const { projectId } = await params;
   const [project, workspace] = await Promise.all([loadProject(session.user.id, projectId), getCurrentWorkspace(session.user.id)]);
-  const [previews, access] = await Promise.all([getProjectPreviews(session.user.id, project.id), getProjectAccess(session.user.id, project.id)]);
+  const [previews, access, customUrl] = await Promise.all([
+    getProjectPreviews(session.user.id, project.id),
+    getProjectAccess(session.user.id, project.id),
+    getProjectName(session.user.id, project.id),
+  ]);
   const renderedAt = renderTime();
 
   const details = [
@@ -99,6 +105,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         initial={{ mode: access.mode, ttlMinutes: access.ttlMinutes, hasPassword: access.hasPassword }}
         livePreviews={previews.active.length}
       />
+
+      {project.status === "ACTIVE" ? <CustomUrlPanel projectId={project.id} projectName={project.name} state={customUrl} upgradeHref={null} /> : null}
 
       <ProjectPreviews
         project={{ id: project.id, defaultPort: project.defaultPort, archived: project.status === "ARCHIVED" }}

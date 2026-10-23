@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Clock, Globe, Lock, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Clock, Globe, Link2, Lock, RefreshCw, Shuffle, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -32,7 +32,18 @@ type SharePreview = {
   project: { id: string; name: string; access: "PUBLIC" | "PASSWORD" };
 };
 type ShareStatus = { cliLoggedIn: boolean; preview: SharePreview | null };
-type ProjectOption = { id: string; name: string; slug: string; defaultPort: number | null; status: "ACTIVE" | "ARCHIVED"; accessMode: "PUBLIC" | "PASSWORD"; hasPassword: boolean };
+type ProjectOption = {
+  id: string;
+  name: string;
+  slug: string;
+  defaultPort: number | null;
+  status: "ACTIVE" | "ARCHIVED";
+  accessMode: "PUBLIC" | "PASSWORD";
+  hasPassword: boolean;
+  /** The project's custom preview name (Preview Pass), if it has one. */
+  customName: string | null;
+};
+type CustomUrls = { canUse: boolean; previewDomain: string; upgradeHref: string | null };
 type Access = "PUBLIC" | "PASSWORD";
 
 const PRESETS = [
@@ -79,6 +90,7 @@ export function ShareWizard({
   projects,
   setup,
   initialStatus,
+  customUrls,
 }: {
   openedAt: number;
   initialPort: number;
@@ -91,6 +103,7 @@ export function ShareWizard({
   projects: ProjectOption[];
   setup: { id: string; code: string };
   initialStatus: ShareStatus;
+  customUrls: CustomUrls;
 }) {
   const router = useRouter();
   // Previews started after this moment are "this visit". Reset by Share again.
@@ -107,8 +120,12 @@ export function ShareWizard({
   const [access, setAccess] = useState<Access>(() => byPort(initialPort)?.accessMode ?? "PUBLIC");
   const [password, setPassword] = useState("");
   const [duration, setDuration] = useState(DEFAULT_DURATION_MINUTES);
+  const [urlChoice, setUrlChoice] = useState<"custom" | "random">("custom");
 
   const selected = active.find((p) => p.id === projectId);
+  /** The link the preview will get: the project's custom name when the pass allows it and it's chosen. */
+  const customName = customUrls.canUse && selected?.customName ? selected.customName : null;
+  const url: "custom" | "random" = customName && urlChoice === "custom" ? "custom" : "random";
   const portNumber = Number(portText);
   const portValid = /^\d{1,5}$/.test(portText) && portNumber >= 1 && portNumber <= 65535;
   const port = portValid ? portNumber : null;
@@ -186,6 +203,7 @@ export function ShareWizard({
         result = await saveShareSetupAction(setup.id, {
           port,
           durationMinutes: isDurationOption(duration) ? duration : DEFAULT_DURATION_MINUTES,
+          url,
           project: projectId ? { kind: "existing", id: projectId } : { kind: "new", name: projectName.trim() },
           access: access === "PASSWORD" ? { mode: "PASSWORD", ...(password.length >= 8 ? { password } : {}) } : { mode: "PUBLIC" },
         });
@@ -196,7 +214,7 @@ export function ShareWizard({
       setSave(result.ok ? { state: "saved", passwordSaved: result.data.passwordSaved } : { state: "error", message: result.error });
     }, 400);
     return () => window.clearTimeout(saveTimer.current);
-  }, [setup.id, port, projectId, projectName, access, password, passwordTooShort, duration, retry]);
+  }, [setup.id, port, projectId, projectName, access, password, passwordTooShort, duration, url, retry]);
 
   const ready = portValid && passwordReady && !passwordTooShort && save.state !== "error";
   const command = `${run} share ${port ?? "<port>"} --setup ${setup.code}`;
@@ -430,6 +448,53 @@ export function ShareWizard({
             <p id={`${ids.duration}-hint`} className="text-[12.5px] text-fg-3">
               The link stops working after this time, even if your app is still running. Share again any time for a new one.
             </p>
+          </fieldset>
+
+          <fieldset className="flex min-w-0 flex-col gap-2" data-testid="url-options">
+            <legend className="mb-1 flex items-center gap-1.5 text-[13px] font-medium text-fg">
+              <Link2 className="size-3.5 text-fg-3" aria-hidden="true" />
+              Preview link
+            </legend>
+            {customName ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    { value: "custom", icon: Link2, label: `${customName}.${customUrls.previewDomain}`, sub: "Your custom URL — the same every time" },
+                    { value: "random", icon: Shuffle, label: "Random link", sub: "A new, unguessable link for this share" },
+                  ] as const
+                ).map((o) => (
+                  <label
+                    key={o.value}
+                    className={cn(
+                      "relative flex min-w-0 cursor-pointer flex-col gap-0.5 rounded-xl border px-3 py-2.5 transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
+                      urlChoice === o.value ? "border-accent/50 bg-accent/[0.06]" : "border-line-strong hover:border-tint/25",
+                    )}
+                  >
+                    <input type="radio" name={`${ids.duration}-url`} value={o.value} checked={urlChoice === o.value} onChange={() => setUrlChoice(o.value)} aria-label={o.value === "custom" ? "Custom URL" : "Random link"} className="absolute inset-0 cursor-pointer appearance-none rounded-xl opacity-0" />
+                    <span className={cn("flex min-w-0 items-center gap-1.5 text-[13.5px] font-medium text-fg", o.value === "custom" && "font-mono text-[13px]")}>
+                      <o.icon className={cn("size-3.5 shrink-0", urlChoice === o.value ? "text-accent-ink" : "text-fg-3")} aria-hidden="true" />
+                      <span className="truncate">{o.label}</span>
+                    </span>
+                    <span className="text-[11.5px] leading-snug text-fg-3">{o.sub}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-relaxed text-fg-3" data-testid="url-random-note">
+                <span className="text-fg-2">A random, unguessable link.</span>
+                {customUrls.canUse && selected ? (
+                  <Link href={`/dashboard/projects/${selected.id}#custom-url`} className="text-fg-2 underline underline-offset-2">
+                    Choose a custom URL for {selected.name}
+                  </Link>
+                ) : customUrls.canUse ? (
+                  <span>Pick an existing project to use its custom URL.</span>
+                ) : customUrls.upgradeHref ? (
+                  <Link href={customUrls.upgradeHref} className="font-medium text-accent-ink underline underline-offset-2">
+                    Get a custom URL — Upgrade for $5
+                  </Link>
+                ) : null}
+              </p>
+            )}
           </fieldset>
         </Step>
 

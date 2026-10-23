@@ -77,9 +77,10 @@ describe("preview durations (server-enforced)", () => {
       expect(row.durationMinutes).toBe(option.minutes);
       await api.closeTunnel(session.sessionId);
     }
-    // No durationMinutes (CLI / VS Code versions from before timers): the free maximum, as before.
+    // No durationMinutes (CLI / VS Code versions from before timers): runs until the free window ends (24 hours from the
+    // project's first share above, which was moments ago).
     const legacy = await api.createTunnel(p.id, app.port);
-    expect(legacy.durationMinutes).toBe(24 * 60);
+    expect(legacy.durationMinutes).toBeNull();
     expect(near(legacy.expiresAt, Date.now() + 24 * 3600_000)).toBe(true);
     await api.closeTunnel(legacy.sessionId);
   });

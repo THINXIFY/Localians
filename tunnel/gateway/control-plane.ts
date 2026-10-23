@@ -1,4 +1,4 @@
-import type { AccessCheckRequest, AccessCheckResponse, GatewayEvent, GatewayEventsResponse } from "../shared/protocol";
+import type { AccessCheckRequest, AccessCheckResponse, GatewayEvent, GatewayEventsResponse, LabelStateResponse } from "../shared/protocol";
 import type { Logger } from "./log";
 
 /** Reports tunnel lifecycle and metering to the control plane; returns per-session actions. */
@@ -41,6 +41,26 @@ export function createAccessChecker(config: { url: string; apiSecret: string }, 
       return (await response.json()) as AccessCheckResponse;
     } catch (error) {
       log("warn", "control plane unreachable for access check", { error: error instanceof Error ? error.message : "unknown" });
+      return null;
+    }
+  };
+}
+
+/** Asks the control plane what to show for a custom name with no tunnel here (offline / expired / not found). */
+export function createLabelStateChecker(config: { url: string; apiSecret: string }, log: Logger) {
+  return async function labelState(label: string): Promise<LabelStateResponse["state"] | null> {
+    try {
+      const response = await fetch(`${config.url}/api/internal/gateway/label-state`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${config.apiSecret}` },
+        body: JSON.stringify({ label }),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) return null;
+      const body = (await response.json()) as Partial<LabelStateResponse>;
+      return body.state === "offline" || body.state === "expired" || body.state === "unknown" ? body.state : null;
+    } catch (error) {
+      log("warn", "control plane unreachable for label state", { error: error instanceof Error ? error.message : "unknown" });
       return null;
     }
   };

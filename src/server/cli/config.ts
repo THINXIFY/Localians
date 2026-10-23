@@ -41,6 +41,13 @@ export function previewUrl(config: TunnelConfig, label: string) {
   return `${config.publicScheme}://${label}.${config.previewDomain}${port}`;
 }
 
+/**
+ * Serving previews on custom names needs gateways that accept them (this release or later). Off until the operator
+ * has updated every gateway and sets PREVIEW_CUSTOM_NAMES=on; names can still be claimed meanwhile, and previews
+ * use their random link.
+ */
+export const customNamesRouting = () => process.env.PREVIEW_CUSTOM_NAMES === "on";
+
 export const siteUrl = () => (process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 
 /** What the CLI setup instructions need: the server URL to log in to, and whether the gateway uses the local dev CA. */

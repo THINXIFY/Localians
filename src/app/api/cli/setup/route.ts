@@ -15,7 +15,7 @@ export const POST = withCliAuth(async (request, auth) => {
     };
     const result = await redeemShareSetup(auth, code, port, detected);
     // durationMinutes: what the wizard chose; the CLI passes it on when it starts the session (checked again there).
-    return json({ project: result.project, access: result.access === "PASSWORD" ? "password" : "public", durationMinutes: result.durationMinutes });
+    return json({ project: result.project, access: result.access === "PASSWORD" ? "password" : "public", durationMinutes: result.durationMinutes, url: result.url });
   } catch (error) {
     if (error instanceof SetupError) return apiError(error.code === "setup_invalid" ? 404 : error.code === "plan_required" ? 403 : 410, error.code, error.message);
     throw error;

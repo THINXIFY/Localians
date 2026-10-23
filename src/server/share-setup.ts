@@ -12,7 +12,8 @@ import { log } from "./log";
 import { createProject, getProjectForUser } from "./projects";
 import { getCurrentWorkspace } from "./workspaces";
 import { durationLabel, isDurationOption } from "@tunnel/shared/durations";
-import { getPlanLimits } from "./plans";
+import { FREE_MAX_MINUTES } from "@tunnel/shared/durations";
+import { getProjectPlan } from "./plans";
 
 /**
  * Share App wizard → CLI hand-off. The wizard prepares a setup (project, protection) and shows
@@ -48,7 +49,10 @@ export const setupInputSchema = z
   .object({
     port: z.number().int().min(1).max(65535).nullable(),
     /** Session length; optional so an older open wizard tab still saves. */
-    durationMinutes: z.number().int().refine(isDurationOption, "Choose one of the listed durations.").optional(),
+    /** Optional auto-stop; null = run until the free preview / pass ends. Omitted by older open tabs. */
+    durationMinutes: z.number().int().refine(isDurationOption, "Choose one of the listed durations.").nullable().optional(),
+    /** Random link, or the project's custom name (Preview Pass); optional for older open tabs. */
+    url: z.enum(["random", "custom"]).optional(),
     project: z.discriminatedUnion("kind", [
       z.object({ kind: z.literal("new"), name: z.string().trim().max(80, "Keep the name under 80 characters.") }),
       z.object({ kind: z.literal("existing"), id: z.string().min(1).max(64) }),
@@ -78,18 +82,16 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
   if (setup.usedAt) throw new SetupError("setup_used", "This command was already used.");
   if (setup.expiresAt <= new Date()) throw new SetupError("setup_expired", "This command expired. Reload the page for a new one.");
 
-  if (parsed.durationMinutes !== undefined) {
-    const plan = await getPlanLimits(setup.workspaceId);
-    if (parsed.durationMinutes > plan.maxDurationMinutes) {
-      throw new SetupError("plan_required", `Sessions longer than ${durationLabel(plan.maxDurationMinutes)} need a Preview Pass.`);
-    }
-  }
-
   let projectId: string | null = null;
   if (parsed.project.kind === "existing") {
     const project = await getProjectForUser(userId, parsed.project.id);
     if (project.workspaceId !== setup.workspaceId) throw new NotFoundError("Project not found.");
     projectId = project.id;
+  }
+  // Early feedback only: the share itself is authorized against the project's plan again when the CLI starts it.
+  if (parsed.durationMinutes && parsed.durationMinutes > FREE_MAX_MINUTES) {
+    const plan = projectId ? await getProjectPlan({ id: projectId, workspaceId: setup.workspaceId }, userId) : null;
+    if (!plan?.pass) throw new SetupError("plan_required", `Sessions longer than ${durationLabel(FREE_MAX_MINUTES)} need a 7-Day Pass.`);
   }
   const passwordHash = parsed.access.mode === "PASSWORD" && parsed.access.password ? await hashPassword(parsed.access.password) : undefined;
   await prisma.shareSetup.update({
@@ -97,6 +99,7 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
     data: {
       port: parsed.port,
       ...(parsed.durationMinutes !== undefined ? { durationMinutes: parsed.durationMinutes } : {}),
+      ...(parsed.url !== undefined ? { urlMode: parsed.url } : {}),
       projectId,
       newProjectName: parsed.project.kind === "new" && parsed.project.name ? parsed.project.name : null,
       accessMode: parsed.access.mode,
@@ -173,5 +176,6 @@ export async function redeemShareSetup(auth: CliAuth, code: string, port: number
     project: project ? { id: project.id, name: project.name, slug: project.slug, framework: project.framework, defaultPort: project.defaultPort } : null,
     access,
     durationMinutes: setup.durationMinutes,
+    url: setup.urlMode === "custom" || setup.urlMode === "random" ? setup.urlMode : null,
   };
 }

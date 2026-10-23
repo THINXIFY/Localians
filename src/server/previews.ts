@@ -4,7 +4,7 @@ import { TunnelEventType, TunnelStatus, WorkspaceRole } from "@/generated/prisma
 import { getTunnelConfig, previewUrl } from "./cli/config";
 import { getLiveTunnels, type LiveTunnels, terminateOnGateway } from "./cli/gateway-control";
 import { ACTIVE_STATES, endSession, hourBucket, isActive } from "./cli/lifecycle";
-import { STOPPED_FROM_DASHBOARD, sweepStaleTunnels } from "./cli/tunnels";
+import { routingLabel, STOPPED_FROM_DASHBOARD, sweepStaleTunnels } from "./cli/tunnels";
 import { prisma } from "./db";
 import { ForbiddenError, NotFoundError } from "./errors";
 import { getCurrentWorkspace, type WorkspaceContext } from "./workspaces";
@@ -29,6 +29,7 @@ const previewSelect = {
   id: true,
   userId: true,
   hostname: true,
+  customName: true,
   localPort: true,
   status: true,
   createdAt: true,
@@ -51,6 +52,8 @@ type PreviewRow = Prisma.TunnelSessionGetPayload<{ select: typeof previewSelect 
 export type Preview = {
   id: string;
   label: string;
+  /** Served on the project's custom name (Preview Pass) rather than a random link. */
+  customName: string | null;
   publicUrl: string | null;
   localPort: number;
   status: PreviewStatus;
@@ -112,8 +115,9 @@ function toPreview(row: PreviewRow, live: LiveTunnels | null, userId: string, wo
   const { status, source } = effectiveStatus(row, live);
   return {
     id: row.id,
-    label: row.hostname,
-    publicUrl: config ? previewUrl(config, row.hostname) : null,
+    label: routingLabel(row),
+    customName: row.customName,
+    publicUrl: config ? previewUrl(config, routingLabel(row)) : null,
     localPort: row.localPort,
     status,
     statusSource: source,
@@ -143,6 +147,7 @@ function searchWhere(q: string): Prisma.TunnelSessionWhereInput | null {
     OR: [
       { project: { name: { contains: query, mode: "insensitive" } } },
       ...(/^[a-z2-7]{3,12}$/.test(label) ? [{ hostname: { contains: label } }] : []),
+      ...(/^[a-z0-9-]{3,32}$/.test(label) ? [{ customName: { contains: label } }] : []),
     ],
   };
 }
@@ -255,7 +260,7 @@ export async function getRecentActivity(userId: string, take = 8) {
     where: { workspaceId: workspace.id, session: { project: { workspace: { members: { some: { userId } } } } } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take,
-    select: { id: true, type: true, detail: true, createdAt: true, session: { select: { id: true, hostname: true, project: { select: { name: true } } } } },
+    select: { id: true, type: true, detail: true, createdAt: true, session: { select: { id: true, hostname: true, customName: true, project: { select: { name: true } } } } },
   });
   return events.map((e) => ({
     id: e.id,
@@ -264,7 +269,7 @@ export async function getRecentActivity(userId: string, take = 8) {
     createdAt: e.createdAt,
     sessionId: e.session.id,
     projectName: e.session.project.name,
-    publicUrl: config ? previewUrl(config, e.session.hostname) : null,
+    publicUrl: config ? previewUrl(config, routingLabel(e.session)) : null,
   }));
 }
 

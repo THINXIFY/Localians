@@ -21,12 +21,13 @@ import {
   type GatewayTerminateResponse,
   type GatewayTunnelsResponse,
   H,
+  isPreviewLabel,
   LABEL_PATTERN,
   PROTOCOL_UPGRADE,
 } from "../shared/protocol";
 import type { GatewayConfig } from "./config";
 import { clearCookieHeader, cookieName, deriveAccessKey, GATEWAY_PAGE_HEADERS, loginPage, type LoginMessage, readCookie, safeNext, setCookieHeader, signAccess, verifyAccess } from "./access";
-import { createAccessChecker, createControlPlaneClient } from "./control-plane";
+import { createAccessChecker, createControlPlaneClient, createLabelStateChecker } from "./control-plane";
 import { RateLimiter, ReplayGuard } from "./limits";
 import { createLogger, type Logger } from "./log";
 import { errorPage, type GatewayErrorKind } from "./pages";
@@ -63,10 +64,15 @@ const PREVIEW_ROBOTS = "noindex, nofollow, noarchive";
 /** Disconnect reports that couldn't be delivered are retried with the next heartbeat (bounded). */
 const MAX_UNDELIVERED = 1000;
 
-export function createGateway(config: GatewayConfig, deps: { log?: Logger; report?: Report; checkAccess?: CheckAccess } = {}) {
+type LabelState = ReturnType<typeof createLabelStateChecker>;
+
+export function createGateway(config: GatewayConfig, deps: { log?: Logger; report?: Report; checkAccess?: CheckAccess; labelState?: LabelState } = {}) {
   const log = deps.log ?? createLogger();
   const report = deps.report ?? createControlPlaneClient({ ...config.controlPlane, gatewayId: config.gatewayId }, log);
   const checkAccess = deps.checkAccess ?? createAccessChecker(config.controlPlane, log);
+  const lookupLabel = deps.labelState ?? createLabelStateChecker(config.controlPlane, log);
+  /** What to show for a custom name with no tunnel: cached briefly, bounded, so unknown names can't flood the control plane. */
+  const labelStates = new Map<string, { kind: GatewayErrorKind; until: number }>();
   const accessKey = deriveAccessKey(config.controlPlane.apiSecret);
   const secureCookies = config.publicProto === "https";
   const accessCookie = cookieName(secureCookies);
@@ -143,7 +149,7 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
     const suffix = `.${config.previewDomain}`;
     if (!hostname.endsWith(suffix)) return null;
     const label = hostname.slice(0, -suffix.length);
-    return LABEL_PATTERN.test(label) ? label : null;
+    return isPreviewLabel(label) ? label : null;
   }
 
   const normalizeIp = (ip: string | undefined) => (ip ?? "").replace(/^::ffff:/, "");
@@ -309,6 +315,25 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
     });
   }
 
+  /**
+   * Why there's no tunnel for this label. Random labels are unguessable, so "not found" is right. A custom name is a
+   * stable link: the control plane says whether it's reserved but offline, or its time ran out.
+   */
+  async function missingKind(label: string): Promise<GatewayErrorKind> {
+    if (isExpiredLabel(label)) return "expired";
+    if (LABEL_PATTERN.test(label)) return "not-found";
+    const cached = labelStates.get(label);
+    if (cached && cached.until > Date.now()) return cached.kind;
+    const state = await lookupLabel(label);
+    const kind: GatewayErrorKind = state === "offline" ? "offline" : state === "expired" ? "expired" : "not-found";
+    if (state !== null) {
+      labelStates.delete(label);
+      labelStates.set(label, { kind, until: Date.now() + 30_000 });
+      if (labelStates.size > 10_000) labelStates.delete(labelStates.keys().next().value!);
+    }
+    return kind;
+  }
+
   /** Common admission checks for a public request on a preview host. */
   function admit(req: http.IncomingMessage, label: string): { tunnel: Tunnel } | { error: GatewayErrorKind } {
     if (!ipRate.take(clientIp(req))) return { error: "rate-limited" };
@@ -332,7 +357,11 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
     if (!label) return sendError(res, "not-found");
 
     const admitted = admit(req, label);
-    if ("error" in admitted) return sendError(res, admitted.error);
+    if ("error" in admitted) {
+      if (admitted.error !== "not-found") return sendError(res, admitted.error);
+      void missingKind(label).then((kind) => sendError(res, kind), () => sendError(res, "not-found"));
+      return;
+    }
     const { tunnel } = admitted;
 
     const path = req.url.split("?")[0];
@@ -458,7 +487,7 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
         algorithms: ["HS256"],
       });
       const { sid, sub, label, jti, exp } = payload as Record<string, unknown>;
-      if (typeof sid !== "string" || typeof sub !== "string" || typeof label !== "string" || !LABEL_PATTERN.test(label) || typeof jti !== "string" || typeof exp !== "number") {
+      if (typeof sid !== "string" || typeof sub !== "string" || typeof label !== "string" || !isPreviewLabel(label) || typeof jti !== "string" || typeof exp !== "number") {
         return reject(401, "invalid_token");
       }
       claims = { sid, sub, label, jti, exp };
@@ -520,6 +549,8 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
     // A reconnect replaces a half-dead previous connection for the same session.
     const previous = tunnels.get(claims.label);
     tunnels.set(claims.label, tunnel);
+    labelStates.delete(claims.label);
+    expiredLabels.delete(claims.label); // a new session on a custom name revives the link
     if (previous) closeTunnel(previous, "replaced by reconnect");
     log("info", "tunnel connected", { label: claims.label, sessionId: claims.sid });
   }
@@ -528,7 +559,11 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
   function forwardWebSocket(req: http.IncomingMessage, socket: Duplex, head: Buffer, label: string, hostname: string) {
     if (String(req.headers.upgrade ?? "").toLowerCase() !== "websocket") return writeRawError(socket, "bad-request");
     const admitted = admit(req, label);
-    if ("error" in admitted) return writeRawError(socket, admitted.error);
+    if ("error" in admitted) {
+      if (admitted.error !== "not-found") return writeRawError(socket, admitted.error);
+      void missingKind(label).then((kind) => writeRawError(socket, kind), () => writeRawError(socket, "not-found"));
+      return;
+    }
     const { tunnel } = admitted;
     // WebSockets need the same access as pages: a protected preview's socket needs a valid visitor cookie.
     const blocked = accessBlock(req, tunnel);

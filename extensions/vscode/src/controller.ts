@@ -527,6 +527,12 @@ export class Controller implements vscode.Disposable {
     } catch (error) {
       if (error instanceof ShareError && error.code === "auth") return this.sessionExpired();
       if (error instanceof ShareError && error.code === "user") return; // cancelled
+      if (error instanceof ShareError && (error.code === "free_used" || error.code === "free_limit")) {
+        // The project's free preview is over: offer the 7-Day Pass (bought in the dashboard).
+        const action = await vscode.window.showWarningMessage(`Localians: ${error.message}`, "Get 7-Day Pass");
+        if (action) await this.openServerPage(`/dashboard/projects/${encodeURIComponent(project.id)}#plan`);
+        return;
+      }
       const message = error instanceof Error ? error.message : "Couldn't start sharing.";
       const action = await vscode.window.showErrorMessage(`Localians: ${message}`, "Try Again", "Show Log");
       if (action === "Try Again") await this.connect(app, project, durationMinutes);

@@ -150,9 +150,13 @@ export async function getProjectOptions(userId: string) {
   const workspace = await getCurrentWorkspace(userId);
   const rows = await prisma.project.findMany({
     where: { workspaceId: workspace.id, ...visibleTo(userId) },
-    select: { id: true, name: true, slug: true, defaultPort: true, status: true, accessMode: true, accessPasswordHash: true },
+    select: { id: true, name: true, slug: true, defaultPort: true, status: true, accessMode: true, accessPasswordHash: true, previewName: { select: { name: true, status: true } } },
     orderBy: { name: "asc" },
   });
   // Only whether a password exists — the hash never leaves the server.
-  return rows.map(({ accessPasswordHash, ...p }) => ({ ...p, hasPassword: accessPasswordHash !== null }));
+  return rows.map(({ accessPasswordHash, previewName, ...p }) => ({
+    ...p,
+    hasPassword: accessPasswordHash !== null,
+    customName: previewName?.status === "ACTIVE" ? previewName.name : null,
+  }));
 }

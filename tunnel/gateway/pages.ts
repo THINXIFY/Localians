@@ -16,7 +16,7 @@ export type GatewayErrorKind =
 
 const PAGES: Record<GatewayErrorKind, { status: number; title: string; body: string }> = {
   "not-found": { status: 404, title: "This preview link isn't active", body: "The link may be mistyped, or the developer has stopped sharing." },
-  offline: { status: 503, title: "This preview is offline", body: "The developer's Localians CLI isn't connected right now. Try again in a moment." },
+  offline: { status: 503, title: "This preview is offline", body: "The developer's app isn't shared right now. Try again later, or ask them to start sharing." },
   "local-unreachable": { status: 502, title: "The app isn't running", body: "Localians is connected, but the developer's local server isn't responding. They may have stopped it." },
   "local-timeout": { status: 504, title: "The app took too long to respond", body: "The developer's local server didn't answer in time." },
   "bad-gateway": { status: 502, title: "Something went wrong", body: "The preview connection was interrupted. Please try again." },

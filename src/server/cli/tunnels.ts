@@ -15,6 +15,7 @@ import { NotFoundError } from "../errors";
 import { getProjectForUser } from "../projects";
 import {
   CONNECT_TOKEN_TTL_S,
+  customNamesRouting,
   getTunnelConfig,
   previewUrl,
   quotas,
@@ -25,14 +26,19 @@ import type { CliAuth } from "./credentials";
 import { policyFor } from "../access";
 import { log } from "../log";
 import { generatePreviewLabel } from "./crypto";
-import { durationLabel, isDurationOption, LEGACY_DURATION_MINUTES, TIME_UP_REASON } from "@tunnel/shared/durations";
-import { getPlanLimits } from "../plans";
+import { durationLabel, TIME_UP_REASON } from "@tunnel/shared/durations";
+import { authorizeShare, lockProject, PlanError } from "../plans";
+import { PreviewNameStatus } from "@/generated/prisma/enums";
+import { terminateOnGateway } from "./gateway-control";
+import { expireHolds, releaseLapsedNames } from "../preview-names";
 import { ACTIVE_STATES, endSession, endSessions, hourBucket, isActive, pruneTelemetry, recordEvent } from "./lifecycle";
 
 export { ACTIVE_STATES } from "./lifecycle";
 
 /** endReason written when a preview is stopped from the dashboard. */
 export const STOPPED_FROM_DASHBOARD = "Stopped from the dashboard";
+/** endReason when a newer share of the same custom link took over. */
+export const REPLACED_BY_NEW_SHARE = "Replaced by a newer share of this link";
 
 export class TunnelError extends Error {
   constructor(
@@ -45,7 +51,12 @@ export class TunnelError extends Error {
       | "session_ended"
       | "invalid_port"
       | "invalid_duration"
-      | "plan_required",
+      | "plan_required"
+      | "free_used"
+      | "free_limit"
+      | "invalid_request"
+      | "no_custom_name"
+      | "custom_names_unavailable",
     message: string,
     readonly status: number,
   ) {
@@ -59,8 +70,11 @@ function requireConfig(): TunnelConfig {
   return config;
 }
 
-async function signConnectToken(config: TunnelConfig, session: { id: string; userId: string; credentialId: string; hostname: string; localPort: number }) {
-  return new SignJWT({ sid: session.id, cid: session.credentialId, label: session.hostname, port: session.localPort })
+/** The label a session is served on: its custom name (Preview Pass), else its random label. */
+export const routingLabel = (session: { hostname: string; customName: string | null }) => session.customName ?? session.hostname;
+
+async function signConnectToken(config: TunnelConfig, session: { id: string; userId: string; credentialId: string; hostname: string; customName: string | null; localPort: number }) {
+  return new SignJWT({ sid: session.id, cid: session.credentialId, label: routingLabel(session), port: session.localPort })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(session.userId)
     .setIssuer(CONNECT_TOKEN_ISSUER)
@@ -89,27 +103,24 @@ export async function sweepStaleTunnels(where: Prisma.TunnelSessionWhereInput = 
 }
 
 /**
- * The session length to use: one of the listed options, within the workspace's plan. Omitted (older CLI and VS Code
- * versions) = the free maximum, as before timers existed. Never more than the plan allows, whatever the client sends.
+ * The custom name to serve a share on, or null for a random link: only with a 7-Day Pass, a reserved name, and
+ * gateways that support it. `url` "custom" insists (errors explain why not), "random" opts out, and omitted (older
+ * clients) uses the project's custom name when it can.
  */
-export async function resolveDuration(workspaceId: string, requested: unknown) {
-  const plan = await getPlanLimits(workspaceId);
-  if (requested === undefined || requested === null) return Math.min(LEGACY_DURATION_MINUTES, plan.maxDurationMinutes);
-  if (!isDurationOption(requested)) {
-    throw new TunnelError("invalid_duration", "Choose a duration of 5m, 15m, 30m, 1h, 12h or 24h (3d or 7d with a Preview Pass).", 400);
+async function customNameFor(tx: Prisma.TransactionClient, project: { id: string }, tier: "FREE" | "PASS", url: unknown) {
+  if (url === "random" || !customNamesRouting()) return null;
+  const insist = url === "custom";
+  if (tier !== "PASS") {
+    if (insist) throw new TunnelError("plan_required", "Custom URLs come with the 7-Day Pass. Your preview can use a random link instead.", 403);
+    return null;
   }
-  if (requested > plan.maxDurationMinutes) {
-    throw new TunnelError(
-      "plan_required",
-      `Sessions longer than ${durationLabel(plan.maxDurationMinutes)} need a Preview Pass. Choose a shorter duration, or upgrade in the dashboard.`,
-      403,
-    );
-  }
-  return requested;
+  const row = await tx.previewName.findFirst({ where: { projectId: project.id, status: PreviewNameStatus.ACTIVE }, select: { name: true } });
+  if (!row && insist) throw new TunnelError("no_custom_name", "This project has no custom URL yet. Choose one in the dashboard.", 409);
+  return row?.name ?? null;
 }
 
-/** Creates a tunnel session for a project the credential's user may access. */
-export async function createTunnelSession(auth: CliAuth, input: { projectId: string; localPort: number; durationMinutes?: unknown }) {
+/** Creates a tunnel session for a project the credential's user may access, within the project's plan. */
+export async function createTunnelSession(auth: CliAuth, input: { projectId: string; localPort: number; durationMinutes?: unknown; url?: unknown }) {
   const config = requireConfig();
   if (!Number.isInteger(input.localPort) || input.localPort < 1 || input.localPort > 65535) {
     throw new TunnelError("invalid_port", "Ports range from 1 to 65535.", 400);
@@ -121,7 +132,10 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
     throw new TunnelError("project_archived", "This project is archived. Restore it in the dashboard to share it.", 409);
   }
 
-  const durationMinutes = await resolveDuration(project.workspaceId, input.durationMinutes);
+  if (input.url !== undefined && input.url !== null && input.url !== "random" && input.url !== "custom") throw new TunnelError("invalid_request", "url must be \"random\" or \"custom\".", 400);
+  if (input.url === "custom" && !customNamesRouting()) {
+    throw new TunnelError("custom_names_unavailable", "Custom preview URLs aren't available on this server yet. Your preview can use a random link.", 503);
+  }
 
   await sweepStaleTunnels({ userId: auth.userId });
   const limits = quotas();
@@ -138,37 +152,59 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
   }
 
   for (let attempt = 0; attempt < 5; attempt++) {
+    const replaced: { id: string; gatewayId: string | null }[] = [];
     try {
       const session = await prisma.$transaction(async (tx) => {
+        // The plan decides how long this share may run (and starts the project's free window on its first share).
+        await lockProject(tx, project.id);
+        const grant = await authorizeShare(tx, project, auth.userId, input.durationMinutes);
+        const customName = await customNameFor(tx, project, grant.tier, input.url);
+        if (customName) {
+          // A custom name serves one preview at a time: a new share of this link takes over from the previous one.
+          const live = await tx.tunnelSession.findMany({ where: { customName, status: { in: ACTIVE_STATES } }, select: { id: true, gatewayId: true } });
+          for (const old of live) {
+            await endSession(tx, { id: old.id, workspaceId: project.workspaceId }, { status: "REVOKED", reason: REPLACED_BY_NEW_SHARE, event: TunnelEventType.REVOKED });
+            replaced.push(old);
+          }
+        }
         const created = await tx.tunnelSession.create({
           data: {
             projectId: project.id,
             userId: auth.userId,
             credentialId: auth.credentialId,
+            customName,
             hostname: generatePreviewLabel(),
             localPort: input.localPort,
-            durationMinutes,
-            expiresAt: new Date(Date.now() + durationMinutes * 60_000),
+            durationMinutes: grant.durationMinutes,
+            planTier: grant.tier,
+            untilPlanEnd: grant.untilPlanEnd,
+            expiresAt: grant.expiresAt,
           },
         });
-        await recordEvent(tx, { id: created.id, workspaceId: project.workspaceId }, TunnelEventType.CREATED, `Sharing localhost:${input.localPort} for ${durationLabel(durationMinutes)}`);
+        const length = grant.durationMinutes && !grant.untilPlanEnd ? durationLabel(grant.durationMinutes) : grant.tier === "PASS" ? "the 7-Day Pass" : "the free preview";
+        await recordEvent(tx, { id: created.id, workspaceId: project.workspaceId }, TunnelEventType.CREATED, `Sharing localhost:${input.localPort} for ${length}`);
         return created;
       });
+      // The previous preview on this link stops at its gateway right away (it would also stop at its next heartbeat).
+      await Promise.all(replaced.map((old) => terminateOnGateway(old.id, old.gatewayId)));
       return {
         sessionId: session.id,
-        label: session.hostname,
-        publicUrl: previewUrl(config, session.hostname),
+        label: routingLabel(session),
+        customName: session.customName,
+        publicUrl: previewUrl(config, routingLabel(session)),
         gatewayUrl: config.gatewayUrl,
         expiresAt: session.expiresAt.toISOString(),
-        durationMinutes,
+        durationMinutes: session.durationMinutes,
+        plan: session.planTier === "PASS" ? "pass" : "free",
         project: { id: project.id, name: project.name, slug: project.slug },
         workspace: { id: project.workspaceId },
         access: (await prisma.project.findUniqueOrThrow({ where: { id: project.id }, select: { accessMode: true } })).accessMode === "PASSWORD" ? "password" : "public",
         connectToken: await signConnectToken(config, { ...session, credentialId: auth.credentialId }),
       };
     } catch (error) {
-      // Label collision on the unique index: draw another.
+      // Label collision on the unique index (draw another), or a concurrent share took the custom name (take it over).
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") continue;
+      if (error instanceof PlanError) throw new TunnelError(error.code, error.message, error.status);
       throw error;
     }
   }
@@ -196,6 +232,8 @@ export async function reissueConnectToken(auth: CliAuth, sessionId: string) {
         ? "This preview was stopped from the Localians dashboard. Run `localians share` again for a new link."
         : timeUp
           ? "This preview's time is up. Run `localians share` again to start a new one."
+          : session.endReason === REPLACED_BY_NEW_SHARE
+            ? "A newer share of this link took over. This one has stopped."
           : "This share has ended. Run `localians share` again for a new link.";
     throw new TunnelError("session_ended", message, 410);
   }
@@ -215,10 +253,10 @@ export async function listActiveTunnelsForCli(auth: CliAuth) {
   await sweepStaleTunnels({ userId: auth.userId });
   const sessions = await prisma.tunnelSession.findMany({
     where: { userId: auth.userId, status: { in: ACTIVE_STATES } },
-    select: { id: true, hostname: true, localPort: true, status: true, connectedAt: true, createdAt: true, expiresAt: true, project: { select: { id: true, name: true } } },
+    select: { id: true, hostname: true, customName: true, localPort: true, status: true, connectedAt: true, createdAt: true, expiresAt: true, project: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   });
-  return sessions.map((s) => ({ ...s, publicUrl: config ? previewUrl(config, s.hostname) : null }));
+  return sessions.map((s) => ({ ...s, publicUrl: config ? previewUrl(config, routingLabel(s)) : null }));
 }
 
 // ----------------------------------------------------------------- gateway reports
@@ -405,6 +443,8 @@ export async function handleGatewayEvents(gatewayId: string, events: GatewayEven
   if (Date.now() - lastSweep > 30_000) {
     lastSweep = Date.now();
     void sweepStaleTunnels().catch((error) => log("error", "stale sweep failed", { error: error instanceof Error ? error.message : "unknown" }));
+    void expireHolds().catch((error) => log("error", "name hold sweep failed", { error: error instanceof Error ? error.message : "unknown" }));
+    void releaseLapsedNames().catch((error) => log("error", "lapsed name sweep failed", { error: error instanceof Error ? error.message : "unknown" }));
   }
   void pruneTelemetry().catch(() => {});
   return { sessions: result };

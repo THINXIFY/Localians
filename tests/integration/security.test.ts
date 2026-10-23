@@ -318,6 +318,7 @@ describe("share setup codes", () => {
       project: expect.objectContaining({ name: "acme-storefront", framework: "NEXTJS", defaultPort: 3000 }),
       access: "public",
       durationMinutes: null, // no duration chosen (e.g. a wizard tab opened before timers): the CLI uses the default
+      url: null, // no link choice: the project's custom URL if it has a pass and one, else a random link
     });
     // …and the next unnamed setup on the same port reuses that project instead of creating another.
     const d = await createShareSetup(user.id);
