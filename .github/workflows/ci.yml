@@ -52,6 +52,11 @@ jobs:
       - run: npm run tunnel:build
       - run: npm run vscode:typecheck
       - run: npm run vscode:package
+      # The extension inside a real VS Code (downloaded), installed from the packaged .vsix. Best effort on Linux CI (headless
+      # secret storage can differ), so it can't fail the build; it must pass locally before a release.
+      - name: VS Code extension in a real VS Code
+        continue-on-error: true
+        run: xvfb-run -a env LOCALIANS_VSCODE_DOWNLOAD=1 npx vitest run tests/integration/vscode-host.test.ts
 
   # The published `localians` CLI: pack it exactly as `npm publish` would, install the tarball in an empty folder and
   # run it, on every supported OS and Node.js version. Never publishes.

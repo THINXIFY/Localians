@@ -635,6 +635,13 @@ export function ShareWizard({
                 <li>Your computer and app must stay on and connected — the preview shows Offline when they aren&apos;t, even with a pass.</li>
                 <li>First time? Approve the request that opened in your browser (Authorize CLI).</li>
                 <li>Don&apos;t share apps with real customer data or secrets.</li>
+                <li>
+                  Prefer sharing from your editor?{" "}
+                  <Link href="/vscode-extension" className="text-fg underline underline-offset-2">
+                    The Localians VS Code extension
+                  </Link>{" "}
+                  does the same without a terminal.
+                </li>
               </ul>
               {published ? null : <InstallBeta localGateway={localGateway} />}
               <Link href="/docs/troubleshooting" className="w-fit text-[13px] font-medium text-accent-ink underline underline-offset-4">

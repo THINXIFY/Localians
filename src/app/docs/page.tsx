@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Layers, LifeBuoy, ShieldCheck, TerminalSquare } from "lucide-react";
+import { ArrowRight, BookOpen, Code2, Layers, LifeBuoy, ShieldCheck, TerminalSquare } from "lucide-react";
 import { Prose, SubPage } from "@/components/sections/SubPage";
 import { guideLinks, routes } from "@/lib/site";
 import { pageMetadata, breadcrumbs } from "@/lib/seo";
@@ -24,6 +24,12 @@ const guides = [
     icon: TerminalSquare,
     title: "CLI Guide",
     description: "Install, share, sign in, check status and stop sharing.",
+  },
+  {
+    href: routes.vscodeDocs,
+    icon: Code2,
+    title: "VS Code Extension",
+    description: "Share a running app from your editor, with a click.",
   },
   {
     href: routes.frameworks,

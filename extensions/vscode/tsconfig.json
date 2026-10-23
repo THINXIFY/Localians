@@ -3,8 +3,13 @@
     "target": "ES2022",
     "module": "commonjs",
     "moduleResolution": "node",
-    "lib": ["ES2022"],
-    "types": ["node", "vscode"],
+    "lib": [
+      "ES2022"
+    ],
+    "types": [
+      "node",
+      "vscode"
+    ],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
@@ -12,8 +17,17 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
-    "paths": { "@tunnel/*": ["../../tunnel/*"] },
-    "typeRoots": ["./node_modules/@types"]
+    "paths": {
+      "@tunnel/*": [
+        "../../tunnel/*"
+      ]
+    },
+    "typeRoots": [
+      "./node_modules/@types"
+    ]
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

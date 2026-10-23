@@ -12,6 +12,7 @@ import { ProblemSolution } from "@/components/sections/ProblemSolution";
 import { Showcase } from "@/components/sections/Showcase";
 import { TechStrip } from "@/components/sections/TechStrip";
 import { UseCases } from "@/components/sections/UseCases";
+import { VsCodeBand } from "@/components/sections/VsCodeBand";
 import { absoluteUrl, faqPage, pageMetadata } from "@/lib/seo";
 import { site } from "@/lib/site";
 import { launchFlags, type LaunchFlags } from "@/server/launch";
@@ -84,6 +85,7 @@ export default async function Home() {
         <Showcase />
         <HowItWorks />
         <Frameworks />
+        <VsCodeBand available={flags.vscode} />
         <UseCases />
         <Pricing payments={flags.payments} customUrls={flags.customUrls} vscode={flags.vscode} offer={flags.offer} />
         <FinalCta />

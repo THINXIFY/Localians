@@ -17,7 +17,9 @@ const PUBLIC_ACK_KEY = "localians.publicAck.v1"; // globalState: projects the us
 const REFRESH_MS = 15_000;
 
 type Me = { user: { email: string; name: string }; workspace: { id: string; name: string }; projects: ApiProject[] };
+/** durationMinutes 0 = "until the free preview or pass ends" (nothing sent: Localians applies the project's plan). */
 type Prefs = { port?: number; projectId?: string; durationMinutes?: number };
+const UNTIL_PLAN_ENDS = 0;
 
 /** Everything the extension does, behind its commands. The UI is native VS Code: tree, quick picks, notifications. */
 export class Controller implements vscode.Disposable {
@@ -323,23 +325,31 @@ export class Controller implements vscode.Disposable {
     const access = await this.pickAccess(project, app.port);
     if (!access) return;
     const durationMinutes = await this.pickDuration();
-    if (!durationMinutes) return;
-    await this.connect(app, project, durationMinutes);
+    if (durationMinutes === null) return;
+    await this.connect(app, project, durationMinutes || undefined);
   }
 
-  /** How long the link works. Localians checks the choice against the plan; the last one is preselected. */
+  /**
+   * How long the link works. The first choice lets Localians apply the project's plan (its free 24-hour preview, or
+   * its Preview Pass); the others stop earlier. The server checks every choice against the plan; the last one is
+   * preselected.
+   */
   private async pickDuration(): Promise<number | null> {
-    const last = this.context.workspaceState.get<Prefs>(PREFS_KEY)?.durationMinutes;
-    const preferred = last && isDurationOption(last) ? last : DEFAULT_DURATION_MINUTES;
+    const prefs = this.context.workspaceState.get<Prefs>(PREFS_KEY);
+    const last = prefs?.durationMinutes;
+    const preferred = last === UNTIL_PLAN_ENDS || (last && isDurationOption(last)) ? last : UNTIL_PLAN_ENDS;
     type Pick = vscode.QuickPickItem & { minutes: number };
-    const items: Pick[] = DURATION_OPTIONS.filter((o) => o.plan === "free").map((o) => ({
-      label: `$(clock) ${o.label}`,
-      description: o.minutes === preferred ? (o.minutes === last ? "Used last time" : "Recommended") : undefined,
-      minutes: o.minutes,
-    }));
+    const items: Pick[] = [
+      { label: "$(clock) Until the free preview or pass ends", description: preferred === UNTIL_PLAN_ENDS ? (last === UNTIL_PLAN_ENDS ? "Used last time" : "Recommended") : undefined, minutes: UNTIL_PLAN_ENDS },
+      ...DURATION_OPTIONS.filter((o) => o.plan === "free").map((o) => ({
+        label: `$(clock) Stop after ${o.label}`,
+        description: o.minutes === preferred ? "Used last time" : o.minutes === DEFAULT_DURATION_MINUTES ? "Short demo" : undefined,
+        minutes: o.minutes,
+      })),
+    ];
     items.sort((a, b) => Number(b.minutes === preferred) - Number(a.minutes === preferred));
     const picked = await vscode.window.showQuickPick(items, { title: "How long should the link work?", placeHolder: "The link stops working after this time. You can share again any time.", ignoreFocusOut: true });
-    return picked?.minutes ?? null;
+    return picked ? picked.minutes : null;
   }
 
   private async pickApp(arg?: Ref): Promise<(AppSuggestion & { address: LoopbackAddress }) | null> {
@@ -514,7 +524,7 @@ export class Controller implements vscode.Disposable {
           return started;
         },
       );
-      await this.context.workspaceState.update(PREFS_KEY, { port: app.port, projectId: project.id, durationMinutes: share.durationMinutes ?? durationMinutes } satisfies Prefs);
+      await this.context.workspaceState.update(PREFS_KEY, { port: app.port, projectId: project.id, durationMinutes: durationMinutes ?? UNTIL_PLAN_ENDS } satisfies Prefs);
       await vscode.env.clipboard.writeText(share.publicUrl);
       void this.loadAccount(false);
       const action = await vscode.window.showInformationMessage(
@@ -528,8 +538,8 @@ export class Controller implements vscode.Disposable {
       if (error instanceof ShareError && error.code === "auth") return this.sessionExpired();
       if (error instanceof ShareError && error.code === "user") return; // cancelled
       if (error instanceof ShareError && (error.code === "free_used" || error.code === "free_limit")) {
-        // The project's free preview is over: offer the 7-Day Pass (bought in the dashboard).
-        const action = await vscode.window.showWarningMessage(`Localians: ${error.message}`, "Get 7-Day Pass");
+        // The project's free preview is over: offer a Preview Pass (bought in the dashboard; its price is set there).
+        const action = await vscode.window.showWarningMessage(`Localians: ${error.message}`, "Get a Preview Pass");
         if (action) await this.openServerPage(`/dashboard/projects/${encodeURIComponent(project.id)}#plan`);
         return;
       }
@@ -547,7 +557,7 @@ export class Controller implements vscode.Disposable {
     if (!live) return void (await this.notRunning(share.port));
     this.shares.dismiss(share.sessionId);
     const project = this.me?.projects.find((p) => p.id === share.projectId) ?? { id: share.projectId, name: share.projectName, slug: "", framework: null, defaultPort: share.port };
-    await this.connect({ ...live, name: share.projectName, frameworkValue: null, folder: null }, project, share.durationMinutes);
+    await this.connect({ ...live, name: share.projectName, frameworkValue: null, folder: null }, project, share.durationMinutes ?? undefined);
   }
 
   // ------------------------------------------------------------------ preview actions

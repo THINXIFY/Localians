@@ -27,6 +27,7 @@
     "vscode:build": "npm --prefix extensions/vscode run build",
     "vscode:typecheck": "npm --prefix extensions/vscode run typecheck",
     "vscode:package": "npm --prefix extensions/vscode run package",
+    "vscode:test": "node scripts/vscode-host-test.mjs",
     "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
@@ -57,6 +58,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.2",
+    "@vscode/test-electron": "^2.5.2",
     "embedded-postgres": "^17.10.0-beta.17",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",

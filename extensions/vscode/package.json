@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "thinxify",
   "license": "SEE LICENSE IN LICENSE.md",
+  "pricing": "Free",
   "private": true,
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -311,7 +312,7 @@
     "build": "node scripts/build.mjs",
     "build:release": "node scripts/build.mjs --production",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "package": "node scripts/build.mjs --production && vsce package --no-dependencies --out dist/localians.vsix"
+    "package": "node scripts/package.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",

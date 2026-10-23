@@ -5,6 +5,16 @@ VS Code: no terminal commands, no deploys, nothing else to install.
 
 **Install → open your project → click Share → send the link.**
 
+## Install
+
+- **Marketplace:** search for **Localians** in the Extensions view (publisher: THINXIFY), or run
+  `ext install thinxify.localians` in the Command Palette's quick open (`Ctrl+P` / `Cmd+P`).
+- **From a file:** download `localians-<version>.vsix` from the extension's
+  [releases](https://github.com/THINXIFY/Localians/releases), check it against the `.sha256` file next to it, then run
+  **Extensions: Install from VSIX…** from the Command Palette and choose the file.
+
+You need a free Localians account; the extension signs you in through your browser the first time.
+
 ![Connect to Localians](media/screenshots/welcome-view.png)
 
 ## How it works
@@ -12,11 +22,15 @@ VS Code: no terminal commands, no deploys, nothing else to install.
 1. **Connect to Localians.** Your browser opens once so you can approve VS Code. That's the whole setup.
 2. **Start your app** as usual (`npm run dev`, `python manage.py runserver`, …).
 3. **Click it under _Local apps_** (or run **Localians: Share App**). Pick a project — the one that already uses that
-   port is suggested, or create one named after your app — and choose who can open it:
+   port is suggested, or create one named after your app — choose who can open it, and how long the link works:
 
    ![Public or password protected](media/screenshots/access-choice.png)
 
 4. **Your link is ready** and copied to the clipboard. Send it to anyone.
+
+By default a link works until the project's free 24-hour preview (or its Preview Pass) ends; pick a shorter time to
+stop it sooner. If a project's free preview is over, the extension says so and links to the dashboard, where a Preview
+Pass adds more days and a custom URL. Which one applies is always decided by Localians, never by the extension.
 
    ![Shared](media/screenshots/shared-notification.png)
 

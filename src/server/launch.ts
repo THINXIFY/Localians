@@ -1,6 +1,7 @@
 import "server-only";
 import { customNamesRouting } from "./cli/config";
 import { DEFAULT_OFFER, type PassOffer } from "@/lib/offer";
+import { vscodeAvailability } from "@/lib/vscode-extension";
 import { emergencyDisabled, getPassOffer, paymentsEnabled } from "./payment-settings";
 
 /**
@@ -25,8 +26,8 @@ export async function launchFlags() {
     offer,
     /** Custom preview URLs routed by the gateways (PREVIEW_CUSTOM_NAMES=on). */
     customUrls: customNamesRouting(),
-    /** The VS Code extension isn't on the Marketplace yet. */
-    vscode: false,
+    /** The VS Code extension is installable or downloadable (src/lib/vscode-extension.ts); until then it's "Coming soon". */
+    vscode: vscodeAvailability().installable || vscodeAvailability().downloadable,
   };
 }
 

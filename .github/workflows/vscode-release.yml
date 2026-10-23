@@ -1,0 +1,84 @@
+# Builds, tests and packages the Localians VS Code extension, then drafts a GitHub Release with the .vsix and its
+# checksum. Publishing to the Visual Studio Marketplace is a separate job behind the `vscode-marketplace` environment
+# (add required reviewers there), only runs when "publish" is ticked, and needs the VSCE_PAT environment secret.
+# Nothing here runs automatically: start it from Actions → "VS Code extension release".
+# See extensions/vscode/PUBLISHING.md.
+name: VS Code extension release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (must equal extensions/vscode/package.json)"
+        required: true
+        type: string
+      publish:
+        description: "Also publish to the Visual Studio Marketplace (after the release exists and the environment approves)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # create the draft release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm ci --prefix extensions/vscode --no-audit --no-fund
+      - name: The requested version must be the extension's version
+        run: |
+          actual=$(node -p "require('./extensions/vscode/package.json').version")
+          test "$actual" = "${{ inputs.version }}" || { echo "package.json says $actual, not ${{ inputs.version }}"; exit 1; }
+      - run: npm run vscode:typecheck
+      - run: npm run vscode:package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localians-vsix-${{ inputs.version }}
+          path: |
+            extensions/vscode/dist/localians-${{ inputs.version }}.vsix
+            extensions/vscode/dist/localians-${{ inputs.version }}.vsix.sha256
+          if-no-files-found: error
+      - name: Draft the GitHub Release (fails if the tag or release already exists: files are never replaced)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "vscode-v${{ inputs.version }}" \
+            "extensions/vscode/dist/localians-${{ inputs.version }}.vsix" \
+            "extensions/vscode/dist/localians-${{ inputs.version }}.vsix.sha256" \
+            --draft --target "${{ github.sha }}" \
+            --title "Localians for VS Code ${{ inputs.version }}" \
+            --notes "Install: download the .vsix, check it against the .sha256 file, then run 'Extensions: Install from VSIX…' in VS Code. See https://localians.com/docs/vscode."
+
+  publish:
+    if: ${{ inputs.publish }}
+    needs: package
+    runs-on: ubuntu-latest
+    environment: vscode-marketplace
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: localians-vsix-${{ inputs.version }}
+          path: dist
+      - run: npm ci --prefix extensions/vscode --no-audit --no-fund
+      - name: Publish the exact package that was built and drafted above
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          test -n "$VSCE_PAT" || { echo "VSCE_PAT is not set in the vscode-marketplace environment"; exit 1; }
+          cd extensions/vscode
+          node node_modules/@vscode/vsce/vsce publish --packagePath "../../dist/localians-${{ inputs.version }}.vsix"
