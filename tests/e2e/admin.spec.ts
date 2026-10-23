@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { TEST_DATABASE_URL } from "../setup/test-env";
-import { createUserOnDashboard, expectNoHorizontalOverflow, PASSWORD, sql } from "./helpers";
+import { createProject, createUserOnDashboard, expectNoHorizontalOverflow, PASSWORD, sql } from "./helpers";
 
 // Test-only credentials for the throwaway test database (production admins are created with scripts/create-admin.ts
 // and a privately supplied password).
@@ -104,4 +104,62 @@ test("accounts from before usernames choose one before using the dashboard", asy
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   expect((await sql(`SELECT username FROM users WHERE email = $1`, [user.email])).rows[0].username).toBe(chosen);
+});
+
+test("Manage Plan: upgrade one project with a confirmation, once per click, then revoke; the customer's dashboard follows", async ({ page, browser }) => {
+  const customer = await createUserOnDashboard(page, "Plan Customer");
+  const projectId = await createProject(page, { name: "Plan Paid App", port: "3000" });
+  await createProject(page, { name: "Plan Free App", port: "3001" });
+  const [{ publicId }] = (await sql(`SELECT "publicId" FROM users WHERE email = $1`, [customer.email])).rows;
+
+  const adminContext = await browser.newContext();
+  const admin = await adminContext.newPage();
+  await adminLogin(admin);
+  await expect(admin).toHaveURL(/\/admin$/);
+  await admin.goto(`/admin/users/${publicId}`);
+  const panel = admin.getByTestId("plan-panel");
+  await expect(panel.getByTestId("plan-project")).toHaveCount(2);
+  await expect(panel.getByTestId("plan-project").filter({ hasText: "Plan Paid App" })).toContainText("Free");
+  await expect(admin.getByTestId("payment-history")).toHaveCount(0); // no orders yet
+
+  await panel.getByRole("button", { name: "Upgrade Plan Paid App" }).click();
+  const dialog = admin.getByTestId("plan-dialog");
+  await expect(dialog).toContainText(publicId);
+  await expect(dialog.getByLabel("Verified payment")).toBeDisabled(); // no verified order for this project
+  await dialog.getByLabel("Support adjustment").check();
+  await expect(dialog.getByRole("button", { name: "Continue" })).toBeDisabled(); // explanation required
+  await dialog.getByLabel("Explanation", { exact: true }).fill("Compensation for the gateway outage");
+  await dialog.getByRole("button", { name: "Continue" }).click();
+  const confirm = admin.getByTestId("plan-confirm");
+  await expect(confirm).toContainText("Plan Paid App");
+  await expect(confirm).toContainText("7-Day Preview Pass (this project only)");
+  await expect(confirm).toContainText("Support adjustment");
+  await expect(confirm).toContainText("Now");
+  // A double click still activates one pass.
+  await admin.getByTestId("plan-confirm-button").dblclick();
+  await expect(admin.getByTestId("plan-message")).toContainText("7-Day Preview Pass activated for Plan Paid App");
+  const paidRow = panel.getByTestId("plan-project").filter({ hasText: "Plan Paid App" });
+  await expect(paidRow).toContainText("Paid");
+  await expect(paidRow.getByTestId("plan-pass")).toContainText("Support adjustment — Compensation for the gateway outage");
+  await expect(panel.getByTestId("plan-project").filter({ hasText: "Plan Free App" })).toContainText("Free");
+  const passes = (await sql(`SELECT "grantReason", "requestId" FROM preview_passes WHERE "projectId" = $1`, [projectId])).rows;
+  expect(passes).toEqual([{ grantReason: "SUPPORT_ADJUSTMENT", requestId: null }]);
+
+  // The customer's dashboard shows the pass on that project.
+  await page.goto(`/dashboard/projects/${projectId}`);
+  await expect(page.locator("#plan").getByTestId("plan-pass-state")).toContainText("Active");
+
+  await admin.setViewportSize({ width: 390, height: 844 });
+  await expectNoHorizontalOverflow(admin);
+  await admin.setViewportSize({ width: 1280, height: 900 });
+
+  await paidRow.getByRole("button", { name: "Revoke…" }).click();
+  await expect(admin.getByRole("button", { name: "Revoke pass" })).toBeDisabled();
+  await admin.getByLabel("Reason (sent to the customer and kept in the audit log)").fill("Issued by mistake");
+  await admin.getByRole("button", { name: "Revoke pass" }).click();
+  await expect(admin.getByTestId("plan-message")).toContainText("Pass revoked on Plan Paid App");
+  await expect(paidRow).toContainText("Free");
+  await page.reload();
+  await expect(page.locator("#plan").getByTestId("plan-pass-state")).not.toContainText("Active");
+  await adminContext.close();
 });

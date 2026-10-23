@@ -201,6 +201,25 @@ for the transaction hash. In `/admin/payments` an operator:
    creates the pass, enables the custom URL and records the reviewer; double approvals and reused hashes are
    impossible (row lock, unique hash, one pass per request). The customer is emailed. Or **Rejects** with a reason.
 
+**Manage Plan (`/admin/users/<LOC-…>`).** The user page lists each project as Free or Paid, with its current and
+scheduled passes, plus the user's payment history. **Manage Plan** (or a project's Upgrade / Renew button) opens a
+dialog: pick one project (passes are always per project, never account-wide) and a reason, review the dates on the
+confirmation screen, confirm.
+
+- **Verified payment**: activates an order of that project that passed "Verify on BSC" in the last 24 hours, the same
+  approval as above.
+- **Complimentary access**: a pass with no order and no payment record, labelled complimentary.
+- **Support adjustment**: the same, but an explanation of at least 10 characters is required (a database CHECK).
+
+Grants go through the shared entitlement service (`grantPassInTx`), so the dashboard, CLI, VS Code, API and gateways
+agree and live previews are extended right away. A renewal starts when the current pass ends, so no time is lost.
+Each dialog sends one idempotency key (`preview_passes.grantKey`, unique, checked under the project lock), so double or
+concurrent clicks grant once. **Revoke…** needs a reason; it moves later passes up and cuts back or stops live
+previews. Every grant and revocation is audited (`plan.upgraded` / `plan.revoked`, with the admin and reason) and
+emailed to the customer; internal notes are not. Custom URLs aren't changed: the customer claims one from the
+dashboard, and only once `PREVIEW_CUSTOM_NAMES=on`. Admin accounts, suspended accounts and archived projects can't be
+changed.
+
 The QR is generated at render time from the wallet address itself (`src/lib/payment-qr.ts`, called from
 `paymentInfo()`), so it can't disagree with the address beside it and no image file has to be deployed. A unit test
 decodes the generated code and requires it to equal the address. While payments are off, the address and QR

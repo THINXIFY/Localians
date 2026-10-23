@@ -171,6 +171,44 @@ export function upgradeRejectedMessage(input: { to: string; name: string; orderI
   };
 }
 
+/** To the customer: an administrator added a pass to one project (complimentary access or a support adjustment). */
+export function passGrantedMessage(input: { to: string; name: string; projectName: string; passName: string; startsAt: Date; endsAt: Date; complimentary: boolean; url: string }): EmailMessage {
+  const until = input.endsAt.toUTCString();
+  const later = input.startsAt.getTime() > Date.now() + 60_000;
+  const when = later ? `from ${input.startsAt.toUTCString()} (after your current pass) until ${until}` : `until ${until}`;
+  const why = input.complimentary ? "complimentary, no payment needed" : "added by our support team";
+  return {
+    kind: "pass-granted",
+    to: input.to,
+    subject: `${input.passName} added to ${input.projectName}`,
+    html: layout({
+      heading: `Your ${input.passName} is ${later ? "scheduled" : "active"}`,
+      body: `Hi ${escapeHtml(input.name)}, we added a ${escapeHtml(input.passName)} to <strong style="color:#F7F8F5;">${escapeHtml(input.projectName)}</strong> (${why}). You can share it ${escapeHtml(when)}.<br /><br />It applies to this project only. Your computer and app must stay running and connected for the preview to work.`,
+      cta: "Open dashboard",
+      url: input.url,
+      footnote: "The pass doesn't renew by itself. Questions? Reply to hello@thinxify.com.",
+    }),
+    text: `Hi ${input.name},\n\nWe added a ${input.passName} to ${input.projectName} (${why}). You can share it ${when}.\nIt applies to this project only. Your computer and app must stay running for the preview to work.\n\n${input.url}`,
+  };
+}
+
+/** To the customer: an administrator revoked a pass on one project. */
+export function passRevokedMessage(input: { to: string; name: string; projectName: string; reason: string; url: string }): EmailMessage {
+  return {
+    kind: "pass-revoked",
+    to: input.to,
+    subject: `Preview Pass removed from ${input.projectName}`,
+    html: layout({
+      heading: "A Preview Pass was removed",
+      body: `Hi ${escapeHtml(input.name)}, a Preview Pass on <strong style="color:#F7F8F5;">${escapeHtml(input.projectName)}</strong> was revoked: ${escapeHtml(input.reason)}<br /><br />If you believe this is a mistake, reply to hello@thinxify.com with your username and project name.`,
+      cta: "Open dashboard",
+      url: input.url,
+      footnote: "Other projects are not affected.",
+    }),
+    text: `Hi ${input.name},\n\nA Preview Pass on ${input.projectName} was revoked: ${input.reason}\nContact hello@thinxify.com if you believe this is a mistake.\n\n${input.url}`,
+  };
+}
+
 /** To the operators: the wallet that new orders pay to was changed in /admin/settings. */
 export function paymentDestinationChangedMessage(input: { to: string; adminEmail: string; previous: string; next: string; at: Date; url: string }): EmailMessage {
   return {

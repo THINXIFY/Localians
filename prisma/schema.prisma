@@ -569,6 +569,10 @@ model PreviewPass {
   requestId    String?         @unique
   request      UpgradeRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
   createdById  String?
+  /// Admin grants from Manage Plan (no payment): why, the admin's explanation, and the click's idempotency key.
+  grantReason  PassGrantReason?
+  grantNote    String?
+  grantKey     String?         @unique
   revokedAt    DateTime?
   revokeReason String?
   createdAt    DateTime        @default(now())
@@ -585,6 +589,11 @@ enum PassStatus {
 enum PassSource {
   PAYMENT
   ADMIN
+}
+
+enum PassGrantReason {
+  COMPLIMENTARY
+  SUPPORT_ADJUSTMENT
 }
 
 enum UserStatus {

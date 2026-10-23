@@ -150,7 +150,7 @@ export async function getUserDetail(publicId: string) {
 
 export class AdminInputError extends Error {}
 
-async function targetUser(userId: string, admin: AdminUser) {
+export async function targetUser(userId: string, admin: AdminUser) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, publicId: true, role: true, status: true } });
   if (!user) throw new NotFoundError("User not found.");
   if (user.role !== "USER" || user.id === admin.id) throw new ForbiddenError("Administrator accounts can't be changed here.");

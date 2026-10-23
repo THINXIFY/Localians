@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { ManagePlan } from "@/components/admin/ManagePlan";
 import { UserAdminActions } from "@/components/admin/UserAdminActions";
 import { AdminHeader, Empty, fmtDate, Panel, Pill, statusTone } from "@/components/admin/Ui";
 import { getUserDetail } from "@/server/admin";
 import { NotFoundError } from "@/server/errors";
+import { getPlanManagement } from "@/server/plan-management";
 
 export const metadata: Metadata = { title: "User" };
 
@@ -19,6 +21,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ publ
     throw error;
   }
   const { user, projects, sessions, cliLogins } = detail;
+  const plan = await getPlanManagement(user.id);
   const now = new Date();
   const facts: [string, ReactNode][] = [
     ["User ID", <span key="User ID" className="font-mono">{user.publicId}</span>],
@@ -47,6 +50,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ publ
               ))}
             </dl>
           </Panel>
+          <ManagePlan customer={{ id: user.id, publicId: user.publicId, username: user.username, status: user.status }} data={plan} />
           <Panel title={`Projects (${projects.length})`}>
             {projects.length ? (
               <ul className="divide-y divide-line">

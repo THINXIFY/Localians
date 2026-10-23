@@ -10,6 +10,7 @@ import { auth } from "../auth";
 import { prisma } from "../db";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { changeWallet, PaymentSettingsError, resetPaymentQr, setPaymentsEnabled, updatePricing, uploadPaymentQr } from "../payment-settings";
+import { adminGrantPass, adminRevokePass } from "../plan-management";
 import { rateLimit } from "../rate-limit";
 import type { ActionResult } from "./result";
 import { adminSetTxHash, approveRequest, markUnderReview, rejectRequest, UpgradeError, verifyRequestOnChain } from "../upgrades";
@@ -95,6 +96,26 @@ export async function reactivateUserAction(userId: string) {
 
 export async function deleteUserAction(userId: string, confirm: string) {
   return adminCall("deleteUser", (admin) => deleteUser(admin, String(userId), String(confirm ?? "")));
+}
+
+// ------------------------------------------------------------------ manage plan (one project at a time)
+
+export async function adminGrantPassAction(input: { userId: string; projectId: string; reason: string; orderId?: string | null; note?: string | null; key: string }) {
+  return adminCall("adminGrantPass", async (admin) => {
+    const result = await adminGrantPass(admin, {
+      userId: String(input?.userId ?? ""),
+      projectId: String(input?.projectId ?? ""),
+      reason: String(input?.reason ?? ""),
+      orderId: input?.orderId == null ? null : String(input.orderId),
+      note: input?.note == null ? null : String(input.note),
+      key: String(input?.key ?? ""),
+    });
+    return { ...result, startsAt: result.startsAt.toISOString(), endsAt: result.endsAt.toISOString() };
+  });
+}
+
+export async function adminRevokePassAction(input: { userId: string; passId: string; reason: string }) {
+  return adminCall("adminRevokePass", (admin) => adminRevokePass(admin, { userId: String(input?.userId ?? ""), passId: String(input?.passId ?? ""), reason: String(input?.reason ?? "") }));
 }
 
 // ------------------------------------------------------------------ payments
