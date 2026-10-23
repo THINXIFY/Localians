@@ -15,7 +15,7 @@ import {
   cancelUpgradeRequest,
   createUpgradeRequest,
   markUnderReview,
-  paymentQrUrl,
+  paymentInfo,
   PASS_PRICE,
   rejectRequest,
   submitTxHash,
@@ -189,8 +189,18 @@ describe("7-Day Pass upgrade requests and verification", () => {
     return { user, p };
   }
 
-  it("shows the QR only because it matches the verified recipient", () => {
-    expect(paymentQrUrl()).toBe("/images/payment/usdt-bsc-qr.jpg");
+  it("shows the wallet and QR only while payments are on, and never any of it otherwise", () => {
+    const original = process.env.PAYMENTS_ENABLED;
+    try {
+      process.env.PAYMENTS_ENABLED = "off";
+      expect(paymentInfo()).toMatchObject({ enabled: false, recipient: null, qr: null });
+      process.env.PAYMENTS_ENABLED = "on";
+      expect(paymentInfo()).toMatchObject({ enabled: true, recipient: "0x2f94b75535eff533378c90f8dda29cf10208b174" });
+      expect(paymentInfo().qr).not.toBeNull();
+    } finally {
+      if (original === undefined) delete process.env.PAYMENTS_ENABLED;
+      else process.env.PAYMENTS_ENABLED = original;
+    }
     expect(PASS_PRICE).toMatchObject({ amountMicros: 5_000_000n, currency: "USDT", network: "BSC", recipient: "0x2f94b75535eff533378c90f8dda29cf10208b174" });
   });
 

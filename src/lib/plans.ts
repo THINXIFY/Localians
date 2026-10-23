@@ -12,14 +12,15 @@ export type PlanSummary = {
   freeLimit: number;
 };
 
-/** What the payment step shows (the server supplies these; the QR only when its image was verified). */
+/** What the payment step shows (the server supplies these; the QR is generated from the recipient address). */
 export type PaymentInfo = {
   enabled: boolean;
   amountLabel: string;
   networkLabel: string;
   /** Only sent when payments are enabled (the deposit address is never shown otherwise). */
   recipient: string | null;
-  qrUrl: string | null;
+  /** SVG path of the QR code for `recipient`; sent only together with it. */
+  qr: { size: number; d: string } | null;
   supportEmail: string;
   afterPaymentMessage: string;
 };

@@ -109,7 +109,7 @@ test("Share App: Free and 7-Day Pass cards show the project's state; a used proj
   await expect(dialog.getByRole("img", { name: /QR code for the wallet address 0x2f94b75535eff533378c90f8dda29cf10208b174/ })).toBeVisible();
   await expect(dialog).toContainText("Send USDT on BNB Smart Chain (BEP20) only.");
   await expect(dialog).toContainText(
-    "Please send your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after payment verification.",
+    "After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after successful payment verification.",
   );
   await dialog.getByLabel("Transaction hash").fill("0xnot-a-hash");
   await dialog.getByRole("button", { name: "Submit" }).click();

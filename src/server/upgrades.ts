@@ -1,8 +1,7 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
+import { randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
+import { qrPath } from "@/lib/payment-qr";
 import type { AdminUser } from "./admin";
 import { audit } from "./audit";
 import { BSC, TX_HASH, verifyUsdtTransfer, type TransferVerification } from "./bsc";
@@ -39,27 +38,22 @@ export const PASS_PRICE = {
 
 export const SUPPORT_EMAIL = "hello@thinxify.com";
 export const AFTER_PAYMENT_MESSAGE =
-  "Please send your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after payment verification.";
+  "After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after successful payment verification.";
 
 export const paymentsEnabled = () => process.env.PAYMENTS_ENABLED === "on";
 const adminNotifyEmail = () => process.env.ADMIN_NOTIFY_EMAIL?.trim() || SUPPORT_EMAIL;
 
 /**
- * The payment QR image, verified once: the file must be byte-for-byte the image whose decoded content was checked to
- * be exactly PASS_PRICE.recipient (decoded and pinned during review; see docs). A swapped image is never shown.
+ * The payment QR is generated here from PASS_PRICE.recipient itself (tests decode it back to that exact address), so it
+ * can never disagree with the address shown beside it and doesn't depend on an image file being deployed.
  */
-const QR = { url: "/images/payment/usdt-bsc-qr.jpg", sha256: "57e0beeef1b67f7fbe58779ec13398bde021014482b960bd71a397a655b42d35", encodes: "0x2f94b75535eff533378c90f8dda29cf10208b174" };
-let qrChecked: string | null | undefined;
-export function paymentQrUrl() {
-  if (qrChecked !== undefined) return qrChecked;
-  try {
-    const digest = createHash("sha256").update(fs.readFileSync(path.join(process.cwd(), "public", "images", "payment", "usdt-bsc-qr.jpg"))).digest("hex");
-    qrChecked = digest === QR.sha256 && QR.encodes === PASS_PRICE.recipient ? QR.url : null;
-  } catch {
-    qrChecked = null;
+const RECIPIENT_FORMAT = /^0x[0-9a-f]{40}$/;
+export function paymentQr() {
+  if (!RECIPIENT_FORMAT.test(PASS_PRICE.recipient)) {
+    log("error", "payment recipient is not a valid address; QR hidden");
+    return null;
   }
-  if (!qrChecked) log("warn", "payment QR image failed verification and is hidden");
-  return qrChecked;
+  return qrPath(PASS_PRICE.recipient);
 }
 
 export class UpgradeError extends Error {
@@ -342,7 +336,7 @@ export function paymentInfo(): import("@/lib/plans").PaymentInfo {
     networkLabel: PASS_PRICE.networkLabel,
     // While payments are off, the deposit address and QR aren't sent to the browser at all.
     recipient: enabled ? PASS_PRICE.recipient : null,
-    qrUrl: enabled ? paymentQrUrl() : null,
+    qr: enabled ? paymentQr() : null,
     supportEmail: SUPPORT_EMAIL,
     afterPaymentMessage: AFTER_PAYMENT_MESSAGE,
   };

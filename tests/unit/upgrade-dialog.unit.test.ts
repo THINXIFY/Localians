@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { qrPath } from "@/lib/payment-qr";
 import type { PaymentInfo, PlanSummary } from "@/lib/plans";
 
 // The dialog is rendered on its own: no Next.js router or server actions behind it.
@@ -16,9 +17,9 @@ const payment = (enabled: boolean): PaymentInfo => ({
   amountLabel: "5 USDT",
   networkLabel: "BNB Smart Chain (BEP20)",
   recipient: enabled ? WALLET : null,
-  qrUrl: enabled ? "/images/payment/usdt-bsc-qr.jpg" : null,
+  qr: enabled ? qrPath(WALLET) : null,
   supportEmail: "hello@thinxify.com",
-  afterPaymentMessage: "Please send your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after payment verification.",
+  afterPaymentMessage: "After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after successful payment verification.",
 });
 const render = (p: PaymentInfo, pl: PlanSummary) =>
   renderToStaticMarkup(createElement(UpgradeDialog, { open: true, onClose: () => undefined, project: { id: "p1", name: "Agent Axio" }, plan: pl, payment: p, previewDomain: "preview.localians.com", hasCustomName: false }));
@@ -31,7 +32,8 @@ describe("Upgrade dialog", () => {
     expect(html).toContain("one-time · 7 days");
     expect(html).toContain("Payments coming soon");
     expect(html).not.toContain(WALLET);
-    expect(html).not.toContain("usdt-bsc-qr");
+    expect(html).not.toContain("QR code for the wallet address");
+    expect(html).not.toContain("<svg role=\"img\"");
     expect(html).not.toContain("Get my Order ID");
     expect(html).not.toContain("Transaction hash");
     expect(html).toMatch(/<button[^>]*disabled[^>]*>.*Pay 5 USDT — coming soon/);
@@ -41,7 +43,7 @@ describe("Upgrade dialog", () => {
     const html = render(payment(true), plan());
     expect(html).toContain(WALLET);
     expect(html).toContain("Copy wallet address");
-    expect(html).toContain('src="/images/payment/usdt-bsc-qr.jpg"');
+    expect(html).toContain(`aria-label="QR code for the wallet address ${WALLET}"`);
     expect(html).toContain("5 USDT");
     expect(html).toContain("BNB Smart Chain (BEP20)");
     expect(html).toContain("Send USDT on BNB Smart Chain (BEP20) only");
@@ -55,8 +57,8 @@ describe("Upgrade dialog", () => {
     for (const text of ["ORD-ABCDEFGH", "5 USDT", "BNB Smart Chain (BEP20)", WALLET, "Copy wallet address", "Send USDT on BNB Smart Chain (BEP20) only", "Transaction hash", "Pending", "Cancel this order"]) {
       expect(html, text).toContain(text);
     }
-    expect(html).toContain('src="/images/payment/usdt-bsc-qr.jpg"');
-    expect(html).toContain("Please send your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com.");
+    expect(html).toContain(`aria-label="QR code for the wallet address ${WALLET}"`);
+    expect(html).toContain("After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com.");
     expect(html).toContain("mailto:hello@thinxify.com?subject=Payment%20for%20ORD-ABCDEFGH");
   });
 

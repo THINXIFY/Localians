@@ -10,7 +10,7 @@ async function expectPaymentDetails(dialog: Locator) {
   await expect(dialog.getByTestId("wallet-address")).toHaveText("0x2f94b75535eff533378c90f8dda29cf10208b174");
   await expect(dialog.getByRole("button", { name: "Copy wallet address" })).toBeVisible();
   await expect(dialog.getByRole("img", { name: /QR code for the wallet address/ })).toBeVisible();
-  await expect(dialog).toContainText("Please send your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com.");
+  await expect(dialog).toContainText("After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com.");
   return (await dialog.getByTestId("order-id").textContent())!;
 }
 

@@ -201,8 +201,37 @@ for the transaction hash. In `/admin/payments` an operator:
    creates the pass, enables the custom URL and records the reviewer; double approvals and reused hashes are
    impossible (row lock, unique hash, one pass per request). The customer is emailed. Or **Rejects** with a reason.
 
-The payment QR was decoded and verified to encode exactly the wallet address; the page shows it only while the image
-file's SHA-256 matches (`src/server/upgrades.ts`). The wallet is a Binance deposit address: send only USDT on BSC.
+The QR is generated at render time from the wallet address itself (`src/lib/payment-qr.ts`, called from
+`paymentInfo()`), so it can't disagree with the address beside it and no image file has to be deployed. A unit test
+decodes the generated code and requires it to equal the address. While `PAYMENTS_ENABLED` is off, the address and QR
+are not sent to the browser at all and the dialog shows "Payments coming soon".
+
+**Turning payments on in production** (needs the owner's approval; nothing here is done by the code):
+1. Deploy the release first: `sudo -u localians /srv/localians/bin/deploy.sh main` (see `deploy/README.md`).
+2. Edit `/etc/localians/web.env`: `PAYMENTS_ENABLED=on` (exactly `on`, lower case; `true`, `1` or `ON` stay off).
+   Optional: `ADMIN_NOTIFY_EMAIL` (defaults to hello@thinxify.com) and `BSC_RPC_URL` (a trusted node you control or pay for).
+   Keep `PREVIEW_CUSTOM_NAMES` as it is unless every gateway runs the custom-URL release.
+3. Deploy again (`deploy.sh main`). A restart alone is not enough: the dashboard reads the flag when the server
+   starts, but the homepage pricing button, Terms, Privacy Policy and structured data are static pages built with the
+   flag, and `deploy.sh` rebuilds them with `web.env` loaded.
+4. Check: sign in, open Share App → **Upgrade for $5**: the plan, wallet address, QR, copy button and **Get my Order ID**
+   show immediately. Create a test order, then cancel it.
+
+**Payment risks to know about (documented, not solved by code):**
+- *Shared wallet.* The recipient is a Binance deposit address. The chain proves that a transfer of at least 5 USDT
+  reached the address, not who sent it. Anyone can submit someone else's hash; the first order to claim a hash keeps it
+  (hashes are unique), and the real payer is then caught only by the admin's review of the emailed proof (Order ID,
+  username, screenshot) and Binance's deposit history. Two customers paying the same amount at similar times can't be
+  told apart on-chain. Stronger fixes need a code change: a unique amount per order, or a deposit address per order.
+- *Off-chain transfers.* Binance-to-Binance (internal) transfers and Binance Pay don't appear on BSC and can't pass the
+  on-chain check; ask the customer to send an on-chain BEP20 transfer.
+- *Wrong network or token.* Funds sent on another network or token are usually unrecoverable.
+- *The RPC node is trusted.* Verification reads BSC through `BSC_RPC_URL`; a malicious or broken node could answer
+  falsely. It requires 15 confirmations and a human approval, but use a node you trust.
+- *Screenshots are never proof.* Nothing activates from a screenshot or an emailed hash alone; approval is blocked
+  until the server-side check passes (also a database constraint). Screenshots can contain personal data.
+- *No secrets are involved.* The app holds only a public address: no private keys, seed phrases or exchange API keys.
+  Changing the address means changing `PASS_PRICE.recipient` in code (reviewed, tested, redeployed).
 
 **Deployment requirements for this release:** run the migrations (`npx prisma migrate deploy`, via `deploy.sh`), deploy
 the gateway before setting `PREVIEW_CUSTOM_NAMES=on`, create the first admin as above, and keep

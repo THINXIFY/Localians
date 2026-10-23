@@ -401,20 +401,21 @@ function PaymentStep({
   );
 }
 
-/** Where and how to pay: QR (verified), amount, network, wallet address with copy, and the network warning. */
+/** Where and how to pay: QR (generated from the address), amount, network, wallet address with copy, and the network warning. */
 function PaymentDetails({ payment }: { payment: PaymentInfo }) {
   return (
     <div className="flex flex-col gap-4" data-testid="payment-details">
       <div className="grid gap-4 sm:grid-cols-[148px_minmax(0,1fr)]">
-        {payment.qrUrl && payment.recipient ? (
-          // eslint-disable-next-line @next/next/no-img-element -- small verified static QR
-          <img
-            src={payment.qrUrl}
-            alt={`QR code for the wallet address ${payment.recipient}`}
-            width={148}
-            height={148}
+        {payment.qr && payment.recipient ? (
+          <svg
+            role="img"
+            aria-label={`QR code for the wallet address ${payment.recipient}`}
+            viewBox={`0 0 ${payment.qr.size} ${payment.qr.size}`}
+            shapeRendering="crispEdges"
             className="mx-auto size-[148px] rounded-xl bg-white p-1.5 sm:mx-0"
-          />
+          >
+            <path d={payment.qr.d} fill="#000" />
+          </svg>
         ) : null}
         <dl className="flex min-w-0 flex-col gap-3">
           <div>
