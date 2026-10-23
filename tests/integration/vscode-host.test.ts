@@ -1,7 +1,7 @@
 // The VS Code extension inside a REAL VS Code (Extension Development Host), against the real control plane, gateway and
 // a local app. The in-host checks live in extensions/vscode/test/host/suite.ts; this file starts everything around them.
 //
-// Opt-in, because it opens VS Code windows: `npm run vscode:test [version]` downloads a separate stable build into .vscode-test/
+// Opt-in, because it opens VS Code windows: `npm run vscode:test [version]` downloads a separate stable build into ~/.cache/localians-vscode-test (outside the project, so dev servers do not watch it)
 // (LOCALIANS_VSCODE_DOWNLOAD=1, optionally LOCALIANS_VSCODE_VERSION; the extension supports 1.90+), or set VSCODE_EXECUTABLE_PATH to
 // use an installed one. Otherwise this test is skipped.
 import { execFileSync, spawn } from "node:child_process";
@@ -87,7 +87,7 @@ async function signIn(userId: string) {
 describe.skipIf(!canRun)("VS Code extension in a real VS Code (Extension Development Host)", () => {
   it("activates, keeps the sign-in in real SecretStorage across a restart, shares, copies, stops, recovers from a revoked sign-in, and stops its links when VS Code closes", async () => {
     const { downloadAndUnzipVSCode } = await import("@vscode/test-electron");
-    const executable = vscodeExe ?? (await downloadAndUnzipVSCode({ version: process.env.LOCALIANS_VSCODE_VERSION ?? "stable", cachePath: path.join(root, ".vscode-test") }));
+    const executable = vscodeExe ?? (await downloadAndUnzipVSCode({ version: process.env.LOCALIANS_VSCODE_VERSION ?? "stable", cachePath: path.join(os.homedir(), ".cache", "localians-vscode-test") }));
 
     // The extension exactly as shipped: the real .vsix, installed into a clean VS Code the way a user installs it.
     const vsixDir = path.join(tmp, "vsix");

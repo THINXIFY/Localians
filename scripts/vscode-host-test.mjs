@@ -1,4 +1,4 @@
-// Runs the extension inside a real VS Code (a downloaded stable build kept in .vscode-test/), against a real
+// Runs the extension inside a real VS Code (a downloaded stable build kept in ~/.cache/localians-vscode-test), against a real
 // control plane and gateway. Opt-in: `npm test` skips it because it opens VS Code windows and needs a download.
 //
 //   npm run vscode:test                   latest stable VS Code
