@@ -8,6 +8,7 @@ import { Wordmark } from "@/components/ui/Logo";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { Avatar } from "./Avatar";
+import { WorkspaceAvatar } from "./WorkspaceAvatar";
 import { Menu } from "./Menu";
 import { useToast } from "./Toast";
 
@@ -21,7 +22,7 @@ const NAV = [
 ];
 
 type ShellUser = { name: string; email: string; image: string | null };
-type ShellWorkspace = { name: string; role: "OWNER" | "MEMBER" };
+type ShellWorkspace = { name: string; role: "OWNER" | "MEMBER"; avatarUrl: string | null };
 
 function useSignOut() {
   const router = useRouter();
@@ -161,12 +162,7 @@ export function DashboardShell({ user, workspace, children }: { user: ShellUser;
           </button>
 
           <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              aria-hidden="true"
-              className="flex size-7 shrink-0 items-center justify-center rounded-md border border-line-strong bg-elevated text-[11px] font-semibold text-fg-2"
-            >
-              {workspace.name.charAt(0).toUpperCase()}
-            </span>
+            <WorkspaceAvatar name={workspace.name} url={workspace.avatarUrl} size={28} />
             <span className="min-w-0">
               <span className="sr-only">Workspace: </span>
               <span className="block truncate text-[13.5px] font-medium text-fg">{workspace.name}</span>

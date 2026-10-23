@@ -169,3 +169,20 @@ export function upgradeRejectedMessage(input: { to: string; name: string; orderI
     text: `Hi ${input.name},\n\nOrder ${input.orderId} wasn't approved: ${input.reason}\nContact hello@thinxify.com with your transaction hash, username and order ID if you believe this is a mistake.\n\n${input.url}`,
   };
 }
+
+/** To the operators: the wallet that new orders pay to was changed in /admin/settings. */
+export function paymentDestinationChangedMessage(input: { to: string; adminEmail: string; previous: string; next: string; at: Date; url: string }): EmailMessage {
+  return {
+    kind: "payment-destination-changed",
+    to: input.to,
+    subject: "Localians payment wallet changed",
+    html: layout({
+      heading: "Payment wallet changed",
+      body: `${escapeHtml(input.adminEmail)} changed the USDT (BNB Smart Chain, BEP20) wallet that new 7-Day Pass orders pay to, at ${escapeHtml(input.at.toUTCString())}.<br /><br />Previous: <span style="font-family:monospace;word-break:break-all;">${escapeHtml(input.previous)}</span><br />New: <span style="font-family:monospace;word-break:break-all;color:#F7F8F5;">${escapeHtml(input.next)}</span><br /><br />Orders created before the change keep their original wallet and are verified against it.`,
+      cta: "Review payment settings",
+      url: input.url,
+      footnote: "If you didn't expect this change, disable payments in the admin panel and change the admin password now.",
+    }),
+    text: `${input.adminEmail} changed the payment wallet at ${input.at.toUTCString()}.\nPrevious: ${input.previous}\nNew: ${input.next}\n\nOrders created before the change keep their original wallet.\nReview: ${input.url}\n\nIf you didn't expect this, disable payments and change the admin password now.`,
+  };
+}

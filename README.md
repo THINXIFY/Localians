@@ -188,7 +188,7 @@ run when an administrator already exists, or when the email belongs to a regular
 Admins can search users, edit name and username, suspend / reactivate (signs them out everywhere, revokes CLI logins,
 stops their previews) and delete — which deactivates and anonymises the account but keeps payment and audit records.
 
-**7-Day Pass payments (manual review).** With `PAYMENTS_ENABLED=on`, "Upgrade for $5" creates an upgrade request with
+**7-Day Pass payments (manual review).** While payments are on (Admin → Settings), "Upgrade for $5" creates an upgrade request with
 an Order ID (`ORD-…`), holds the chosen custom URL for 15 minutes, emails `ADMIN_NOTIFY_EMAIL`, and shows the payment
 details: 5 USDT on BNB Smart Chain (BEP20) to `0x2f94b75535eff533378c90f8dda29cf10208b174`, the QR code, and a field
 for the transaction hash. In `/admin/payments` an operator:
@@ -203,19 +203,31 @@ for the transaction hash. In `/admin/payments` an operator:
 
 The QR is generated at render time from the wallet address itself (`src/lib/payment-qr.ts`, called from
 `paymentInfo()`), so it can't disagree with the address beside it and no image file has to be deployed. A unit test
-decodes the generated code and requires it to equal the address. While `PAYMENTS_ENABLED` is off, the address and QR
+decodes the generated code and requires it to equal the address. While payments are off, the address and QR
 are not sent to the browser at all and the dialog shows "Payments coming soon".
 
-**Turning payments on in production** (needs the owner's approval; nothing here is done by the code):
-1. Deploy the release first: `sudo -u localians /srv/localians/bin/deploy.sh main` (see `deploy/README.md`).
-2. Edit `/etc/localians/web.env`: `PAYMENTS_ENABLED=on` (exactly `on`, lower case; `true`, `1` or `ON` stay off).
-   Optional: `ADMIN_NOTIFY_EMAIL` (defaults to hello@thinxify.com) and `BSC_RPC_URL` (a trusted node you control or pay for).
-   Keep `PREVIEW_CUSTOM_NAMES` as it is unless every gateway runs the custom-URL release.
-3. Deploy again (`deploy.sh main`). A restart alone is not enough: the dashboard reads the flag when the server
-   starts, but the homepage pricing button, Terms, Privacy Policy and structured data are static pages built with the
-   flag, and `deploy.sh` rebuilds them with `web.env` loaded.
-4. Check: sign in, open Share App → **Upgrade for $5**: the plan, wallet address, QR, copy button and **Get my Order ID**
-   show immediately. Create a test order, then cancel it.
+**Admin → Settings (`/admin/settings`)** is where payments are managed, without redeploying:
+
+- *Payment system on/off* — stored in the `payment_settings` row, the single authority read by the checkout, the order
+  API and the public pages. Turning it on asks for confirmation. Off: no new orders, no wallet or QR shown ("Payments
+  coming soon"); existing orders, records and passes are untouched. Every change is in `audit_logs`. The homepage,
+  Terms and Privacy Policy are static pages; a change revalidates them immediately (and they refresh every 5 minutes).
+  The row is created on first use from `PAYMENTS_ENABLED`; after that the variable is ignored.
+  `PAYMENTS_EMERGENCY_DISABLE=on` in `web.env` is a server-side kill switch that forces payments off (restart to apply).
+- *USDT wallet (BNB Smart Chain, BEP20)* — new orders pay to it. Changing it validates the address (format + EIP-55
+  checksum), shows old → new, requires the admin's password again, audits both values and emails hello@thinxify.com
+  (and `ADMIN_NOTIFY_EMAIL`). Each order stores its own wallet and QR snapshot (`upgrade_requests.recipient`,
+  `qrImageId`) and is verified on chain against that, so a change never affects open orders.
+- *QR code* — generated from the wallet by default (always matches). An uploaded PNG/JPEG/WebP (≤ 2 MB) is decoded on
+  the server and accepted only if it points to exactly the configured wallet; it is re-encoded (metadata stripped),
+  stored outside `public/` under a random name and served by an access-checked route. Changing the wallet drops it.
+
+**Turning payments on in production** (needs the owner's approval):
+1. Add `LOCALIANS_UPLOAD_DIR=/srv/localians/uploads` to `/etc/localians/web.env` and create the folder (see
+   `deploy/README.md`), then deploy: `sudo -u localians /srv/localians/bin/deploy.sh main`.
+2. Sign in at `/admin/login` → **Settings** → turn **Accept payments** on → **Save changes** → confirm.
+3. Check: sign in as a customer, open Share App → **Upgrade for $5**: the plan, wallet, QR, copy button and **Get my
+   Order ID** show immediately. Create a test order, then cancel it.
 
 **Payment risks to know about (documented, not solved by code):**
 - *Shared wallet.* The recipient is a Binance deposit address. The chain proves that a transfer of at least 5 USDT
@@ -235,7 +247,7 @@ are not sent to the browser at all and the dialog shows "Payments coming soon".
 
 **Deployment requirements for this release:** run the migrations (`npx prisma migrate deploy`, via `deploy.sh`), deploy
 the gateway before setting `PREVIEW_CUSTOM_NAMES=on`, create the first admin as above, and keep
-`PAYMENTS_ENABLED=off` until the payment workflow is approved.
+payments off in Admin → Settings until the payment workflow is approved.
 
 ## Live previews, analytics and session control (Phase 4)
 

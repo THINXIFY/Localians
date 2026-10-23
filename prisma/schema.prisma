@@ -127,6 +127,8 @@ model Workspace {
   /// transfer arrives with team features in Stage 2).
   ownerId   String
   owner     User     @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  /// Uploaded workspace avatar (media_files row; the image itself lives in the upload directory, not the database).
+  avatarId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -616,6 +618,9 @@ model UpgradeRequest {
   currency      String
   network       String
   recipient     String
+  /// Snapshot of the uploaded payment QR (media_files id) shown for this order; it was verified to encode `recipient`.
+  /// Null: the QR is generated from `recipient`. Later wallet/QR changes never touch an existing order.
+  qrImageId     String?
   /// Custom URL the customer chose at checkout (applied when the pass activates, if still free).
   requestedName String?
   status        UpgradeStatus @default(PENDING)
@@ -646,4 +651,42 @@ enum UpgradeStatus {
   APPROVED
   REJECTED
   CANCELLED
+}
+
+/// Admin-managed payment configuration: one row (id = 1). The effective "payments on" state is this row's `enabled`,
+/// unless PAYMENTS_EMERGENCY_DISABLE=on forces it off. Every change is written to audit_logs (old and new values).
+model PaymentSetting {
+  id          Int      @id @default(1)
+  enabled     Boolean  @default(false)
+  /// Lowercase 0x address that new orders pay to (snapshotted on each order as upgrade_requests.recipient).
+  recipient   String
+  /// Uploaded QR image (media_files id), accepted only when it decodes to `recipient`; null = generated QR.
+  qrImageId   String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@map("payment_settings")
+}
+
+/// An uploaded image (payment QR or workspace avatar). Only metadata is stored here: the file is in the persistent
+/// upload directory (LOCALIANS_UPLOAD_DIR) under `storageKey`, a server-generated name. Rows are never reused.
+model MediaFile {
+  id          String   @id @default(cuid())
+  /// "payment_qr" | "workspace_avatar"
+  kind        String
+  /// Workspace that owns a workspace avatar; null for payment QR images.
+  workspaceId String?
+  storageKey  String   @unique
+  contentType String
+  bytes       Int
+  width       Int
+  height      Int
+  sha256      String
+  /// Decoded QR content (payment QR images only), checked against the wallet address.
+  qrData      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([kind, workspaceId])
+  @@map("media_files")
 }

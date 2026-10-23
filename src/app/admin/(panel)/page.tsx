@@ -5,7 +5,7 @@ import { AdminHeader, Empty, fmtDate, Panel, Pill, statusTone } from "@/componen
 import { getAdminOverview } from "@/server/admin";
 import { listUpgradeRequests, upgradeCounts } from "@/server/upgrades";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Overview" };
 
 export default async function AdminDashboardPage() {
   const [overview, counts, requests] = await Promise.all([getAdminOverview(), upgradeCounts(), listUpgradeRequests()]);
@@ -17,7 +17,7 @@ export default async function AdminDashboardPage() {
   ];
   return (
     <>
-      <AdminHeader title="Dashboard" description="Users, previews and 7-Day Pass requests at a glance." />
+      <AdminHeader title="Overview" description="Users, previews and 7-Day Pass requests at a glance." />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="admin-cards">
         {cards.map((c) => {
           const body = (

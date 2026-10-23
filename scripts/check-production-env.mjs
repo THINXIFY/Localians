@@ -76,6 +76,10 @@ if (role === "web") {
   if (app && site && app.origin !== site.origin) warnings.push("NEXT_PUBLIC_SITE_URL and BETTER_AUTH_URL differ — sign-in state won't be shared between them");
   const db = need("DATABASE_URL");
   if (db && !/^postgres(ql)?:\/\//.test(db)) errors.push("DATABASE_URL must be a postgresql:// URL");
+  // Uploaded images must survive deploys: never inside a release directory (deploy.sh replaces those).
+  const uploads = need("LOCALIANS_UPLOAD_DIR");
+  if (uploads && !uploads.startsWith("/")) errors.push("LOCALIANS_UPLOAD_DIR must be an absolute path (e.g. /srv/localians/uploads)");
+  else if (uploads && /^\/srv\/localians\/(releases|current)(\/|$)/.test(uploads)) errors.push("LOCALIANS_UPLOAD_DIR must be outside the release directories (use /srv/localians/uploads)");
   if (db && !/@(localhost|127\.0\.0\.1|\[::1\]|\/)/.test(db) && !/sslmode=require/.test(db)) warnings.push("DATABASE_URL points to a remote host without sslmode=require");
 
   // Email: production never falls back to console/outbox delivery.

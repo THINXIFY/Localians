@@ -16,8 +16,11 @@ import { absoluteUrl, faqPage, pageMetadata } from "@/lib/seo";
 import { site } from "@/lib/site";
 import { launchFlags, type LaunchFlags } from "@/server/launch";
 
-export function generateMetadata(): Metadata {
-  const { payments } = launchFlags();
+/** Static, refreshed when an admin changes the payment setting (revalidatePath) and at least every 5 minutes. */
+export const revalidate = 300;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { payments } = await launchFlags();
   return pageMetadata({
     title: "Share Localhost Online with Secure HTTPS Links | Localians",
     absoluteTitle: true,
@@ -68,8 +71,8 @@ function structuredData(flags: LaunchFlags) {
   ];
 }
 
-export default function Home() {
-  const flags = launchFlags();
+export default async function Home() {
+  const flags = await launchFlags();
   return (
     <>
       <Navbar />

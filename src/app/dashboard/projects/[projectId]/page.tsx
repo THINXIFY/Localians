@@ -123,7 +123,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <PlanCards
               plan={plan}
               project={{ id: project.id, name: project.name }}
-              payment={paymentInfo()}
+              payment={await paymentInfo()}
               previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
               hasCustomName={Boolean(customUrl.name)}
             />

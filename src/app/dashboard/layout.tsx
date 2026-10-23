@@ -23,7 +23,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       <ToastProvider>
         <DashboardShell
           user={{ name: profile.name, email: profile.email, image: profile.image }}
-          workspace={{ name: workspace.name, role: workspace.role }}
+          workspace={{ name: workspace.name, role: workspace.role, avatarUrl: workspace.avatarUrl }}
         >
           {children}
         </DashboardShell>

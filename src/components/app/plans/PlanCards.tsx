@@ -56,11 +56,18 @@ export function PlanCards({
       <section
         aria-labelledby="plan-free"
         data-testid="plan-free"
-        className={cn("flex flex-col gap-2 rounded-xl border p-4", !passActive && !freeOver ? "border-accent/40 bg-accent/[0.04]" : "border-line-strong", freeOver && "opacity-80")}
+        className={cn(
+          "flex flex-col gap-2 rounded-xl border p-4 transition-colors",
+          !passActive && !freeOver ? "border-accent/40 bg-accent/[0.04]" : "border-line-strong",
+          freeOver && "border-dashed bg-transparent",
+        )}
       >
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <h3 id="plan-free" className="text-[14px] font-semibold text-fg">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h3 id="plan-free" className="flex items-center gap-2 text-[14px] font-semibold text-fg">
             Free
+            <StateChip tone={free.state === "active" ? "on" : freeOver ? "off" : "idle"}>
+              {free.state === "active" ? "Active" : free.state === "used" ? "Used" : free.state === "limit_reached" ? "Limit reached" : "Available"}
+            </StateChip>
           </h3>
           <span className="text-[12px] text-fg-3">Up to 24 hours</span>
         </div>
@@ -129,5 +136,19 @@ export function PlanCards({
         <UpgradeDialog open={open} onClose={() => setOpen(false)} project={project} plan={plan} payment={payment} previewDomain={previewDomain} hasCustomName={hasCustomName} />
       ) : null}
     </div>
+  );
+}
+
+/** Small status label next to a plan's name: "on" (in use), "idle" (available), "off" (used up / unavailable). */
+function StateChip({ tone, children }: { tone: "on" | "idle" | "off"; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 items-center rounded-full border px-1.5 text-[10.5px] font-medium uppercase tracking-[0.06em]",
+        tone === "on" ? "border-accent/35 bg-accent/10 text-accent-ink" : tone === "off" ? "border-line-strong text-fg-3" : "border-line text-fg-2",
+      )}
+    >
+      {children}
+    </span>
   );
 }

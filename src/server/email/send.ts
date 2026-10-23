@@ -9,7 +9,7 @@ export type EmailMessage = {
   html: string;
   text: string;
   /** Machine-readable kind, used by tests to find a message. */
-  kind: "verify-email" | "reset-password" | "change-email" | "existing-account" | "upgrade-request-admin" | "pass-activated" | "upgrade-rejected";
+  kind: "verify-email" | "reset-password" | "change-email" | "existing-account" | "upgrade-request-admin" | "pass-activated" | "upgrade-rejected" | "payment-destination-changed";
 };
 
 type Transport = "resend" | "console" | "outbox";

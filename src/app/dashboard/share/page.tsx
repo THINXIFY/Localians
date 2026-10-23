@@ -49,7 +49,7 @@ export default async function SharePage({ searchParams }: { searchParams: Promis
         initialStatus={status}
         customUrlsRouting={customNamesRouting()}
         plans={plans}
-        payment={paymentInfo()}
+        payment={await paymentInfo()}
         previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
       />
     </div>

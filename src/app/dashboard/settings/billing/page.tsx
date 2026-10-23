@@ -40,7 +40,7 @@ export default async function BillingPage() {
         </div>
         <BillingProjects
           projects={projects.map((p) => ({ id: p.id, name: p.name, port: p.defaultPort, hasCustomName: p.previewName?.status === "ACTIVE", plan: plans.byProject[p.id] ?? plans.newProject }))}
-          payment={paymentInfo()}
+          payment={await paymentInfo()}
           previewDomain={getTunnelConfig()?.previewDomain ?? "preview.localians.com"}
         />
       </section>

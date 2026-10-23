@@ -179,7 +179,7 @@ else say "skipped (default). Current swap: $(free -m | awk '/Swap:/{print $2}') 
 
 step "User and directories"
 if id "$APP_USER" >/dev/null 2>&1; then say "user $APP_USER exists"; else run "useradd --system --create-home --home-dir $APP_HOME --shell /bin/bash $APP_USER"; fi
-run "install -d -o $APP_USER -g $APP_USER -m 750 $APP_HOME $APP_HOME/releases $APP_HOME/bin"
+run "install -d -o $APP_USER -g $APP_USER -m 750 $APP_HOME $APP_HOME/releases $APP_HOME/bin $APP_HOME/uploads"
 run "install -d -o root -g $APP_USER -m 750 /etc/localians"
 run "install -d -o $APP_USER -g $APP_USER -m 700 /var/backups/localians"
 run "install -d -m 755 /var/www/localians-acme"

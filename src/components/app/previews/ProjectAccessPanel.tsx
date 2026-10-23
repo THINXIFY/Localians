@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { signOutVisitorsAction, updateAccessAction } from "@/server/actions/access";
-import { Field, FormError, inputClasses, PasswordInput } from "../Field";
+import { Field, FormError, selectClasses, PasswordInput } from "../Field";
 import { useToast } from "../Toast";
 
 const DURATIONS = [
@@ -114,7 +114,7 @@ export function ProjectAccessPanel({ projectId, initial, livePreviews }: { proje
             </Field>
             <Field label="Visitors stay signed in for" hint="After that they enter the password again.">
               {(p) => (
-                <select {...p} value={ttl} onChange={(e) => setTtl(Number(e.target.value))} className={cn(inputClasses, "h-11")}>
+                <select {...p} value={ttl} onChange={(e) => setTtl(Number(e.target.value))} className={cn(selectClasses, "h-11")}>
                   {DURATIONS.map((d) => (
                     <option key={d.minutes} value={d.minutes}>
                       {d.label}

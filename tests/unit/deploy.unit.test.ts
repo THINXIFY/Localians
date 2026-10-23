@@ -86,6 +86,7 @@ const WEB: Record<string, string> = {
   TUNNEL_TOKEN_SECRET: secret("b"),
   GATEWAY_API_SECRET: secret("c"),
   GATEWAY_CONTROL_URL: "http://127.0.0.1:4101",
+  LOCALIANS_UPLOAD_DIR: "/srv/localians/uploads",
 };
 const GATEWAY: Record<string, string> = {
   NODE_ENV: "production",
@@ -117,6 +118,8 @@ describe("production environment checker", () => {
     ["web", { TUNNEL_GATEWAY_URL: "https://gw.localians.com" }, "TUNNEL_GATEWAY_URL must be https://tunnel.localians.com"],
     ["web", { TUNNEL_PREVIEW_DOMAIN: "previews.localians.com" }, "TUNNEL_PREVIEW_DOMAIN must be preview.localians.com"],
     ["web", { BETTER_AUTH_URL: "http://localians.com" }, "must use https://"],
+    ["web", { LOCALIANS_UPLOAD_DIR: "" }, "LOCALIANS_UPLOAD_DIR"],
+    ["web", { LOCALIANS_UPLOAD_DIR: "/srv/localians/current/uploads" }, "outside the release directories"],
     ["web", { BETTER_AUTH_SECRET: "replace-with-32+-random-characters-A-xxxxxx" }, "placeholder"],
     ["web", { EMAIL_TRANSPORT: "console" }, "EMAIL_TRANSPORT must be resend"],
     ["web", { LOCALIANS_DEPLOYMENT: "" }, "LOCALIANS_DEPLOYMENT must be production"],

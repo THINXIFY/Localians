@@ -183,6 +183,16 @@ It also refuses placeholder secrets, development fallbacks, and ports that are p
 
 ## 5. Install and first deploy **[VPS]**
 
+Uploaded images (workspace avatars, payment QR codes) are kept outside the releases that `deploy.sh` replaces. Once:
+
+```bash
+sudo install -d -o localians -g localians -m 750 /srv/localians/uploads
+echo 'LOCALIANS_UPLOAD_DIR=/srv/localians/uploads' | sudo tee -a /etc/localians/web.env
+```
+
+The web unit may write there (`ReadWritePaths`), `backup.sh` archives it next to each database dump, and
+`deploy.sh` refuses to run without `LOCALIANS_UPLOAD_DIR` (or with it inside a release).
+
 ```bash
 sudo bash /srv/localians/repo/deploy/scripts/install.sh     # units, scripts, Nginx site (needs both certificates)
 sudo -u localians /srv/localians/bin/deploy.sh main

@@ -9,6 +9,7 @@ import { audit } from "../audit";
 import { auth } from "../auth";
 import { prisma } from "../db";
 import { ForbiddenError, NotFoundError } from "../errors";
+import { changeWallet, PaymentSettingsError, resetPaymentQr, setPaymentsEnabled, uploadPaymentQr } from "../payment-settings";
 import { rateLimit } from "../rate-limit";
 import type { ActionResult } from "./result";
 import { adminSetTxHash, approveRequest, markUnderReview, rejectRequest, UpgradeError, verifyRequestOnChain } from "../upgrades";
@@ -61,6 +62,7 @@ export async function adminSignOutAction(): Promise<ActionResult<null>> {
 
 function failure(error: unknown, context: string): ActionResult<never> {
   if (error instanceof AdminInputError) return { ok: false, error: error.message };
+  if (error instanceof PaymentSettingsError) return { ok: false, error: error.message };
   if (error instanceof ForbiddenError) return { ok: false, error: error.message };
   if (error instanceof NotFoundError) return { ok: false, error: "User not found." };
   console.error(`[action:${context}]`, error instanceof Error ? error.message : "Unknown error");
@@ -132,4 +134,25 @@ export async function approveRequestAction(orderId: string) {
 
 export async function rejectRequestAction(orderId: string, reason: string) {
   return paymentCall("rejectRequest", (admin) => rejectRequest(admin, String(orderId), String(reason)));
+}
+
+// ------------------------------------------------------------------ payment settings (server-checked admin only)
+
+export async function setPaymentsEnabledAction(enabled: boolean) {
+  return adminCall("setPaymentsEnabled", (admin) => setPaymentsEnabled(admin, enabled === true));
+}
+
+/** Requires the admin's current password (re-authentication) in addition to the admin session. */
+export async function changeWalletAction(input: { address: string; password: string }) {
+  return adminCall("changeWallet", (admin) => changeWallet(admin, { address: String(input?.address ?? ""), password: String(input?.password ?? "") }));
+}
+
+export async function uploadPaymentQrAction(form: FormData) {
+  const file = form.get("file");
+  if (!(file instanceof File)) return { ok: false as const, error: "Choose an image to upload." };
+  return adminCall("uploadPaymentQr", (admin) => uploadPaymentQr(admin, file));
+}
+
+export async function resetPaymentQrAction() {
+  return adminCall("resetPaymentQr", (admin) => resetPaymentQr(admin));
 }

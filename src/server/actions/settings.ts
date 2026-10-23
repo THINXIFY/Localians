@@ -8,7 +8,8 @@ import { auth } from "../auth";
 import { getSession } from "../session";
 import { revokeOtherSessions, revokeUserSession } from "../sessions";
 import { setThemePreference } from "../users";
-import { getCurrentWorkspace, updateWorkspace } from "../workspaces";
+import { rateLimit } from "../rate-limit";
+import { getCurrentWorkspace, removeWorkspaceAvatar, setWorkspaceAvatar, updateWorkspace, WorkspaceAvatarError } from "../workspaces";
 import { type ActionResult, fieldErrorsFrom, SESSION_EXPIRED, toActionError } from "./result";
 
 export async function updateProfileAction(values: { name: string; image: string }): Promise<ActionResult> {
@@ -66,5 +67,36 @@ export async function updateWorkspaceAction(values: { name: string; slug: string
     return { ok: true, data: undefined };
   } catch (error) {
     return toActionError(error, "updateWorkspace");
+  }
+}
+
+/** Uploads (or replaces) the current workspace's avatar. The image is validated and re-encoded on the server. */
+export async function uploadWorkspaceAvatarAction(form: FormData): Promise<ActionResult<{ avatarUrl: string | null }>> {
+  const session = await getSession();
+  if (!session) return SESSION_EXPIRED;
+  if (!(await rateLimit(`workspace-avatar:${session.user.id}`, 20, 60 * 60_000)).allowed) return { ok: false, error: "Too many uploads. Try again later." };
+  const file = form.get("file");
+  if (!(file instanceof File)) return { ok: false, error: "Choose an image to upload." };
+  try {
+    const workspace = await getCurrentWorkspace(session.user.id);
+    const avatarUrl = await setWorkspaceAvatar(session.user.id, workspace.id, file);
+    revalidatePath("/dashboard", "layout");
+    return { ok: true, data: { avatarUrl } };
+  } catch (error) {
+    if (error instanceof WorkspaceAvatarError) return { ok: false, error: error.message };
+    return toActionError(error, "uploadWorkspaceAvatar");
+  }
+}
+
+export async function removeWorkspaceAvatarAction(): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return SESSION_EXPIRED;
+  try {
+    const workspace = await getCurrentWorkspace(session.user.id);
+    await removeWorkspaceAvatar(session.user.id, workspace.id);
+    revalidatePath("/dashboard", "layout");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return toActionError(error, "removeWorkspaceAvatar");
   }
 }

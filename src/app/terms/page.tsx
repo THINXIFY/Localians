@@ -270,8 +270,11 @@ function buildSections(payments: boolean): LegalSection[] {
   ];
 }
 
-export default function TermsPage() {
-  const { payments } = launchFlags();
+/** Static, refreshed when an admin changes the payment setting (revalidatePath) and at least every 5 minutes. */
+export const revalidate = 300;
+
+export default async function TermsPage() {
+  const { payments } = await launchFlags();
   return (
     <SubPage
       eyebrow="Legal"

@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Type-check only the web app: tests, the CLI/gateway and the VS Code extension have their own configs and dependencies.
   typescript: { tsconfigPath: "tsconfig.app.json" },
+  // Image uploads (workspace avatars, payment QR codes) are up to 2 MB, sent through server actions (which keep
+  // Next.js's built-in origin/CSRF check). The files themselves are limited and validated again on the server.
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   async redirects() {
     // Phase 1 placeholder URLs now point at the real auth pages.
     return [

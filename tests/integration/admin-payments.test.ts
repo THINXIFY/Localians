@@ -8,6 +8,7 @@ import { type AdminUser, deleteUser, getUserDetail, listUsers, reactivateUser, s
 import { authenticateCli } from "@/server/cli/credentials";
 import { prisma } from "@/server/db";
 import { getProjectPlan } from "@/server/plans";
+import { DEFAULT_RECIPIENT } from "@/server/payment-settings";
 import { createProject } from "@/server/projects";
 import {
   adminSetTxHash,
@@ -66,7 +67,7 @@ beforeAll(async () => {
         ? {
             status: tx.status ?? "0x1",
             blockNumber: `0x${(tx.block ?? chain.head - 20).toString(16)}`,
-            logs: [{ address: tx.token ?? USDT, topics: [TRANSFER, pad("0x1111111111111111111111111111111111111111"), pad(tx.to ?? PASS_PRICE.recipient)], data: units(tx.amount ?? 5) }],
+            logs: [{ address: tx.token ?? USDT, topics: [TRANSFER, pad("0x1111111111111111111111111111111111111111"), pad(tx.to ?? DEFAULT_RECIPIENT)], data: units(tx.amount ?? 5) }],
           }
         : null;
     }
@@ -79,13 +80,17 @@ beforeAll(async () => {
   });
   await new Promise<void>((r) => rpcServer.listen(0, "127.0.0.1", r));
   process.env.BSC_RPC_URL = `http://127.0.0.1:${(rpcServer.address() as AddressInfo).port}`;
-  process.env.PAYMENTS_ENABLED = "on";
   process.env.ADMIN_NOTIFY_EMAIL = "admin-inbox@example.test";
+  await setPayments(true);
 });
+
+/** The authoritative switch is the payment_settings row (what /admin/settings changes). */
+async function setPayments(enabled: boolean) {
+  await prisma.paymentSetting.upsert({ where: { id: 1 }, create: { id: 1, enabled, recipient: DEFAULT_RECIPIENT }, update: { enabled } });
+}
 
 afterAll(async () => {
   delete process.env.BSC_RPC_URL;
-  delete process.env.PAYMENTS_ENABLED;
   delete process.env.ADMIN_NOTIFY_EMAIL;
   await new Promise((r) => rpcServer?.close(r));
 });
@@ -189,19 +194,18 @@ describe("7-Day Pass upgrade requests and verification", () => {
     return { user, p };
   }
 
-  it("shows the wallet and QR only while payments are on, and never any of it otherwise", () => {
-    const original = process.env.PAYMENTS_ENABLED;
+  it("shows the wallet and QR only while payments are on, and never any of it otherwise", async () => {
     try {
-      process.env.PAYMENTS_ENABLED = "off";
-      expect(paymentInfo()).toMatchObject({ enabled: false, recipient: null, qr: null });
-      process.env.PAYMENTS_ENABLED = "on";
-      expect(paymentInfo()).toMatchObject({ enabled: true, recipient: "0x2f94b75535eff533378c90f8dda29cf10208b174" });
-      expect(paymentInfo().qr).not.toBeNull();
+      await setPayments(false);
+      expect(await paymentInfo()).toMatchObject({ enabled: false, recipient: null, qr: null, qrImageUrl: null });
+      await setPayments(true);
+      expect(await paymentInfo()).toMatchObject({ enabled: true, recipient: "0x2f94b75535eff533378c90f8dda29cf10208b174" });
+      expect((await paymentInfo()).qr).not.toBeNull();
     } finally {
-      if (original === undefined) delete process.env.PAYMENTS_ENABLED;
-      else process.env.PAYMENTS_ENABLED = original;
+      await setPayments(true);
     }
-    expect(PASS_PRICE).toMatchObject({ amountMicros: 5_000_000n, currency: "USDT", network: "BSC", recipient: "0x2f94b75535eff533378c90f8dda29cf10208b174" });
+    expect(PASS_PRICE).toMatchObject({ amountMicros: 5_000_000n, currency: "USDT", network: "BSC" });
+    expect(DEFAULT_RECIPIENT).toBe("0x2f94b75535eff533378c90f8dda29cf10208b174");
   });
 
   it("request → hash → verify → approve activates 7 days and the custom URL, emails both sides, once", async () => {
@@ -295,11 +299,11 @@ describe("7-Day Pass upgrade requests and verification", () => {
     await cancelUpgradeRequest(user.id, again.request.orderId);
     expect((await prisma.upgradeRequest.findUniqueOrThrow({ where: { id: again.request.id } })).status).toBe("CANCELLED");
 
-    process.env.PAYMENTS_ENABLED = "off";
+    await setPayments(false);
     try {
       await expect(createUpgradeRequest(user.id, p.id)).rejects.toMatchObject({ code: "disabled" });
     } finally {
-      process.env.PAYMENTS_ENABLED = "on";
+      await setPayments(true);
     }
   });
 });

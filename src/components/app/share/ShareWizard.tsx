@@ -11,7 +11,7 @@ import type { PaymentInfo, PlanSummary } from "@/lib/plans";
 import { type PreviewStatusValue } from "@/lib/previews";
 import { saveShareSetupAction } from "@/server/actions/share";
 import { DURATION_OPTIONS, durationLabel, FREE_MAX_MINUTES, isDurationOption } from "@tunnel/shared/durations";
-import { inputClasses, PasswordInput } from "../Field";
+import { inputClasses, selectClasses, PasswordInput } from "../Field";
 import { PlanCards } from "../plans/PlanCards";
 import { AccessBadge } from "../previews/AccessBadge";
 import { Countdown } from "../previews/Countdown";
@@ -312,7 +312,8 @@ export function ShareWizard({
       <ol className="divide-y divide-line">
         {/* ---------------------------------------------------------------------- 1. Project */}
         <Step n={1} title="Select project">
-          <div className="flex flex-col gap-1.5">
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] md:gap-6">
+          <div className="flex min-w-0 flex-col gap-1.5">
             <label htmlFor={creating ? ids.name : ids.project} className="text-[13px] font-medium text-fg">
               Project
             </label>
@@ -328,7 +329,7 @@ export function ShareWizard({
                   data-testid="new-project-name"
                 />
               ) : (
-                <select id={ids.project} value={projectId} onChange={(e) => chooseProject(e.target.value)} className={cn(inputClasses, "h-10 w-full min-w-0 text-[14px] sm:flex-1")}>
+                <select id={ids.project} value={projectId} onChange={(e) => chooseProject(e.target.value)} className={cn(selectClasses, "h-10 w-full min-w-0 text-[14px] sm:flex-1")}>
                   {active.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -346,7 +347,7 @@ export function ShareWizard({
                     setProjectId("");
                     setAccess("PUBLIC");
                   }}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-line-strong px-3.5 text-[13px] text-fg-2 transition-colors hover:border-tint/25 hover:text-fg focus-visible:shadow-[0_0_0_3px_var(--accent-glow)] focus-visible:outline-none"
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-line-strong bg-tint/[0.02] px-3.5 text-[13px] font-medium text-fg-2 transition-colors hover:border-tint/25 hover:bg-tint/[0.05] hover:text-fg focus-visible:shadow-[0_0_0_3px_var(--accent-glow)] focus-visible:outline-none"
                 >
                   {creating ? (
                     "Choose existing"
@@ -368,9 +369,9 @@ export function ShareWizard({
             </p>
           </div>
 
-          <fieldset className="flex min-w-0 flex-col gap-2">
+          <fieldset className="flex min-w-0 flex-col gap-1.5">
             <legend className="mb-1.5 text-[13px] font-medium text-fg">Who can open the link</legend>
-            <div className="inline-flex w-full rounded-xl border border-line-strong bg-tint/[0.02] p-1 sm:w-fit" role="radiogroup" aria-label="Who can open the link">
+            <div className="flex h-10 w-full rounded-xl border border-line-strong bg-tint/[0.02] p-1" role="radiogroup" aria-label="Who can open the link">
               {(
                 [
                   { value: "PUBLIC", icon: Globe, label: "Public" },
@@ -380,7 +381,7 @@ export function ShareWizard({
                 <label
                   key={o.value}
                   className={cn(
-                    "relative flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[13px] transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)] sm:flex-none",
+                    "relative flex h-full flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[13px] transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
                     access === o.value ? "bg-accent/[0.12] font-medium text-fg" : "text-fg-2 hover:text-fg",
                   )}
                 >
@@ -388,8 +389,8 @@ export function ShareWizard({
                   <o.icon className={cn("size-3.5", access === o.value ? "text-accent-ink" : "text-fg-3")} aria-hidden="true" />
                   {o.value === "PASSWORD" ? (
                     <>
-                      <span className="sm:hidden">Password</span>
-                      <span className="hidden sm:inline">Password protected</span>
+                      <span className="lg:hidden">Password</span>
+                      <span className="hidden lg:inline">Password protected</span>
                     </>
                   ) : (
                     o.label
@@ -398,7 +399,7 @@ export function ShareWizard({
               ))}
             </div>
             {access === "PASSWORD" ? (
-              <div className="flex max-w-sm flex-col gap-1 motion-safe:animate-[menu-in_160ms_ease-out]">
+              <div className="flex flex-col gap-1 motion-safe:animate-[menu-in_160ms_ease-out]">
                 <label htmlFor={ids.password} className="sr-only">
                   Preview password
                 </label>
@@ -418,15 +419,17 @@ export function ShareWizard({
               <p className="text-[12px] text-fg-3">Anyone with the link can open your app while it&apos;s shared.</p>
             )}
           </fieldset>
+          </div>
         </Step>
 
         {/* ---------------------------------------------------------------------- 2. Configure preview */}
         <Step n={2} title="Configure preview">
+          <div className="flex flex-col gap-1.5">
+          <label htmlFor={ids.port} className="text-[13px] font-medium text-fg">
+            Port
+          </label>
           <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor={ids.port} className="sr-only">
-              Port
-            </label>
-            <div className="flex h-10 items-center rounded-xl border border-line-strong bg-tint/[0.03] pl-3 focus-within:border-accent/70 focus-within:shadow-[0_0_0_3px_var(--accent-glow)]">
+            <div className="flex h-10 items-center rounded-xl border border-line-strong bg-tint/[0.03] pl-3.5 transition-colors hover:border-tint/25 focus-within:border-accent/70 focus-within:shadow-[0_0_0_3px_var(--accent-glow)]">
               <span className="select-none font-mono text-[12.5px] text-fg-3">localhost:</span>
               <input
                 id={ids.port}
@@ -451,8 +454,8 @@ export function ShareWizard({
                   onClick={() => choosePort(p.port)}
                   aria-pressed={port === p.port}
                   className={cn(
-                    "h-8 rounded-full border px-2.5 text-[12px] transition-colors",
-                    port === p.port ? "border-accent/40 bg-accent/[0.07] text-fg" : "border-line text-fg-2 hover:border-line-strong hover:text-fg",
+                    "inline-flex h-10 min-w-[5.5rem] items-center justify-center gap-1.5 rounded-xl border px-3 text-[12.5px] transition-colors focus-visible:shadow-[0_0_0_3px_var(--accent-glow)] focus-visible:outline-none",
+                    port === p.port ? "border-accent/45 bg-accent/[0.08] font-medium text-fg" : "border-line-strong text-fg-2 hover:border-tint/25 hover:bg-tint/[0.03] hover:text-fg",
                   )}
                 >
                   {p.label} <span className="font-mono text-fg-3">{p.port}</span>
@@ -460,9 +463,10 @@ export function ShareWizard({
               ))}
             </div>
           </div>
-          <p id={`${ids.port}-hint`} className={cn("-mt-1 text-[12px]", portValid ? "text-fg-3" : "text-danger")}>
-            {portValid ? `The port your dev server prints — check that localhost:${port} opens.` : "Enter a port from 1 to 65535."}
+          <p id={`${ids.port}-hint`} className={cn("text-[12px]", portValid ? "text-fg-3" : "text-danger")}>
+            {portValid ? "Use the port your dev server prints." : "Enter a port from 1 to 65535."}
           </p>
+          </div>
 
           <PlanCards
             plan={plan}
@@ -472,8 +476,8 @@ export function ShareWizard({
             hasCustomName={Boolean(selected?.customName)}
           />
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-6">
-            <div className="flex flex-col gap-1">
+          <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <label htmlFor={ids.stop} className="flex items-center gap-1.5 text-[13px] font-medium text-fg">
                 <Clock className="size-3.5 text-fg-3" aria-hidden="true" />
                 Auto-stop
@@ -482,7 +486,7 @@ export function ShareWizard({
                 id={ids.stop}
                 value={autoStop === null ? "" : String(autoStop)}
                 onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : null)}
-                className={cn(inputClasses, "h-9 w-full pr-8 text-[13px] sm:w-auto sm:min-w-[15.5rem]")}
+                className={cn(selectClasses, "h-10 w-full text-[13.5px]")}
                 data-testid="auto-stop"
               >
                 <option value="">{passActive ? "When the pass ends" : "When the free preview ends"}</option>
@@ -494,12 +498,12 @@ export function ShareWizard({
               </select>
             </div>
             {customName ? (
-              <fieldset className="flex min-w-0 flex-col gap-1" data-testid="url-options">
-                <legend className="mb-1 flex items-center gap-1.5 text-[13px] font-medium text-fg">
+              <fieldset className="flex min-w-0 flex-col gap-1.5" data-testid="url-options">
+                <legend className="mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-fg">
                   <Link2 className="size-3.5 text-fg-3" aria-hidden="true" />
                   Preview link
                 </legend>
-                <div className="inline-flex rounded-xl border border-line-strong p-1">
+                <div className="flex h-10 w-full min-w-0 rounded-xl border border-line-strong bg-tint/[0.02] p-1">
                   {(
                     [
                       { value: "custom", icon: Link2, label: `${customName}.${previewDomain}` },
@@ -509,7 +513,8 @@ export function ShareWizard({
                     <label
                       key={o.value}
                       className={cn(
-                        "relative flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[12.5px] has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
+                        "relative flex h-full min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[12.5px] transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
+                        o.value === "custom" ? "flex-[1.6]" : "flex-1 justify-center",
                         urlChoice === o.value ? "bg-accent/[0.12] text-fg" : "text-fg-2 hover:text-fg",
                         o.value === "custom" && "font-mono",
                       )}
@@ -522,7 +527,7 @@ export function ShareWizard({
                 </div>
               </fieldset>
             ) : passActive && selected && customUrlsRouting ? (
-              <p className="text-[12.5px] text-fg-3 sm:pt-6">
+              <p className="text-[12.5px] text-fg-3 sm:pt-8">
                 <Link href={`/dashboard/projects/${selected.id}#custom-url`} className="text-fg-2 underline underline-offset-2">
                   Choose your custom URL
                 </Link>{" "}
@@ -539,8 +544,8 @@ export function ShareWizard({
               <p className="text-[13.5px]">Run this in a terminal in your project folder, next to your running app:</p>
               <div
                 className={cn(
-                  "group flex flex-col gap-3 rounded-xl border bg-bg-2 p-3 transition-colors sm:flex-row sm:items-center sm:p-2 sm:pl-4",
-                  ready ? "border-accent/30" : "border-line-strong",
+                  "group flex flex-col gap-3 rounded-xl border bg-black/40 p-3 transition-colors sm:flex-row sm:items-center sm:gap-4 sm:p-2 sm:pl-4",
+                  ready ? "border-accent/35 shadow-[0_0_0_1px_rgba(184,255,59,0.06)]" : "border-line-strong",
                 )}
               >
                 <code className={cn("min-w-0 flex-1 font-mono text-[14.5px] text-fg transition-opacity [overflow-wrap:anywhere]", !ready && "opacity-50")} data-testid="share-command">
@@ -658,7 +663,7 @@ function LivePreview({ preview, selectedPort }: { preview: SharePreview; selecte
         <span className="min-w-0 truncate text-[13.5px] font-medium text-fg">{preview.project.name}</span>
         <span className="font-mono text-[12px] text-fg-3">localhost:{preview.localPort}</span>
       </div>
-      <Countdown expiresAt={preview.expiresAt} className="text-[13px] text-fg-2" />
+      <Countdown expiresAt={preview.expiresAt} className="w-fit rounded-full border border-line-strong bg-bg/40 px-3 py-1 text-[13px] font-medium tabular-nums text-fg" />
       <p className="break-all font-mono text-[16px] text-fg sm:text-[18px]" data-testid="share-preview-url">
         {url}
       </p>

@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { inputClasses } from "../Field";
+import { inputClasses, selectClasses } from "../Field";
 
 const RANGES = [
   { value: "24h", label: "Last 24 hours" },
@@ -80,7 +80,7 @@ export function AnalyticsFilters({
             id="analytics-project"
             value={projectId ?? ""}
             onChange={(e) => update({ project: e.target.value || null })}
-            className={cn(inputClasses, "h-10 w-full pr-8 text-[13.5px] md:w-64")}
+            className={cn(selectClasses, "h-10 w-full text-[13.5px] md:w-64")}
           >
             <option value="">All projects</option>
             {projects.map((p) => (

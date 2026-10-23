@@ -62,7 +62,7 @@ test("admin signs in, sees the dashboard, manages users and payments, and logs o
   await expect(page).toHaveURL(/\/admin$/);
   const cards = page.getByTestId("admin-cards");
   for (const label of ["Total users", "Active previews", "Pending upgrade requests", "Verified payments"]) await expect(cards.getByText(label)).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Admin" }).getByRole("link")).toHaveText(["Dashboard", "Users", "Payments"]);
+  await expect(page.getByRole("navigation", { name: "Admin" }).getByRole("link")).toHaveText(["Overview", "Users", "Payments", "Settings"]);
 
   await page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Users" }).click();
   await page.getByLabel("Search users").fill(customer.email);

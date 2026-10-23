@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
-import { inputClasses } from "../Field";
+import { inputClasses, selectClasses } from "../Field";
 
 const FILTERS = [
   { value: "all", label: "All" },
@@ -13,7 +13,7 @@ const FILTERS = [
   { value: "historical", label: "Historical" },
 ] as const;
 
-const selectClasses = cn(inputClasses, "h-10 w-full appearance-auto pr-8 text-[13.5px] sm:w-auto");
+const filterSelect = cn(selectClasses, "h-10 w-full text-[13.5px] sm:w-auto");
 
 /** Status, project, search and sort — all in the URL so views are shareable and survive refresh. */
 export function PreviewFilters({ projects }: { projects: { id: string; name: string }[] }) {
@@ -77,7 +77,7 @@ export function PreviewFilters({ projects }: { projects: { id: string; name: str
           <label className="sr-only" htmlFor="preview-project">
             Project
           </label>
-          <select id="preview-project" value={params.get("project") ?? ""} onChange={(e) => update({ project: e.target.value })} className={selectClasses}>
+          <select id="preview-project" value={params.get("project") ?? ""} onChange={(e) => update({ project: e.target.value })} className={filterSelect}>
             <option value="">All projects</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -88,7 +88,7 @@ export function PreviewFilters({ projects }: { projects: { id: string; name: str
           <label className="sr-only" htmlFor="preview-sort">
             Sort
           </label>
-          <select id="preview-sort" value={params.get("sort") ?? "activity"} onChange={(e) => update({ sort: e.target.value })} className={selectClasses}>
+          <select id="preview-sort" value={params.get("sort") ?? "activity"} onChange={(e) => update({ sort: e.target.value })} className={filterSelect}>
             <option value="activity">Latest activity</option>
             <option value="newest">Newest first</option>
           </select>

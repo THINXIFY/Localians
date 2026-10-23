@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SettingsPanel } from "@/components/app/Primitives";
-import { WorkspaceForm } from "@/components/app/settings/WorkspaceSettings";
+import { WorkspaceAvatarForm, WorkspaceForm } from "@/components/app/settings/WorkspaceSettings";
 import { formatDate } from "@/lib/format";
 import { getProjectCounts } from "@/server/projects";
 import { requireUser } from "@/server/session";
@@ -20,6 +20,7 @@ export default async function WorkspaceSettingsPage() {
 
   return (
     <>
+      <WorkspaceAvatarForm name={workspace.name} avatarUrl={workspace.avatarUrl} canEdit={workspace.role === "OWNER"} />
       <WorkspaceForm name={workspace.name} slug={workspace.slug} canEdit={workspace.role === "OWNER"} />
       <SettingsPanel title="Workspace information" description="Team members and invitations arrive in a later stage.">
         <dl className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2">

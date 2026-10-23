@@ -29,8 +29,9 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-# Next.js writes its runtime cache inside the release's .next directory.
-ReadWritePaths=/srv/localians/releases
+# Next.js writes its runtime cache inside the release's .next directory; uploaded images (workspace avatars,
+# payment QR codes) live in /srv/localians/uploads, outside the releases that deploy.sh replaces.
+ReadWritePaths=/srv/localians/releases /srv/localians/uploads
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=localians-web

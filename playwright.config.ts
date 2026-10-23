@@ -54,6 +54,8 @@ export default defineConfig({
       // The customer side of 7-Day Pass requests (test database only; nothing is charged).
       PAYMENTS_ENABLED: "on",
       ADMIN_NOTIFY_EMAIL: "admin-inbox@example.test",
+      // Uploaded images (avatars, payment QR codes) go to a throwaway folder, never the checkout.
+      LOCALIANS_UPLOAD_DIR: path.join(os.tmpdir(), "localians-e2e-uploads"),
     },
   },
 });

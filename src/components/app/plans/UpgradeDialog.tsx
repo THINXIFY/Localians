@@ -19,6 +19,7 @@ import { cn } from "@/lib/cn";
 import {
   isOpenRequest,
   ORDER_STATUS_LABEL,
+  type PayTo,
   type PaymentInfo,
   type PlanSummary,
 } from "@/lib/plans";
@@ -41,6 +42,8 @@ type OpenOrder = {
   orderId: string;
   status: "PENDING" | "UNDER_REVIEW";
   txHash: string | null;
+  /** The order's own payment destination (snapshot); null while payments are off. */
+  payTo?: PayTo | null;
 };
 const FAILED = {
   ok: false as const,
@@ -104,6 +107,9 @@ export function UpgradeDialog({
       orderId: result.data.orderId,
       status: result.data.status,
       txHash: result.data.txHash,
+      payTo: payment.recipient
+        ? { recipient: payment.recipient, qr: payment.qr, qrImageUrl: payment.qrImageUrl }
+        : null,
     });
     router.refresh();
   }
@@ -179,7 +185,24 @@ export function UpgradeDialog({
           running for the preview to work.
         </p>
 
-        {!payment.enabled ? (
+        {order ? (
+          <PaymentStep
+            order={order}
+            payment={payment}
+            hash={hash}
+            setHash={setHash}
+            busy={busy}
+            error={error}
+            sent={sent}
+            onSubmit={() => submitHash(order.orderId)}
+            onCancel={
+              order.status === "PENDING" && !order.txHash
+                ? () => cancel(order.orderId)
+                : null
+            }
+            onRefresh={refresh}
+          />
+        ) : !payment.enabled ? (
           <div
             className="flex flex-col gap-3"
             data-testid="payments-coming-soon"
@@ -211,9 +234,20 @@ export function UpgradeDialog({
               Pay {payment.amountLabel} — coming soon
             </Button>
           </div>
-        ) : !order ? (
+        ) : (
           <>
-            <PaymentDetails payment={payment} />
+            <PaymentDetails
+              payment={payment}
+              payTo={
+                payment.recipient
+                  ? {
+                      recipient: payment.recipient,
+                      qr: payment.qr,
+                      qrImageUrl: payment.qrImageUrl,
+                    }
+                  : null
+              }
+            />
             {askName ? (
               <NameField
                 value={name}
@@ -241,23 +275,6 @@ export function UpgradeDialog({
               can match your payment. Nothing is charged automatically.
             </p>
           </>
-        ) : (
-          <PaymentStep
-            order={order}
-            payment={payment}
-            hash={hash}
-            setHash={setHash}
-            busy={busy}
-            error={error}
-            sent={sent}
-            onSubmit={() => submitHash(order.orderId)}
-            onCancel={
-              order.status === "PENDING" && !order.txHash
-                ? () => cancel(order.orderId)
-                : null
-            }
-            onRefresh={refresh}
-          />
         )}
       </div>
     </Dialog>
@@ -329,7 +346,18 @@ function PaymentStep({
         </div>
       </div>
 
-      <PaymentDetails payment={payment} />
+      {order.payTo ? (
+        <PaymentDetails payment={payment} payTo={order.payTo} />
+      ) : (
+        <p
+          className="rounded-xl border border-line-strong bg-tint/[0.02] p-3 text-[12.5px]"
+          role="status"
+          data-testid="payments-paused"
+        >
+          New payments are paused. If you already paid for this order, add the
+          transaction hash below and email us; your order is still reviewed.
+        </p>
+      )}
 
       <p className="flex items-start gap-2 rounded-xl border border-line p-3 text-[12.5px]">
         <Mail className="mt-0.5 size-4 shrink-0 text-fg-3" aria-hidden="true" />
@@ -401,20 +429,41 @@ function PaymentStep({
   );
 }
 
-/** Where and how to pay: QR (generated from the address), amount, network, wallet address with copy, and the network warning. */
-function PaymentDetails({ payment }: { payment: PaymentInfo }) {
+/**
+ * Where and how to pay: QR, amount, network, wallet address with copy, and the network warning. `payTo` is the order's
+ * own destination (or, before an order exists, the current one); the QR always encodes exactly `payTo.recipient`:
+ * an uploaded image only if the server verified it, otherwise one generated from the address.
+ */
+function PaymentDetails({
+  payment,
+  payTo,
+}: {
+  payment: PaymentInfo;
+  payTo: PayTo | null;
+}) {
+  if (!payTo) return null;
+  const qrLabel = `QR code for the wallet address ${payTo.recipient}`;
   return (
     <div className="flex flex-col gap-4" data-testid="payment-details">
       <div className="grid gap-4 sm:grid-cols-[148px_minmax(0,1fr)]">
-        {payment.qr && payment.recipient ? (
+        {payTo.qrImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- verified upload streamed by an access-checked route
+          <img
+            src={payTo.qrImageUrl}
+            alt={qrLabel}
+            width={148}
+            height={148}
+            className="mx-auto size-[148px] rounded-xl bg-white object-contain p-1.5 sm:mx-0"
+          />
+        ) : payTo.qr ? (
           <svg
             role="img"
-            aria-label={`QR code for the wallet address ${payment.recipient}`}
-            viewBox={`0 0 ${payment.qr.size} ${payment.qr.size}`}
+            aria-label={qrLabel}
+            viewBox={`0 0 ${payTo.qr.size} ${payTo.qr.size}`}
             shapeRendering="crispEdges"
             className="mx-auto size-[148px] rounded-xl bg-white p-1.5 sm:mx-0"
           >
-            <path d={payment.qr.d} fill="#000" />
+            <path d={payTo.qr.d} fill="#000" />
           </svg>
         ) : null}
         <dl className="flex min-w-0 flex-col gap-3">
@@ -435,14 +484,9 @@ function PaymentDetails({ payment }: { payment: PaymentInfo }) {
                 className="min-w-0 break-all font-mono text-[12.5px] text-fg"
                 data-testid="wallet-address"
               >
-                {payment.recipient}
+                {payTo.recipient}
               </code>
-              {payment.recipient ? (
-                <CopyButton
-                  value={payment.recipient}
-                  label="Copy wallet address"
-                />
-              ) : null}
+              <CopyButton value={payTo.recipient} label="Copy wallet address" />
             </dd>
           </div>
         </dl>

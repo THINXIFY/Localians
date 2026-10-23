@@ -18,6 +18,7 @@ const payment = (enabled: boolean): PaymentInfo => ({
   networkLabel: "BNB Smart Chain (BEP20)",
   recipient: enabled ? WALLET : null,
   qr: enabled ? qrPath(WALLET) : null,
+  qrImageUrl: null,
   supportEmail: "hello@thinxify.com",
   afterPaymentMessage: "After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after successful payment verification.",
 });
@@ -52,14 +53,34 @@ describe("Upgrade dialog", () => {
     expect(html).not.toContain("Transaction hash"); // the hash goes with an order
   });
 
-  it("with an open order: Order ID, amount, network, wallet + copy, QR, warning, email instructions, hash field and status", () => {
-    const html = render(payment(true), plan({ orderId: "ORD-ABCDEFGH", status: "PENDING", txHash: null, note: null }));
-    for (const text of ["ORD-ABCDEFGH", "5 USDT", "BNB Smart Chain (BEP20)", WALLET, "Copy wallet address", "Send USDT on BNB Smart Chain (BEP20) only", "Transaction hash", "Pending", "Cancel this order"]) {
+  // An order made before the admin changed the wallet: it must keep showing (and paying to) its own snapshot.
+  const ORDER_WALLET = "0x1111111111111111111111111111111111111111";
+  const payTo = { recipient: ORDER_WALLET, qr: qrPath(ORDER_WALLET), qrImageUrl: null };
+
+  it("with an open order: Order ID, amount, network, the ORDER's wallet + copy and QR, warning, email instructions, hash field and status", () => {
+    const html = render(payment(true), plan({ orderId: "ORD-ABCDEFGH", status: "PENDING", txHash: null, note: null, payTo }));
+    for (const text of ["ORD-ABCDEFGH", "5 USDT", "BNB Smart Chain (BEP20)", ORDER_WALLET, "Copy wallet address", "Send USDT on BNB Smart Chain (BEP20) only", "Transaction hash", "Pending", "Cancel this order"]) {
       expect(html, text).toContain(text);
     }
-    expect(html).toContain(`aria-label="QR code for the wallet address ${WALLET}"`);
+    expect(html).not.toContain(WALLET); // never the current global wallet for an existing order
+    expect(html).toContain(`aria-label="QR code for the wallet address ${ORDER_WALLET}"`);
     expect(html).toContain("After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com.");
     expect(html).toContain("mailto:hello@thinxify.com?subject=Payment%20for%20ORD-ABCDEFGH");
+  });
+
+  it("an order's verified uploaded QR image is shown instead of the generated one", () => {
+    const html = render(payment(true), plan({ orderId: "ORD-ABCDEFGH", status: "PENDING", txHash: null, note: null, payTo: { ...payTo, qrImageUrl: "/api/media/payment-qr/abc123abc123abc123abc1" } }));
+    expect(html).toContain('src="/api/media/payment-qr/abc123abc123abc123abc1"');
+    expect(html).toContain(`alt="QR code for the wallet address ${ORDER_WALLET}"`);
+  });
+
+  it("payments off with an open order: status and hash field stay, but no wallet or QR is shown", () => {
+    const html = render(payment(false), plan({ orderId: "ORD-ABCDEFGH", status: "PENDING", txHash: null, note: null, payTo: null }));
+    expect(html).toContain("ORD-ABCDEFGH");
+    expect(html).toContain("New payments are paused");
+    expect(html).toContain("Transaction hash");
+    expect(html).not.toContain("QR code for the wallet address");
+    expect(html).not.toContain("Copy wallet address");
   });
 
   it("after a hash was submitted: awaiting verification, no cancel", () => {

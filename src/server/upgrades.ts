@@ -12,6 +12,7 @@ import { passActivatedMessage, upgradeRejectedMessage, upgradeRequestAdminMessag
 import { NotFoundError } from "./errors";
 import { log } from "./log";
 import { grantPassInTx, notifyGateways } from "./passes";
+import { currentQrImageId, getPaymentSettings, paymentQrImageUrl, paymentsEnabled } from "./payment-settings";
 import { holdName } from "./preview-names";
 import { getProjectForUser } from "./projects";
 import { requireMembership } from "./workspaces";
@@ -24,7 +25,8 @@ import { requireMembership } from "./workspaces";
  *
  * Approval is atomic (request locked, pass created, request APPROVED in one transaction) and only possible after a
  * passing on-chain verification, recorded on the request (also enforced by a database CHECK). A transaction hash can
- * belong to one request only (unique). Taking requests is off until PAYMENTS_ENABLED=on.
+ * belong to one request only (unique). Whether requests can be taken, and the wallet new orders pay to, come from the
+ * admin-managed payment settings (payment-settings.ts); each order snapshots its wallet and QR.
  */
 export const PASS_PRICE = {
   product: "PASS_7D",
@@ -33,28 +35,25 @@ export const PASS_PRICE = {
   currency: "USDT",
   network: "BSC",
   networkLabel: "BNB Smart Chain (BEP20)",
-  recipient: "0x2f94b75535eff533378c90f8dda29cf10208b174",
 } as const;
 
 export const SUPPORT_EMAIL = "hello@thinxify.com";
 export const AFTER_PAYMENT_MESSAGE =
   "After payment, email your payment screenshot, transaction hash, Localians username and Order ID to hello@thinxify.com. Your 7-Day Preview Pass will activate after successful payment verification.";
 
-export const paymentsEnabled = () => process.env.PAYMENTS_ENABLED === "on";
 const adminNotifyEmail = () => process.env.ADMIN_NOTIFY_EMAIL?.trim() || SUPPORT_EMAIL;
 
-/**
- * The payment QR is generated here from PASS_PRICE.recipient itself (tests decode it back to that exact address), so it
- * can never disagree with the address shown beside it and doesn't depend on an image file being deployed.
- */
+/** The QR for a wallet, generated from the address itself (tests decode it back to that exact address). */
 const RECIPIENT_FORMAT = /^0x[0-9a-f]{40}$/;
-export function paymentQr() {
-  if (!RECIPIENT_FORMAT.test(PASS_PRICE.recipient)) {
+export function paymentQr(recipient: string) {
+  if (!RECIPIENT_FORMAT.test(recipient)) {
     log("error", "payment recipient is not a valid address; QR hidden");
     return null;
   }
-  return qrPath(PASS_PRICE.recipient);
+  return qrPath(recipient);
 }
+
+export { paymentsEnabled };
 
 export class UpgradeError extends Error {
   constructor(
@@ -85,7 +84,9 @@ async function notifyAdmin(requestId: string, txHash?: string | null) {
  * member of the project's workspace may request; the pass applies to the project.
  */
 export async function createUpgradeRequest(userId: string, projectId: string, input: { name?: string | null } = {}) {
-  if (!paymentsEnabled()) throw new UpgradeError("disabled", "The 7-Day Pass isn't available to buy yet.");
+  if (!(await paymentsEnabled())) throw new UpgradeError("disabled", "The 7-Day Pass isn't available to buy yet.");
+  // Make sure the settings row exists before the transaction reads it.
+  await getPaymentSettings();
   const project = await getProjectForUser(userId, projectId);
   await requireMembership(userId, project.workspaceId);
   const open = await prisma.upgradeRequest.findFirst({ where: { projectId: project.id, status: { in: [...OPEN] } } });
@@ -96,6 +97,9 @@ export async function createUpgradeRequest(userId: string, projectId: string, in
   try {
     const request = await prisma.$transaction(async (tx) => {
       const name = input.name?.trim() ? (await holdName(tx, { userId, workspaceId: project.workspaceId, projectId: project.id, name: input.name })).name : null;
+      // Snapshot where this order pays to: later settings changes never alter it, and it is verified against it.
+      const settings = await tx.paymentSetting.findUniqueOrThrow({ where: { id: 1 } });
+      const qrImageId = await currentQrImageId(settings);
       const created = await tx.upgradeRequest.create({
         data: {
           orderId: newOrderId(),
@@ -107,7 +111,8 @@ export async function createUpgradeRequest(userId: string, projectId: string, in
           amountMicros: PASS_PRICE.amountMicros,
           currency: PASS_PRICE.currency,
           network: PASS_PRICE.network,
-          recipient: PASS_PRICE.recipient,
+          recipient: settings.recipient,
+          qrImageId,
           requestedName: name,
         },
       });
@@ -327,17 +332,26 @@ export async function upgradeCounts() {
 
 export { BSC };
 
-/** What the customer's payment step shows. The QR appears only when its image passed verification. */
-export function paymentInfo(): import("@/lib/plans").PaymentInfo {
-  const enabled = paymentsEnabled();
+/** What the checkout shows for a NEW order: the current wallet and QR, only while payments are on. */
+export async function paymentInfo(): Promise<import("@/lib/plans").PaymentInfo> {
+  const enabled = await paymentsEnabled();
+  const settings = await getPaymentSettings();
+  const qrImageId = enabled ? await currentQrImageId(settings) : null;
   return {
     enabled,
     amountLabel: PASS_PRICE.label,
     networkLabel: PASS_PRICE.networkLabel,
     // While payments are off, the deposit address and QR aren't sent to the browser at all.
-    recipient: enabled ? PASS_PRICE.recipient : null,
-    qr: enabled ? paymentQr() : null,
+    recipient: enabled ? settings.recipient : null,
+    qr: enabled ? paymentQr(settings.recipient) : null,
+    qrImageUrl: paymentQrImageUrl(qrImageId),
     supportEmail: SUPPORT_EMAIL,
     afterPaymentMessage: AFTER_PAYMENT_MESSAGE,
   };
+}
+
+/** Where an existing order pays to: its own snapshot (never the current settings), shown only while payments are on. */
+export function orderPayTo(order: { recipient: string; qrImageId: string | null }, enabled: boolean) {
+  if (!enabled) return null;
+  return { recipient: order.recipient, qr: paymentQr(order.recipient), qrImageUrl: paymentQrImageUrl(order.qrImageId) };
 }
