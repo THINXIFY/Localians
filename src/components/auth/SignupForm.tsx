@@ -8,6 +8,7 @@ import type { z } from "zod";
 import { Field, FormError, PasswordInput, PasswordStrength, TextInput } from "@/components/app/Field";
 import { Button } from "@/components/ui/Button";
 import { authClient, authErrorMessage } from "@/lib/auth-client";
+import { routes } from "@/lib/site";
 import { PASSWORD_MIN, signupSchema } from "@/lib/validation/auth";
 
 type Values = z.infer<typeof signupSchema>;
@@ -67,11 +68,11 @@ export function SignupForm() {
       </Button>
       <p className="text-center text-[12.5px] leading-relaxed text-fg-3">
         By creating an account you agree to our{" "}
-        <a href="/terms" className="underline underline-offset-4 hover:text-fg">
+        <a href={routes.terms} className="underline underline-offset-4 hover:text-fg">
           Terms
         </a>{" "}
         and{" "}
-        <a href="/privacy" className="underline underline-offset-4 hover:text-fg">
+        <a href={routes.privacy} className="underline underline-offset-4 hover:text-fg">
           Privacy Policy
         </a>
         .

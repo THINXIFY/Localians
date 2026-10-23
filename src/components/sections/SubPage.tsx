@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { cn } from "@/lib/cn";
 import { Eyebrow } from "@/components/ui/SectionHeader";
 import { Footer } from "./Footer";
 import { Navbar } from "./Navbar";
@@ -13,10 +14,12 @@ type SubPageProps = {
   /** Shown as a clear notice when the destination is not built yet. */
   notice?: ReactNode;
   back?: { href: string; label: string };
+  /** "wide" leaves room for a side column (long legal pages with a table of contents). */
+  width?: "narrow" | "wide";
   children?: ReactNode;
 };
 
-export function SubPage({ eyebrow, title, intro, notice, back = { href: "/", label: "Back to home" }, children }: SubPageProps) {
+export function SubPage({ eyebrow, title, intro, notice, back = { href: "/", label: "Back to home" }, width = "narrow", children }: SubPageProps) {
   return (
     <>
       <Navbar />
@@ -26,7 +29,7 @@ export function SubPage({ eyebrow, title, intro, notice, back = { href: "/", lab
           <div className="absolute left-1/2 top-[-260px] h-[480px] w-[min(900px,130vw)] -translate-x-1/2 rounded-[50%] bg-[radial-gradient(closest-side,rgba(184,255,59,0.1),transparent)]" />
         </div>
 
-        <div className="container-x max-w-[820px] pb-24 pt-[calc(var(--header-h)+64px)] sm:pb-32 sm:pt-[calc(var(--header-h)+96px)]">
+        <div className={cn("container-x pb-24 pt-[calc(var(--header-h)+64px)] sm:pb-32 sm:pt-[calc(var(--header-h)+96px)]", width === "wide" ? "max-w-[1080px]" : "max-w-[820px]")}>
           <Link
             href={back.href}
             className="inline-flex items-center gap-1.5 text-[13.5px] text-fg-3 transition-colors hover:text-fg"

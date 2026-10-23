@@ -6,6 +6,8 @@ export const site = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://localians.com",
   command: "npx localians share 3000",
   demoUrl: "https://demo.preview.localians.com",
+  supportEmail: "hello@thinxify.com",
+  operator: { name: "THINXIFY Technologies", url: "https://thinxify.com" },
 };
 
 export const navLinks = [
@@ -31,7 +33,7 @@ export const routes = {
   security: "/docs/security",
   about: "/about",
   contact: "/contact",
-  privacy: "/privacy",
+  privacy: "/privacy-policy",
   terms: "/terms",
   shareLocalhost: "/share-localhost",
   ngrokAlternative: "/ngrok-alternative",

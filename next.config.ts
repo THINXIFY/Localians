@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/sign-in", destination: "/login", permanent: true },
       { source: "/get-started", destination: "/signup", permanent: true },
+      // The privacy policy lives at /privacy-policy; the old short URL (linked from earlier sign-up pages) keeps working.
+      { source: "/privacy", destination: "/privacy-policy", permanent: true },
       // Phase 3 placeholder route.
       { source: "/dashboard/live-previews", destination: "/dashboard/previews", permanent: false },
     ];
