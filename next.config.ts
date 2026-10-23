@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Type-check only the web app: tests, the CLI/gateway and the VS Code extension have their own configs and dependencies.
+  typescript: { tsconfigPath: "tsconfig.app.json" },
   async redirects() {
     // Phase 1 placeholder URLs now point at the real auth pages.
     return [

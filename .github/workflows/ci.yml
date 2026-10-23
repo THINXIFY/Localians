@@ -43,8 +43,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
+      # The root tests import the VS Code extension's sources, which need its own dev dependencies (@types/vscode).
+      - run: npm ci --prefix extensions/vscode --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
       - run: npm run build
       - run: npm run tunnel:build
+      - run: npm run vscode:typecheck
+      - run: npm run vscode:package

@@ -1,0 +1,6 @@
+{
+  "//": "The Next.js web app only (used by next dev/build via typescript.tsconfigPath). Tests, the CLI, the gateway and the VS Code extension are checked by tsconfig.json / their own configs, so the production build never needs their dependencies (e.g. @types/vscode).",
+  "extends": "./tsconfig.json",
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", "tunnel/shared/**/*.ts", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
+  "exclude": ["node_modules", "examples", "extensions", "tests", "tunnel/cli", "tunnel/gateway"]
+}
