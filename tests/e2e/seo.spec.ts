@@ -59,7 +59,7 @@ test("every public page is indexable, self-canonical, uniquely titled and well-f
     expect(title.length, `${path} title "${title}"`).toBeLessThanOrEqual(70);
     expect(titles.has(title), `${path} duplicate title`).toBe(false);
     titles.add(title);
-    expect(pick(html, /<meta property="og:title" content="([^"]+)"/), `${path} og:title`).toBe(title.replace(/&amp;/g, "&"));
+    expect(pick(html, /<meta property="og:title" content="([^"]+)"/), `${path} og:title`).toBe(title);
     const description = pick(html, /<meta name="description" content="([^"]+)"/) ?? "";
     expect(description.length, `${path} description`).toBeGreaterThanOrEqual(70);
     expect(description.length, `${path} description`).toBeLessThanOrEqual(165);

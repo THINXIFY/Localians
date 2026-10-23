@@ -8,13 +8,15 @@ export const site = {
   demoUrl: "https://demo.preview.localians.com",
   supportEmail: "hello@thinxify.com",
   operator: { name: "THINXIFY Technologies", url: "https://thinxify.com" },
+  /** Where every service card on /services leads: THINXIFY's contact page (it publishes no per-service pages). */
+  servicesContactUrl: "https://thinxify.com/contact-us/",
 };
 
 export const navLinks = [
   { label: "Features", href: "/#features" },
   { label: "How It Works", href: "/#how-it-works" },
-  { label: "Use Cases", href: "/#use-cases" },
   { label: "Pricing", href: "/#pricing" },
+  { label: "Services", href: "/services" },
   { label: "Docs", href: "/docs" },
 ] as const;
 
@@ -32,6 +34,7 @@ export const routes = {
   troubleshooting: "/docs/troubleshooting",
   security: "/docs/security",
   about: "/about",
+  services: "/services",
   contact: "/contact",
   privacy: "/privacy-policy",
   terms: "/terms",
@@ -75,6 +78,7 @@ export const footerColumns = [
     title: "Company",
     links: [
       { label: "About", href: routes.about },
+      { label: "Services", href: routes.services },
       { label: "Contact", href: routes.contact },
     ],
   },
@@ -102,6 +106,7 @@ export const indexablePaths = [
   routes.troubleshooting,
   routes.getStarted,
   routes.about,
+  routes.services,
   routes.contact,
   routes.privacy,
   routes.terms,
