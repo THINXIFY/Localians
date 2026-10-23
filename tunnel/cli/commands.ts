@@ -3,6 +3,7 @@ import os from "node:os";
 import { createInterface } from "node:readline/promises";
 import { startAgent, type AgentState } from "./agent";
 import { ApiError, createApi, type ApiProject } from "./api";
+import { formatRemaining } from "../shared/durations";
 import { detectProject, findLocalAddress } from "./local";
 import { type Credentials, deleteCredentials, readCredentials, readShares, removeShare, saveCredentials, writeShare } from "./store";
 import { banner, c, EXIT, fail, formatDuration, out, row } from "./ui";
@@ -16,7 +17,16 @@ const USER_AGENT = `localians-cli/${VERSION} (${process.platform}; node ${proces
 declare const __LOCALIANS_DEFAULT_API_URL__: string | undefined;
 const DEFAULT_API_URL = typeof __LOCALIANS_DEFAULT_API_URL__ === "string" && __LOCALIANS_DEFAULT_API_URL__ ? __LOCALIANS_DEFAULT_API_URL__ : undefined;
 
-type Options = { apiUrl?: string; project?: string; setup?: string; hostHeader: "rewrite" | "preserve"; browser: boolean; verbose: boolean; yes: boolean };
+type Options = {
+  apiUrl?: string;
+  project?: string;
+  setup?: string;
+  durationMinutes?: number;
+  hostHeader: "rewrite" | "preserve";
+  browser: boolean;
+  verbose: boolean;
+  yes: boolean;
+};
 
 function resolveApiUrl(options: Options) {
   return (options.apiUrl ?? process.env.LOCALIANS_API_URL ?? readCredentials()?.apiUrl ?? DEFAULT_API_URL)?.replace(/\/+$/, "") ?? null;
@@ -199,6 +209,7 @@ export async function status(options: Options): Promise<number> {
     row("Preview link", c.lime(share.publicUrl));
     row("Status", tone(share.state[0].toUpperCase() + share.state.slice(1)));
     row("Uptime", formatDuration(Date.now() - new Date(share.startedAt).getTime()));
+    if (share.expiresAt) row("Expires", expiresText(share.expiresAt));
     out();
   }
   return EXIT.ok;
@@ -260,6 +271,16 @@ async function chooseProject(
   return existing;
 }
 
+/** "in 59 minutes (at 14:05)" — when the link stops working. */
+function expiresText(expiresAt: string) {
+  const at = new Date(expiresAt);
+  if (Number.isNaN(at.getTime())) return "—";
+  const left = at.getTime() - Date.now();
+  const sameDay = at.toDateString() === new Date().toDateString();
+  const clock = at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `in ${formatRemaining(left)} (${sameDay ? `at ${clock}` : `${at.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${clock}`})`;
+}
+
 export async function share(port: number, options: Options): Promise<number> {
   const verbose = (line: string) => options.verbose && out(`  ${c.dim(line)}`);
 
@@ -316,6 +337,8 @@ export async function share(port: number, options: Options): Promise<number> {
     try {
       const setup = await api.redeemSetup(options.setup, port, detectProject(process.cwd()));
       project = setup.project;
+      // The dashboard's duration, unless --duration was given too.
+      if (setup.durationMinutes && options.durationMinutes === undefined) options = { ...options, durationMinutes: setup.durationMinutes };
       verbose(project ? `using project "${project.name}" from the dashboard setup` : "dashboard setup: project chosen automatically");
     } catch (error) {
       fail(error instanceof Error ? error.message : "Couldn't use that setup code.", `Or run \`localians share ${port}\` without --setup.`);
@@ -340,7 +363,7 @@ export async function share(port: number, options: Options): Promise<number> {
   // 5–7. Tunnel session + preview hostname.
   let session;
   try {
-    session = await api.createTunnel(project.id, port);
+    session = await api.createTunnel(project.id, port, options.durationMinutes);
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       fail("Your CLI login has expired or was revoked.", "Run `localians login` to sign in again.");
@@ -349,6 +372,10 @@ export async function share(port: number, options: Options): Promise<number> {
     if (error instanceof ApiError && error.status === 404) {
       fail("You don't have access to that project.", "Check the project in the dashboard, or omit --project.");
       return EXIT.auth;
+    }
+    if (error instanceof ApiError && (error.code === "plan_required" || error.code === "invalid_duration")) {
+      fail(error.message, `For example: localians share ${port} --duration 1h`);
+      return EXIT.usage;
     }
     fail(error instanceof Error ? error.message : "Couldn't create the preview.", error instanceof ApiError && error.code === "tunnels_unavailable" ? "Sharing isn't set up on this Localians server yet." : undefined);
     return EXIT.gatewayUnavailable;
@@ -364,6 +391,7 @@ export async function share(port: number, options: Options): Promise<number> {
       localPort: port,
       project: { id: session.project.id, name: session.project.name },
       startedAt: startedAt.toISOString(),
+      expiresAt: session.expiresAt,
       state,
     });
 
@@ -401,6 +429,7 @@ export async function share(port: number, options: Options): Promise<number> {
           row("Preview link", c.bold(c.lime(session.publicUrl)));
           row("Status", c.green("● Connected"));
           row("Access", session.access === "password" ? c.green("Password protected") : c.yellow("Public — anyone with the link"));
+          row("Expires", expiresText(session.expiresAt));
           out();
           out(`  Send the preview link to anyone you want to show your app.`);
           if (session.access === "password") out(`  ${c.dim("Visitors enter the project password first. Change it in the dashboard.")}`);

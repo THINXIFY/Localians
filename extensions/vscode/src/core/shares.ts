@@ -15,6 +15,10 @@ export type Share = {
   access: "public" | "password";
   status: ShareStatus;
   startedAt: number;
+  /** When Localians stops serving the link (epoch ms). */
+  expiresAt: number;
+  /** The length chosen, to share again with the same one. */
+  durationMinutes?: number;
   /** Why it ended (shown to the user), when status is "ended". */
   endMessage?: string;
   stopReason?: StopReason;
@@ -43,7 +47,7 @@ export type ShareManagerDeps = {
 const END_MESSAGES: Record<StopReason, string> = {
   user: "You stopped sharing.",
   auth: "Your Localians sign-in was revoked or expired. Sign in again to keep sharing.",
-  ended: "This preview was stopped from the dashboard or has expired.",
+  ended: "This preview was stopped from the dashboard or its time ran out.",
   fatal: "The connection to Localians failed.",
 };
 
@@ -69,14 +73,14 @@ export class ShareManager {
   }
 
   /** Starts sharing and resolves once the gateway confirms the tunnel (or rejects with a readable reason). */
-  async start(input: { port: number; address: LoopbackAddress; project: { id: string; name: string } }): Promise<Share> {
+  async start(input: { port: number; address: LoopbackAddress; project: { id: string; name: string }; durationMinutes?: number }): Promise<Share> {
     const api = this.deps.api();
     if (!api) throw new ShareError("Connect to Localians first.", "signed_out");
     if (this.activeForPort(input.port)) throw new ShareError(`localhost:${input.port} is already being shared.`, "already_sharing");
 
     let session;
     try {
-      session = await api.createTunnel(input.project.id, input.port);
+      session = await api.createTunnel(input.project.id, input.port, input.durationMinutes);
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) throw new ShareError("Your Localians sign-in expired or was revoked. Sign in again.", "auth");
@@ -95,6 +99,8 @@ export class ShareManager {
       access: session.access === "password" ? "password" : "public",
       status: "connecting",
       startedAt: Date.now(),
+      expiresAt: Date.parse(session.expiresAt),
+      durationMinutes: session.durationMinutes ?? input.durationMinutes,
     };
     this.deps.log?.(`Starting preview for ${share.projectName} (localhost:${share.port}) → ${share.publicUrl}`);
 

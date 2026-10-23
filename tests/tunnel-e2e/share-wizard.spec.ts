@@ -21,7 +21,7 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   await expect(page.getByRole("heading", { name: "Your localhost. Ready to share.", level: 1 })).toBeVisible();
   await page.getByRole("link", { name: "Share a Local App" }).first().click();
   await expect(page).toHaveURL(/\/dashboard\/share$/);
-  for (const step of ["Select project", "Enter port", "Start sharing"]) await expect(page.getByRole("heading", { name: step })).toBeVisible();
+  for (const step of ["Select project", "Configure preview", "Start sharing"]) await expect(page.getByRole("heading", { name: step })).toBeVisible();
 
   // ---- 1–2. New project, password protected, port ------------------------------------------------
   await expect(page.getByLabel("Project", { exact: true })).toHaveValue(""); // new project
@@ -31,7 +31,8 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   await expect(page.getByTestId("setup-state")).toHaveText("Enter a password (8+ characters) to get the command.");
   await expect(page.getByRole("button", { name: "Copy Command" })).toHaveCount(0); // no command that would share publicly by mistake
   await page.getByPlaceholder("Password (8+ characters)").fill("client-pass-123");
-  await expect(page.getByTestId("setup-state")).toContainText("It works once, for the next 30 minutes.");
+  await page.getByRole("radio", { name: "15 minutes" }).check(); // how long the link works
+  await expect(page.getByTestId("setup-state")).toHaveText("Your link will work for 15 minutes. The command works once, for the next 30 minutes.");
 
   // ---- 3. Start sharing: copy and run the command ------------------------------------------------
   const command = page.getByTestId("share-command");
@@ -59,9 +60,11 @@ test("new developer shares a password-protected app: Select Project → Enter Po
 
   // No project prompt, no --yes: the setup code already says what to do.
   const [, publicUrl] = await share.waitFor(/Preview link\s+(https:\/\/[a-z2-7]{12}\.preview\.localhost:8643)/, 60_000);
+  await share.waitFor(/Press Ctrl\+C to stop sharing\./); // the whole banner has arrived
   expect(share.output).toMatch(/Workspace\s+First's Workspace/);
   expect(share.output).toMatch(/Project\s+Client Demo/);
   expect(share.output).toMatch(/Access\s+Password protected/);
+  expect(share.output).toMatch(/Expires\s+in 1[45]m \d\ds \(at /); // the dashboard's 15 minutes, carried by the setup code
   expect(share.output).not.toMatch(/Choose 1|--yes/);
 
   // ---- The link appears by itself, with Copy and Open; the used command is gone ---------------------
@@ -71,6 +74,7 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   const result = page.getByTestId("share-result");
   await expect(result.locator("[data-status]")).toHaveText("Connected");
   await expect(result.locator("[data-access]")).toHaveText("Protected");
+  await expect(result.getByTestId("countdown")).toContainText(/Expires in 1[45]m \d\ds/);
   await result.getByRole("button", { name: "Copy Link" }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(publicUrl);
 
@@ -116,7 +120,7 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   await page.goto("/dashboard/previews");
   const card = page.locator("[data-testid=preview-card]", { hasText: new URL(publicUrl).hostname });
   await expect(card.locator("[data-access]")).toHaveText("Protected");
-  await expect(card).toContainText("Link expires in");
+  await expect(card.getByTestId("countdown")).toContainText("Expires in");
   await card.getByRole("button", { name: /^Stop sharing/ }).click();
   await page.getByRole("dialog", { name: "Stop this preview?" }).getByRole("button", { name: "Stop Sharing" }).click();
   await expect(page.getByText("Sharing stopped. The link no longer reaches your app.")).toBeVisible();
@@ -137,7 +141,7 @@ test("beginner: port + password only, run from a subfolder — project named aft
   await page.getByLabel("Port", { exact: true }).fill("4310");
   await page.getByRole("radio", { name: /^Password/ }).click();
   await page.getByPlaceholder("Password (8+ characters)").fill("beginner-pass-1"); // no project name typed
-  await expect(page.getByTestId("setup-state")).toContainText("It works once");
+  await expect(page.getByTestId("setup-state")).toContainText("The command works once");
   const command = ((await page.getByTestId("share-command").textContent()) ?? "").replace(/^\$\s*/, "").trim();
   expect(command).toMatch(/^localians share 4310 --setup [a-z2-9]{12}$/);
 
@@ -151,6 +155,7 @@ test("beginner: port + password only, run from a subfolder — project named aft
   await approval.close();
 
   const [, publicUrl] = await share.waitFor(/Preview link\s+(https:\/\/[a-z2-7]{12}\.preview\.localhost:8643)/, 60_000);
+  await share.waitFor(/Press Ctrl\+C to stop sharing\./); // the whole banner has arrived
   expect(share.output).toMatch(/Project\s+next-sample-app/); // not "localians-web", not "app"
   expect(share.output).toMatch(/Access\s+Password protected/);
   expect(share.output).toMatch(/Status\s+● Connected/);

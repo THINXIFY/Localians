@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { parsePort } from "./local";
+import { parseDuration } from "../shared/durations";
 
 export const HELP = `Usage: localians <command> [options]
 
@@ -12,7 +13,9 @@ Commands:
 Options for share:
   --project <id|slug>   Project to share under (default: the project that uses this port)
   -y, --yes             Create a project for this app without asking, if none uses the port
-  --setup <code>        Use the project and access chosen in the dashboard's Share App page
+  --setup <code>        Use the project, access and duration chosen in the dashboard's Share App page
+  -d, --duration <time> How long to share: 5m, 15m, 30m, 1h, 12h or 24h (default 24h;
+                        3d or 7d with a Preview Pass). The link stops working after that
   --host-header <mode>  "rewrite" (default) sends Host: localhost:<port>;
                         "preserve" forwards the public preview host
 
@@ -26,6 +29,7 @@ Global options:
 Examples:
   npx localians share 3000                   Share a Next.js / React app on port 3000
   npx localians share 5173                   Share a Vite app
+  npx localians share 3000 --duration 1h     Share for one hour
   npx localians share 3000 --project shop    Share under an existing project
   npx localians status                       See what this computer is sharing
 
@@ -40,7 +44,16 @@ export type ParsedCli =
       kind: "command";
       command: "login" | "share" | "status" | "logout";
       port: number | null;
-      options: { apiUrl?: string; project?: string; setup?: string; hostHeader: "rewrite" | "preserve"; browser: boolean; verbose: boolean; yes: boolean };
+      options: {
+        apiUrl?: string;
+        project?: string;
+        setup?: string;
+        durationMinutes?: number;
+        hostHeader: "rewrite" | "preserve";
+        browser: boolean;
+        verbose: boolean;
+        yes: boolean;
+      };
     };
 
 export function parseCli(argv: string[]): ParsedCli {
@@ -54,6 +67,7 @@ export function parseCli(argv: string[]): ParsedCli {
         "api-url": { type: "string" },
         project: { type: "string" },
         setup: { type: "string" },
+        duration: { type: "string", short: "d" },
         "host-header": { type: "string" },
         "no-browser": { type: "boolean" },
         verbose: { type: "boolean", short: "v" },
@@ -86,6 +100,14 @@ export function parseCli(argv: string[]): ParsedCli {
     }
   }
 
+  let durationMinutes: number | undefined;
+  if (values.duration !== undefined) {
+    if (command !== "share") return { kind: "error", message: "--duration only applies to share." };
+    const minutes = parseDuration(values.duration);
+    if (minutes === null) return { kind: "error", message: `"${values.duration}" isn't a duration Localians offers. Use 5m, 15m, 30m, 1h, 12h or 24h (3d or 7d with a Preview Pass).` };
+    durationMinutes = minutes;
+  }
+
   let port: number | null = null;
   if (command === "share") {
     if (rest.length !== 1) return { kind: "error", message: "Usage: localians share <port>   (for example: localians share 3000)" };
@@ -103,6 +125,7 @@ export function parseCli(argv: string[]): ParsedCli {
       apiUrl: values["api-url"],
       project: values.project,
       setup: values.setup,
+      durationMinutes,
       hostHeader,
       browser: !values["no-browser"],
       verbose: Boolean(values.verbose),

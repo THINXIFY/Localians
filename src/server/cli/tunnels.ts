@@ -25,6 +25,8 @@ import type { CliAuth } from "./credentials";
 import { policyFor } from "../access";
 import { log } from "../log";
 import { generatePreviewLabel } from "./crypto";
+import { durationLabel, isDurationOption, LEGACY_DURATION_MINUTES, TIME_UP_REASON } from "@tunnel/shared/durations";
+import { getPlanLimits } from "../plans";
 import { ACTIVE_STATES, endSession, endSessions, hourBucket, isActive, pruneTelemetry, recordEvent } from "./lifecycle";
 
 export { ACTIVE_STATES } from "./lifecycle";
@@ -34,7 +36,16 @@ export const STOPPED_FROM_DASHBOARD = "Stopped from the dashboard";
 
 export class TunnelError extends Error {
   constructor(
-    readonly code: "tunnels_unavailable" | "project_archived" | "too_many_tunnels" | "bandwidth_quota" | "session_ended" | "invalid_port",
+    readonly code:
+      | "tunnels_unavailable"
+      | "project_archived"
+      | "too_many_tunnels"
+      | "too_many_sessions"
+      | "bandwidth_quota"
+      | "session_ended"
+      | "invalid_port"
+      | "invalid_duration"
+      | "plan_required",
     message: string,
     readonly status: number,
   ) {
@@ -60,16 +71,16 @@ async function signConnectToken(config: TunnelConfig, session: { id: string; use
     .sign(config.tokenSecret);
 }
 
-/** Expires sessions that outlived their lifetime or whose gateway heartbeat went stale. */
+/** Ends sessions whose time ran out, and those whose gateway heartbeat went stale (the CLI or computer went away). */
 export async function sweepStaleTunnels(where: Prisma.TunnelSessionWhereInput = {}) {
   const now = Date.now();
+  // Time first, so a session that is both out of time and silent is reported as "Expired".
+  await endSessions({ AND: [where, { expiresAt: { lte: new Date(now) } }] }, { status: "EXPIRED", event: TunnelEventType.EXPIRED, reason: TIME_UP_REASON });
   await endSessions(
     {
-      ...where,
-      OR: [
-        { expiresAt: { lt: new Date(now) } },
-        { lastHeartbeatAt: { lt: new Date(now - TUNNEL_STALE_AFTER_MS) } },
-        { lastHeartbeatAt: null, createdAt: { lt: new Date(now - TUNNEL_STALE_AFTER_MS) } },
+      AND: [
+        where,
+        { OR: [{ lastHeartbeatAt: { lt: new Date(now - TUNNEL_STALE_AFTER_MS) } }, { lastHeartbeatAt: null, createdAt: { lt: new Date(now - TUNNEL_STALE_AFTER_MS) } }] },
       ],
     },
     { status: "EXPIRED", event: TunnelEventType.EXPIRED, reason: (s) => (s.connectedAt ? "No connection from the CLI" : "The CLI never connected") },
@@ -77,8 +88,28 @@ export async function sweepStaleTunnels(where: Prisma.TunnelSessionWhereInput = 
   void pruneTelemetry().catch(() => {});
 }
 
+/**
+ * The session length to use: one of the listed options, within the workspace's plan. Omitted (older CLI and VS Code
+ * versions) = the free maximum, as before timers existed. Never more than the plan allows, whatever the client sends.
+ */
+export async function resolveDuration(workspaceId: string, requested: unknown) {
+  const plan = await getPlanLimits(workspaceId);
+  if (requested === undefined || requested === null) return Math.min(LEGACY_DURATION_MINUTES, plan.maxDurationMinutes);
+  if (!isDurationOption(requested)) {
+    throw new TunnelError("invalid_duration", "Choose a duration of 5m, 15m, 30m, 1h, 12h or 24h (3d or 7d with a Preview Pass).", 400);
+  }
+  if (requested > plan.maxDurationMinutes) {
+    throw new TunnelError(
+      "plan_required",
+      `Sessions longer than ${durationLabel(plan.maxDurationMinutes)} need a Preview Pass. Choose a shorter duration, or upgrade in the dashboard.`,
+      403,
+    );
+  }
+  return requested;
+}
+
 /** Creates a tunnel session for a project the credential's user may access. */
-export async function createTunnelSession(auth: CliAuth, input: { projectId: string; localPort: number }) {
+export async function createTunnelSession(auth: CliAuth, input: { projectId: string; localPort: number; durationMinutes?: unknown }) {
   const config = requireConfig();
   if (!Number.isInteger(input.localPort) || input.localPort < 1 || input.localPort > 65535) {
     throw new TunnelError("invalid_port", "Ports range from 1 to 65535.", 400);
@@ -90,8 +121,14 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
     throw new TunnelError("project_archived", "This project is archived. Restore it in the dashboard to share it.", 409);
   }
 
+  const durationMinutes = await resolveDuration(project.workspaceId, input.durationMinutes);
+
   await sweepStaleTunnels({ userId: auth.userId });
   const limits = quotas();
+  const startedToday = await prisma.tunnelSession.count({ where: { userId: auth.userId, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } });
+  if (startedToday >= limits.sessionsPerDay) {
+    throw new TunnelError("too_many_sessions", `You've started ${limits.sessionsPerDay} previews in the last 24 hours. Keep one running longer, or try again later.`, 429);
+  }
   const active = await prisma.tunnelSession.count({ where: { userId: auth.userId, status: { in: ACTIVE_STATES } } });
   if (active >= limits.activePreviewsPerUser) {
     throw new TunnelError("too_many_tunnels", `You can share up to ${limits.activePreviewsPerUser} apps at once. Stop another share first.`, 429);
@@ -110,10 +147,11 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
             credentialId: auth.credentialId,
             hostname: generatePreviewLabel(),
             localPort: input.localPort,
-            expiresAt: new Date(Date.now() + limits.maxShareMs),
+            durationMinutes,
+            expiresAt: new Date(Date.now() + durationMinutes * 60_000),
           },
         });
-        await recordEvent(tx, { id: created.id, workspaceId: project.workspaceId }, TunnelEventType.CREATED, `Sharing localhost:${input.localPort}`);
+        await recordEvent(tx, { id: created.id, workspaceId: project.workspaceId }, TunnelEventType.CREATED, `Sharing localhost:${input.localPort} for ${durationLabel(durationMinutes)}`);
         return created;
       });
       return {
@@ -122,6 +160,7 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
         publicUrl: previewUrl(config, session.hostname),
         gatewayUrl: config.gatewayUrl,
         expiresAt: session.expiresAt.toISOString(),
+        durationMinutes,
         project: { id: project.id, name: project.name, slug: project.slug },
         workspace: { id: project.workspaceId },
         access: (await prisma.project.findUniqueOrThrow({ where: { id: project.id }, select: { accessMode: true } })).accessMode === "PASSWORD" ? "password" : "public",
@@ -151,10 +190,13 @@ export async function reissueConnectToken(auth: CliAuth, sessionId: string) {
   await sweepStaleTunnels({ id: sessionId });
   const session = await ownedSession(auth, sessionId);
   if (!isActive(session.status) || session.expiresAt <= new Date()) {
+    const timeUp = session.endReason === TIME_UP_REASON || (isActive(session.status) && session.expiresAt <= new Date());
     const message =
       session.endReason === STOPPED_FROM_DASHBOARD
         ? "This preview was stopped from the Localians dashboard. Run `localians share` again for a new link."
-        : "This share has ended. Run `localians share` again for a new link.";
+        : timeUp
+          ? "This preview's time is up. Run `localians share` again to start a new one."
+          : "This share has ended. Run `localians share` again for a new link.";
     throw new TunnelError("session_ended", message, 410);
   }
   return { connectToken: await signConnectToken(config, { ...session, credentialId: auth.credentialId }) };
@@ -173,7 +215,7 @@ export async function listActiveTunnelsForCli(auth: CliAuth) {
   await sweepStaleTunnels({ userId: auth.userId });
   const sessions = await prisma.tunnelSession.findMany({
     where: { userId: auth.userId, status: { in: ACTIVE_STATES } },
-    select: { id: true, hostname: true, localPort: true, status: true, connectedAt: true, createdAt: true, project: { select: { id: true, name: true } } },
+    select: { id: true, hostname: true, localPort: true, status: true, connectedAt: true, createdAt: true, expiresAt: true, project: { select: { id: true, name: true } } },
     orderBy: { createdAt: "desc" },
   });
   return sessions.map((s) => ({ ...s, publicUrl: config ? previewUrl(config, s.hostname) : null }));
@@ -209,6 +251,7 @@ async function applyGatewayEvent(gatewayId: string, event: GatewayEvent, now: Da
         id: true,
         status: true,
         expiresAt: true,
+        endReason: true,
         connectedAt: true,
         currentConnectionId: true,
         projectId: true,
@@ -217,7 +260,7 @@ async function applyGatewayEvent(gatewayId: string, event: GatewayEvent, now: Da
       },
     });
     const ref = { id: session.id, workspaceId: session.project.workspaceId };
-    const policy = policyFor(session.project);
+    const policy = policyFor(session.project, session);
     let overQuota = false;
 
     // ---- connection + metering
@@ -275,13 +318,15 @@ async function applyGatewayEvent(gatewayId: string, event: GatewayEvent, now: Da
           credentialInvalid
             ? { status: "REVOKED", reason: "CLI login revoked or expired", event: TunnelEventType.REVOKED, now }
             : expired
-              ? { status: "EXPIRED", reason: "Maximum share duration reached", event: TunnelEventType.EXPIRED, now }
+              ? { status: "EXPIRED", reason: TIME_UP_REASON, event: TunnelEventType.EXPIRED, now }
               : { status: "EXPIRED", reason: "Daily bandwidth limit reached", event: TunnelEventType.QUOTA_EXCEEDED, now },
         );
         if (overQuota && !credentialInvalid && !expired) log("warn", "bandwidth quota reached", { workspaceId: ref.workspaceId, sessionId: session.id });
       }
       if (event.type === "disconnected") await closeConnection();
-      const status = isActive(session.status) ? (credentialInvalid ? "revoked" : expired ? "expired" : "quota") : session.status.toLowerCase();
+      // "expired" only when the session's time ran out (the gateway then tells visitors so); otherwise why it ended.
+      const ended = session.status === TunnelStatus.EXPIRED && session.endReason !== TIME_UP_REASON ? "ended" : session.status.toLowerCase();
+      const status = isActive(session.status) ? (credentialInvalid ? "revoked" : expired ? "expired" : "quota") : ended;
       return { action: "terminate", reason: status };
     }
 

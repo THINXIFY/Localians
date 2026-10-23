@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Globe, Lock, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Clock, Globe, Lock, RefreshCw, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -12,7 +12,9 @@ import { inputClasses, PasswordInput } from "../Field";
 import { AccessBadge } from "../previews/AccessBadge";
 import { PreviewStatusBadge } from "../previews/PreviewStatusBadge";
 import { StopPreviewButton } from "../previews/PreviewActions";
+import { Countdown } from "../previews/Countdown";
 import { CopyLabelButton } from "./Command";
+import { DEFAULT_DURATION_MINUTES, DURATION_OPTIONS, durationLabel, isDurationOption } from "@tunnel/shared/durations";
 import { InstallBeta } from "./InstallBeta";
 
 type SharePreview = {
@@ -23,6 +25,9 @@ type SharePreview = {
   active: boolean;
   canStop: boolean;
   endReason: string | null;
+  /** Date from the server render, ISO string from polling. */
+  expiresAt: Date | string;
+  durationMinutes: number | null;
   startedBeforeWizard: boolean;
   project: { id: string; name: string; access: "PUBLIC" | "PASSWORD" };
 };
@@ -39,7 +44,8 @@ const PRESETS = [
 const WAIT_HELP_AFTER_MS = 40_000;
 /** Remembered between visits in this browser (never the password). */
 const PREFS_KEY = "localians.share.v1";
-type Prefs = { port?: number; projectId?: string; access?: Access };
+type Prefs = { port?: number; projectId?: string; access?: Access; durationMinutes?: number };
+const FREE_DURATIONS = DURATION_OPTIONS.filter((o) => o.plan === "free");
 
 function readPrefs(): Prefs {
   try {
@@ -58,7 +64,7 @@ function writePrefs(prefs: Prefs) {
 }
 
 /**
- * Share App: Select project → Enter port → Start sharing. Choices are saved to a single-use setup code that the
+ * Share App: Select project → Configure preview (port, duration) → Start sharing. Choices are saved to a single-use setup code that the
  * command carries, so the CLI asks nothing. The dashboard can't reach the developer's computer; it waits for this
  * user's own preview to connect and then shows the link.
  */
@@ -91,7 +97,7 @@ export function ShareWizard({
   const [since, setSince] = useState(openedAt);
   const active = projects.filter((p) => p.status === "ACTIVE");
   const byPort = (port: number | null) => (port ? active.find((p) => p.defaultPort === port) : undefined);
-  const ids = { project: useId(), name: useId(), port: useId(), password: useId(), access: useId() };
+  const ids = { project: useId(), name: useId(), port: useId(), password: useId(), access: useId(), duration: useId() };
 
   // ---- choices ---------------------------------------------------------------------------------
   const [portText, setPortText] = useState(String(initialPort));
@@ -100,6 +106,7 @@ export function ShareWizard({
   const [projectName, setProjectName] = useState("");
   const [access, setAccess] = useState<Access>(() => byPort(initialPort)?.accessMode ?? "PUBLIC");
   const [password, setPassword] = useState("");
+  const [duration, setDuration] = useState(DEFAULT_DURATION_MINUTES);
 
   const selected = active.find((p) => p.id === projectId);
   const portNumber = Number(portText);
@@ -132,6 +139,7 @@ export function ShareWizard({
     const remembered = prefs.projectId ? active.find((p) => p.id === prefs.projectId) : undefined;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore from browser storage
     if (prefs.port && prefs.port >= 1 && prefs.port <= 65535) setPortText(String(prefs.port));
+    if (FREE_DURATIONS.some((o) => o.minutes === prefs.durationMinutes)) setDuration(prefs.durationMinutes!);
     if (remembered) {
       setProjectId(remembered.id);
       setProjectTouched(true);
@@ -144,8 +152,8 @@ export function ShareWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per mount
   }, []);
   useEffect(() => {
-    if (restored.current && port) writePrefs({ port, projectId: projectId || undefined, access });
-  }, [port, projectId, access]);
+    if (restored.current && port) writePrefs({ port, projectId: projectId || undefined, access, durationMinutes: duration });
+  }, [port, projectId, access, duration]);
 
   // ---- readiness + saving the choices to the setup code ---------------------------------------------
   const keepsPassword = Boolean(selected?.hasPassword) && password.length === 0;
@@ -177,6 +185,7 @@ export function ShareWizard({
       try {
         result = await saveShareSetupAction(setup.id, {
           port,
+          durationMinutes: isDurationOption(duration) ? duration : DEFAULT_DURATION_MINUTES,
           project: projectId ? { kind: "existing", id: projectId } : { kind: "new", name: projectName.trim() },
           access: access === "PASSWORD" ? { mode: "PASSWORD", ...(password.length >= 8 ? { password } : {}) } : { mode: "PUBLIC" },
         });
@@ -187,7 +196,7 @@ export function ShareWizard({
       setSave(result.ok ? { state: "saved", passwordSaved: result.data.passwordSaved } : { state: "error", message: result.error });
     }, 400);
     return () => window.clearTimeout(saveTimer.current);
-  }, [setup.id, port, projectId, projectName, access, password, passwordTooShort, retry]);
+  }, [setup.id, port, projectId, projectName, access, password, passwordTooShort, duration, retry]);
 
   const ready = portValid && passwordReady && !passwordTooShort && save.state !== "error";
   const command = `${run} share ${port ?? "<port>"} --setup ${setup.code}`;
@@ -246,7 +255,7 @@ export function ShareWizard({
         ? save.message
         : save.state === "saving"
           ? "Saving your choices…"
-          : "It works once, for the next 30 minutes.";
+          : `Your link will work for ${durationLabel(duration)}. The command works once, for the next 30 minutes.`;
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-card shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]">
@@ -337,8 +346,8 @@ export function ShareWizard({
           </div>
         </Step>
 
-        {/* ---------------------------------------------------------------------- 2. Port */}
-        <Step n={2} title="Enter port" done={portValid}>
+        {/* ---------------------------------------------------------------------- 2. Configure preview */}
+        <Step n={2} title="Configure preview" done={portValid}>
           <div className="flex flex-wrap items-center gap-2">
             <label htmlFor={ids.port} className="sr-only">
               Port
@@ -390,6 +399,38 @@ export function ShareWizard({
               "Enter a port from 1 to 65535."
             )}
           </p>
+
+          <fieldset className="flex min-w-0 flex-col gap-2" aria-describedby={`${ids.duration}-hint`}>
+            <legend className="mb-1 flex items-center gap-1.5 text-[13px] font-medium text-fg">
+              <Clock className="size-3.5 text-fg-3" aria-hidden="true" />
+              How long the link works
+            </legend>
+            <div className="flex flex-wrap gap-1.5" data-testid="duration-options">
+              {FREE_DURATIONS.map((o) => (
+                <label
+                  key={o.minutes}
+                  className={cn(
+                    "relative flex h-9 cursor-pointer items-center rounded-full border px-3 text-[12.5px] transition-colors has-[:focus-visible]:shadow-[0_0_0_3px_var(--accent-glow)]",
+                    duration === o.minutes ? "border-accent/50 bg-accent/[0.08] text-fg" : "border-line text-fg-2 hover:border-line-strong hover:text-fg",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={ids.duration}
+                    value={o.minutes}
+                    checked={duration === o.minutes}
+                    onChange={() => setDuration(o.minutes)}
+                    aria-label={o.label}
+                    className="absolute inset-0 cursor-pointer appearance-none rounded-full opacity-0"
+                  />
+                  {o.label}
+                </label>
+              ))}
+            </div>
+            <p id={`${ids.duration}-hint`} className="text-[12.5px] text-fg-3">
+              The link stops working after this time, even if your app is still running. Share again any time for a new one.
+            </p>
+          </fieldset>
         </Step>
 
         {/* ---------------------------------------------------------------------- 3. Start sharing */}
@@ -428,10 +469,17 @@ export function ShareWizard({
             {phase === "live" || phase === "unstable" ? (
               <LivePreview preview={preview!} selectedPort={port} />
             ) : phase === "ended" ? (
-              <StateCard tone="bad" icon={<WifiOff className="size-4" aria-hidden="true" />} title="Sharing stopped">
+              <StateCard
+                tone="bad"
+                icon={preview!.status === "EXPIRED" ? <Clock className="size-4" aria-hidden="true" /> : <WifiOff className="size-4" aria-hidden="true" />}
+                title={preview!.status === "EXPIRED" ? "Preview time ended" : preview!.status === "OFFLINE" ? "Your computer went offline" : "Sharing stopped"}
+              >
                 <p>
-                  {preview!.project.name}
-                  {preview!.endReason ? ` — ${preview!.endReason.toLowerCase()}` : ""}. That link no longer works.
+                  {preview!.status === "EXPIRED"
+                    ? `${preview!.project.name} was shared for ${preview!.durationMinutes ? durationLabel(preview!.durationMinutes) : "its full time"}. That link no longer works — start a new preview to keep sharing.`
+                    : preview!.status === "OFFLINE"
+                      ? `${preview!.project.name} stopped because the share command or this computer lost its connection. That link no longer works.`
+                      : `${preview!.project.name}${preview!.endReason ? ` — ${preview!.endReason.toLowerCase()}` : ""}. That link no longer works.`}
                 </p>
                 <button
                   type="button"
@@ -509,6 +557,7 @@ function LivePreview({ preview, selectedPort }: { preview: SharePreview; selecte
         <span className="min-w-0 truncate text-[13.5px] font-medium text-fg">{preview.project.name}</span>
         <span className="font-mono text-[12px] text-fg-3">localhost:{preview.localPort}</span>
       </div>
+      <Countdown expiresAt={preview.expiresAt} className="text-[13px] text-fg-2" />
       <p className="break-all font-mono text-[16px] text-fg sm:text-[18px]" data-testid="share-preview-url">
         {url}
       </p>

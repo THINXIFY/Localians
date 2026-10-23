@@ -245,6 +245,8 @@ model TunnelSession {
   /// ended session's URL can never be claimed by anyone else.
   hostname            String         @unique
   localPort           Int
+  /// Length chosen when it started (null for sessions from before timers). expiresAt is the authority.
+  durationMinutes     Int?
   status              TunnelStatus   @default(CONNECTING)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @default(now()) @updatedAt
@@ -413,6 +415,8 @@ model ShareSetup {
   project            Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   newProjectName     String?
   port               Int?
+  /// Session length chosen in the wizard (checked against the plan again when the CLI starts the session).
+  durationMinutes    Int?
   accessMode         PreviewAccess?
   accessPasswordHash String?
   createdAt          DateTime       @default(now())

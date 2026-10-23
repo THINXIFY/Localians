@@ -74,8 +74,10 @@ export type GatewayEventsRequest = { gatewayId: string; events: GatewayEvent[] }
  * Who may open a preview. The gateway enforces it on every HTTP request and WebSocket upgrade.
  * `version` changes whenever the password changes or visitors are signed out, which
  * invalidates every visitor access cookie issued before.
+ * `expiresAt` (epoch ms) is when the session's time runs out: the gateway stops serving at that moment and closes the
+ * tunnel, without waiting for the control plane. Absent from older control planes (they end sessions at a heartbeat).
  */
-export type AccessPolicy = { mode: "public" | "password"; version: number; ttlS: number };
+export type AccessPolicy = { mode: "public" | "password"; version: number; ttlS: number; expiresAt?: number };
 
 /** Verdicts carry the current policy, so a missed policy push is corrected at the next heartbeat. */
 export type GatewayEventsResponse = { sessions: Record<string, { action: "continue" | "terminate"; reason?: string; policy?: AccessPolicy }> };

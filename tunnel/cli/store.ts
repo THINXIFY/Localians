@@ -19,6 +19,8 @@ export type ShareRecord = {
   localPort: number;
   project: { id: string; name: string };
   startedAt: string;
+  /** When the link stops working (absent in records written by older versions). */
+  expiresAt?: string;
   state: string;
 };
 

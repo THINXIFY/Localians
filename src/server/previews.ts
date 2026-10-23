@@ -8,9 +8,13 @@ import { STOPPED_FROM_DASHBOARD, sweepStaleTunnels } from "./cli/tunnels";
 import { prisma } from "./db";
 import { ForbiddenError, NotFoundError } from "./errors";
 import { getCurrentWorkspace, type WorkspaceContext } from "./workspaces";
+import { TIME_UP_REASON } from "@tunnel/shared/durations";
 
-/** What the dashboard shows. FAILED = the session ended without the CLI ever connecting. */
-export type PreviewStatus = "CONNECTING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED" | "EXPIRED" | "REVOKED" | "FAILED";
+/**
+ * What the dashboard shows. EXPIRED = its time ran out; OFFLINE = it ended because the CLI or computer went away;
+ * FAILED = it ended without the CLI ever connecting.
+ */
+export type PreviewStatus = "CONNECTING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED" | "EXPIRED" | "OFFLINE" | "REVOKED" | "FAILED";
 /** How the status was established: asked the gateway, inferred from heartbeats, or a final DB state. */
 export type StatusSource = "gateway" | "heartbeat" | "final";
 
@@ -33,6 +37,7 @@ const previewSelect = {
   disconnectedAt: true,
   lastActivityAt: true,
   expiresAt: true,
+  durationMinutes: true,
   endReason: true,
   gatewayId: true,
   bytesIn: true,
@@ -58,6 +63,8 @@ export type Preview = {
   disconnectedAt: Date | null;
   lastActivityAt: Date;
   expiresAt: Date;
+  /** Length chosen when it started (null for sessions from before timers). */
+  durationMinutes: number | null;
   endReason: string | null;
   bytesIn: number;
   bytesOut: number;
@@ -74,11 +81,14 @@ async function scope(userId: string) {
 }
 
 export function effectiveStatus(
-  row: Pick<PreviewRow, "id" | "status" | "connectedAt" | "lastHeartbeatAt" | "gatewayId">,
+  row: Pick<PreviewRow, "id" | "status" | "connectedAt" | "lastHeartbeatAt" | "gatewayId"> & { endReason?: string | null },
   live: LiveTunnels | null,
   now = Date.now(),
 ): { status: PreviewStatus; source: StatusSource } {
-  if (!isActive(row.status)) return { status: row.status === TunnelStatus.EXPIRED && !row.connectedAt ? "FAILED" : row.status, source: "final" };
+  if (!isActive(row.status)) {
+    if (row.status !== TunnelStatus.EXPIRED) return { status: row.status, source: "final" };
+    return { status: row.endReason === TIME_UP_REASON ? "EXPIRED" : row.connectedAt ? "OFFLINE" : "FAILED", source: "final" };
+  }
   const sinceHeartbeat = row.lastHeartbeatAt ? now - row.lastHeartbeatAt.getTime() : Infinity;
   // The gateway's own routing table is the authority — not a possibly stale database row.
   const table = live ? (row.gatewayId ? live.gateways.get(row.gatewayId) : live.gateways.size === 1 ? [...live.gateways.values()][0] : undefined) : undefined;
@@ -114,6 +124,7 @@ function toPreview(row: PreviewRow, live: LiveTunnels | null, userId: string, wo
     disconnectedAt: row.disconnectedAt,
     lastActivityAt: row.lastActivityAt,
     expiresAt: row.expiresAt,
+    durationMinutes: row.durationMinutes,
     endReason: row.endReason,
     bytesIn: Number(row.bytesIn),
     bytesOut: Number(row.bytesOut),

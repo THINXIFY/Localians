@@ -1,5 +1,5 @@
 /** Client-safe vocabulary for preview statuses (mirrors PreviewStatus in src/server/previews.ts). */
-export type PreviewStatusValue = "CONNECTING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED" | "EXPIRED" | "REVOKED" | "FAILED";
+export type PreviewStatusValue = "CONNECTING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED" | "EXPIRED" | "OFFLINE" | "REVOKED" | "FAILED";
 
 export const STATUS_LABEL: Record<PreviewStatusValue, string> = {
   CONNECTING: "Connecting",
@@ -7,6 +7,7 @@ export const STATUS_LABEL: Record<PreviewStatusValue, string> = {
   RECONNECTING: "Reconnecting",
   DISCONNECTED: "Disconnected",
   EXPIRED: "Expired",
+  OFFLINE: "Offline",
   REVOKED: "Revoked",
   FAILED: "Failed",
 };
@@ -17,7 +18,8 @@ export const STATUS_HELP: Record<PreviewStatusValue, string> = {
   CONNECTED: "The gateway is serving this preview right now.",
   RECONNECTING: "The tunnel dropped. The CLI is trying to reconnect; the link is reserved meanwhile.",
   DISCONNECTED: "Sharing was stopped from the terminal.",
-  EXPIRED: "The preview ended because the CLI went silent or the maximum share time passed.",
+  EXPIRED: "The preview's time ran out. Start a new one to share again.",
+  OFFLINE: "The CLI or this computer went offline, so the preview ended.",
   REVOKED: "The preview was stopped from the dashboard, or its CLI login was revoked.",
   FAILED: "The CLI never connected, so this preview never served traffic.",
 };
@@ -30,6 +32,7 @@ export const STATUS_TONE: Record<PreviewStatusValue, StatusTone> = {
   RECONNECTING: "warn",
   DISCONNECTED: "off",
   EXPIRED: "off",
+  OFFLINE: "off",
   REVOKED: "bad",
   FAILED: "bad",
 };
@@ -41,8 +44,8 @@ export const METERING_NOTE =
   "Requests: each HTTP request forwarded to your app, plus one per WebSocket connection. Bandwidth: request and response bodies plus WebSocket data, in both directions. Headers and encryption overhead aren't counted.";
 
 /** The command developers run to start a new preview (until npm publication, via the linked dev CLI). */
-export function shareCommand(port: number | null, projectId?: string, run = "localians") {
-  return `${run} share ${port ?? "<port>"}${projectId ? ` --project ${projectId}` : ""}`;
+export function shareCommand(port: number | null, projectId?: string, run = "localians", duration?: string) {
+  return `${run} share ${port ?? "<port>"}${projectId ? ` --project ${projectId}` : ""}${duration ? ` --duration ${duration}` : ""}`;
 }
 
 export type PreviewEventType =

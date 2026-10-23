@@ -137,10 +137,14 @@ test("VS Code: connect, find the running app, share it with a password, open it,
     await expect(accessInput).toHaveAttribute("type", "password");
     await accessInput.fill("vscode-pass-123");
     await accessInput.press("Enter");
+    // How long the link works (1 hour is recommended and preselected).
+    await expect(w.locator(".quick-input-widget")).toContainText("How long should the link work?");
+    await quickPick(w, "30 minutes");
 
     const shared = notification(w, /Sharing next-sample-app: https:\/\/[a-z2-7]{12}\.preview\.localhost:8643/);
     await expect(shared).toBeVisible({ timeout: 60_000 });
     await expect(shared).toContainText("password protected");
+    await expect(shared).toContainText(/works for (29m|30m)/);
     const publicUrl = /https:\/\/[a-z2-7]{12}\.preview\.localhost:8643/.exec((await shared.textContent()) ?? "")![0];
     await expect(tree.locator(".monaco-list-row", { hasText: "next-sample-app" }).filter({ hasText: "Connected" })).toBeVisible();
     await expect(w.locator(".statusbar-item", { hasText: "Sharing :4310" })).toBeVisible();

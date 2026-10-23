@@ -5,6 +5,7 @@ import { formatBytes, formatDateTime, formatDuration, formatNumber, timeAgo } fr
 import { type PreviewStatusValue, shareCommand } from "@/lib/previews";
 import { Command } from "../share/Command";
 import { AccessBadge } from "./AccessBadge";
+import { Countdown } from "./Countdown";
 import { PreviewActions } from "./PreviewActions";
 import { PreviewStatusBadge } from "./PreviewStatusBadge";
 
@@ -45,6 +46,8 @@ function When({ date }: { date: Date }) {
 /** Why an ended preview's link stopped working, in plain words. */
 function endedExplanation(p: PreviewListItem) {
   if (p.status === "FAILED") return "The command never finished connecting, so this link never worked.";
+  if (p.status === "EXPIRED") return `Its time ran out${p.disconnectedAt ? ` ${timeAgo(p.disconnectedAt)}` : ""}, so this link no longer works.`;
+  if (p.status === "OFFLINE") return `The share command or this computer went offline${p.disconnectedAt ? ` ${timeAgo(p.disconnectedAt)}` : ""}, so this link no longer works.`;
   const reason = p.endReason ? ` (${p.endReason.toLowerCase()})` : "";
   return `Sharing ended${p.disconnectedAt ? ` ${timeAgo(p.disconnectedAt)}` : ""}${reason}, so this link no longer works.`;
 }
@@ -97,9 +100,7 @@ export function PreviewList({ items, now, showProject = true, run = "localians" 
               ) : null}
               <PreviewActions preview={{ ...p, projectName: p.project.name }} />
               <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-fg-3">
-                <span>
-                  Link expires <When date={p.expiresAt} />
-                </span>
+                <Countdown expiresAt={p.expiresAt} />
                 <Link href={`/dashboard/projects/${p.project.id}#access`} className="underline underline-offset-2 hover:text-fg">
                   {p.project.access === "PASSWORD" ? "Change password" : "Add a password"}
                 </Link>

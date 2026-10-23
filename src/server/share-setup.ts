@@ -11,6 +11,8 @@ import { NotFoundError } from "./errors";
 import { log } from "./log";
 import { createProject, getProjectForUser } from "./projects";
 import { getCurrentWorkspace } from "./workspaces";
+import { durationLabel, isDurationOption } from "@tunnel/shared/durations";
+import { getPlanLimits } from "./plans";
 
 /**
  * Share App wizard → CLI hand-off. The wizard prepares a setup (project, protection) and shows
@@ -45,6 +47,8 @@ export async function createShareSetup(userId: string) {
 export const setupInputSchema = z
   .object({
     port: z.number().int().min(1).max(65535).nullable(),
+    /** Session length; optional so an older open wizard tab still saves. */
+    durationMinutes: z.number().int().refine(isDurationOption, "Choose one of the listed durations.").optional(),
     project: z.discriminatedUnion("kind", [
       z.object({ kind: z.literal("new"), name: z.string().trim().max(80, "Keep the name under 80 characters.") }),
       z.object({ kind: z.literal("existing"), id: z.string().min(1).max(64) }),
@@ -59,7 +63,7 @@ export type SetupInput = z.infer<typeof setupInputSchema>;
 
 export class SetupError extends Error {
   constructor(
-    readonly code: "setup_invalid" | "setup_expired" | "setup_used",
+    readonly code: "setup_invalid" | "setup_expired" | "setup_used" | "plan_required",
     message: string,
   ) {
     super(message);
@@ -74,6 +78,13 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
   if (setup.usedAt) throw new SetupError("setup_used", "This command was already used.");
   if (setup.expiresAt <= new Date()) throw new SetupError("setup_expired", "This command expired. Reload the page for a new one.");
 
+  if (parsed.durationMinutes !== undefined) {
+    const plan = await getPlanLimits(setup.workspaceId);
+    if (parsed.durationMinutes > plan.maxDurationMinutes) {
+      throw new SetupError("plan_required", `Sessions longer than ${durationLabel(plan.maxDurationMinutes)} need a Preview Pass.`);
+    }
+  }
+
   let projectId: string | null = null;
   if (parsed.project.kind === "existing") {
     const project = await getProjectForUser(userId, parsed.project.id);
@@ -85,6 +96,7 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
     where: { id: setup.id },
     data: {
       port: parsed.port,
+      ...(parsed.durationMinutes !== undefined ? { durationMinutes: parsed.durationMinutes } : {}),
       projectId,
       newProjectName: parsed.project.kind === "new" && parsed.project.name ? parsed.project.name : null,
       accessMode: parsed.access.mode,
@@ -157,5 +169,9 @@ export async function redeemShareSetup(auth: CliAuth, code: string, port: number
   }
   log("info", "share setup redeemed", { setupId: setup.id, newProject: Boolean(setup.newProjectName), protected: setup.accessMode === PreviewAccess.PASSWORD });
   const access = project ? (await prisma.project.findUniqueOrThrow({ where: { id: project.id }, select: { accessMode: true } })).accessMode : PreviewAccess.PUBLIC;
-  return { project: project ? { id: project.id, name: project.name, slug: project.slug, framework: project.framework, defaultPort: project.defaultPort } : null, access };
+  return {
+    project: project ? { id: project.id, name: project.name, slug: project.slug, framework: project.framework, defaultPort: project.defaultPort } : null,
+    access,
+    durationMinutes: setup.durationMinutes,
+  };
 }

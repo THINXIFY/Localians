@@ -71,18 +71,25 @@ export function createApi(apiUrl: string, token: string | null, userAgent: strin
     me: () => call<{ user: { email: string; name: string }; workspace: { id: string; name: string }; projects: ApiProject[] }>("GET", "/api/cli/me"),
     createProject: (input: { name: string; framework: string | null; defaultPort: number }) => call<{ project: ApiProject }>("POST", "/api/cli/projects", input),
     redeemSetup: (code: string, port: number, detected?: { name: string; framework: string | null }) =>
-      call<{ project: ApiProject | null; access: "public" | "password" }>("POST", "/api/cli/setup", { code, port, projectName: detected?.name, framework: detected?.framework }),
-    createTunnel: (projectId: string, localPort: number) =>
+      call<{ project: ApiProject | null; access: "public" | "password"; durationMinutes?: number | null }>("POST", "/api/cli/setup", {
+        code,
+        port,
+        projectName: detected?.name,
+        framework: detected?.framework,
+      }),
+    /** durationMinutes is optional: the server then uses its default, and always checks it against the plan. */
+    createTunnel: (projectId: string, localPort: number, durationMinutes?: number) =>
       call<{
         sessionId: string;
         label: string;
         publicUrl: string;
         gatewayUrl: string;
         expiresAt: string;
+        durationMinutes?: number;
         project: { id: string; name: string; slug: string };
         access?: "public" | "password";
         connectToken: string;
-      }>("POST", "/api/cli/tunnels", { projectId, localPort }),
+      }>("POST", "/api/cli/tunnels", { projectId, localPort, ...(durationMinutes !== undefined ? { durationMinutes } : {}) }),
     connectToken: async (sessionId: string) => {
       try {
         return (await call<{ connectToken: string }>("POST", `/api/cli/tunnels/${encodeURIComponent(sessionId)}/connect-token`)).connectToken;
@@ -97,7 +104,9 @@ export function createApi(apiUrl: string, token: string | null, userAgent: strin
       call<{ access: "password"; livePreviews: number }>("POST", `/api/cli/projects/${encodeURIComponent(projectId)}/access`, { password }),
     closeTunnel: (sessionId: string) => call<{ closed: boolean }>("POST", `/api/cli/tunnels/${encodeURIComponent(sessionId)}/close`),
     listTunnels: () =>
-      call<{ tunnels: { id: string; publicUrl: string | null; localPort: number; status: string; connectedAt: string | null; createdAt: string; project: { name: string } }[] }>(
+      call<{
+        tunnels: { id: string; publicUrl: string | null; localPort: number; status: string; connectedAt: string | null; createdAt: string; expiresAt?: string; project: { name: string } }[];
+      }>(
         "GET",
         "/api/cli/tunnels",
       ),

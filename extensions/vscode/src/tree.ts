@@ -1,3 +1,4 @@
+import { formatRemaining } from "@tunnel/shared/durations";
 import * as vscode from "vscode";
 import type { AppSuggestion } from "./core/detect";
 import type { Share } from "./core/shares";
@@ -149,7 +150,7 @@ function shareItem(share: Share) {
   const s = STATUS[share.status];
   const item = new Item({ kind: "share", sessionId: share.sessionId }, share.projectName, vscode.TreeItemCollapsibleState.Expanded);
   item.id = `share:${share.sessionId}`;
-  item.description = `${s.text} · :${share.port}`;
+  item.description = share.status === "ended" ? `${s.text} · :${share.port}` : `${s.text} · :${share.port} · ${formatRemaining(share.expiresAt - Date.now())} left`;
   item.iconPath = new vscode.ThemeIcon(s.icon, new vscode.ThemeColor(s.color));
   item.contextValue = share.status === "ended" ? "share.ended" : "share.live";
   item.tooltip = new vscode.MarkdownString(

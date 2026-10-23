@@ -54,10 +54,12 @@ export type AccessInput = z.infer<typeof accessInputSchema>;
 
 // ------------------------------------------------------------------ policy
 
-export const policyFor = (project: { accessMode: PreviewAccess; accessVersion: number; accessTtlMinutes: number }): AccessPolicy => ({
+/** The policy the gateway enforces for one session: who may open it, and until when (the session's time limit). */
+export const policyFor = (project: { accessMode: PreviewAccess; accessVersion: number; accessTtlMinutes: number }, session?: { expiresAt: Date }): AccessPolicy => ({
   mode: project.accessMode === PreviewAccess.PASSWORD ? "password" : "public",
   version: project.accessVersion,
   ttlS: project.accessTtlMinutes * 60,
+  ...(session ? { expiresAt: session.expiresAt.getTime() } : {}),
 });
 
 /** Sends the project's current policy to every gateway serving one of its previews (best effort; heartbeats also carry it). */
@@ -66,12 +68,11 @@ async function propagate(projectId: string, type: TunnelEventType, detail: strin
     where: { id: projectId },
     select: { workspaceId: true, accessMode: true, accessVersion: true, accessTtlMinutes: true },
   });
-  const sessions = await prisma.tunnelSession.findMany({ where: { projectId, status: { in: ACTIVE_STATES } }, select: { id: true, gatewayId: true } });
-  const policy = policyFor(project);
+  const sessions = await prisma.tunnelSession.findMany({ where: { projectId, status: { in: ACTIVE_STATES } }, select: { id: true, gatewayId: true, expiresAt: true } });
   await prisma.$transaction(async (tx) => {
     for (const s of sessions) await recordEvent(tx, { id: s.id, workspaceId: project.workspaceId }, type, detail);
   });
-  const results = await Promise.all(sessions.map((s) => pushPolicyToGateway(s.id, s.gatewayId, policy)));
+  const results = await Promise.all(sessions.map((s) => pushPolicyToGateway(s.id, s.gatewayId, policyFor(project, s))));
   return { previews: sessions.length, pushed: results.filter(Boolean).length };
 }
 
@@ -143,10 +144,10 @@ const ATTEMPT_WINDOW_MS = 5 * 60_000;
 export async function verifyPreviewAccess(sessionId: string, password: string, clientIp: string): Promise<AccessVerdict> {
   const session = await prisma.tunnelSession.findUnique({
     where: { id: sessionId },
-    select: { status: true, project: { select: { id: true, accessMode: true, accessPasswordHash: true, accessVersion: true, accessTtlMinutes: true } } },
+    select: { status: true, expiresAt: true, project: { select: { id: true, accessMode: true, accessPasswordHash: true, accessVersion: true, accessTtlMinutes: true } } },
   });
-  if (!session || !isActive(session.status)) return { ok: false, error: "ended" };
-  const policy = policyFor(session.project);
+  if (!session || !isActive(session.status) || session.expiresAt <= new Date()) return { ok: false, error: "ended" };
+  const policy = policyFor(session.project, session);
   if (session.project.accessMode !== PreviewAccess.PASSWORD || !session.project.accessPasswordHash) return { ok: false, error: "not_protected", policy };
 
   for (const [key, max] of [

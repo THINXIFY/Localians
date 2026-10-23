@@ -28,7 +28,7 @@ project and password already chosen.
 | `localians status` | Show your login and what this computer is sharing |
 | `localians logout` | Sign out and revoke this computer's access |
 
-Options: `-y, --yes` (create a project without asking, for scripts), `--host-header preserve`, `-v, --verbose`,
+Options: `-d, --duration <time>` (how long the link works: `5m`, `15m`, `30m`, `1h`, `12h` or `24h`; default 24h), `-y, --yes` (create a project without asking, for scripts), `--host-header preserve`, `-v, --verbose`,
 `--no-browser`, `--api-url <url>` (only needed for a self-hosted server). Run `localians --help` for details.
 
 Exit codes: `0` ok, `1` other error, `2` usage, `3` login needed, `4` nothing running on that port, `5` Localians unreachable.

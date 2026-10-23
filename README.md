@@ -119,6 +119,36 @@ Gateway ──reports connect / heartbeat / metering──▶ Control plane (Nex
 Session states: `CONNECTING → CONNECTED ⇄ RECONNECTING → DISCONNECTED | EXPIRED | REVOKED`. These are
 separate from a project's Active/Archived status.
 
+## Preview timers
+
+Every preview has a time limit. Developers choose it in the Share App wizard, in VS Code, or with
+`localians share <port> --duration 1h`:
+
+| Plan | Durations |
+| --- | --- |
+| Free | 5 min, 15 min, 30 min, 1 hour, 12 hours, 24 hours |
+| Preview Pass | also 3 days and 7 days |
+
+Only these values are accepted, and the server checks them against the workspace's plan; a client can't lengthen a
+session by sending something else (`invalid_duration` 400, `plan_required` 403). Clients that don't choose (CLI and
+VS Code versions from before timers) get 24 hours, as before.
+
+How the deadline is enforced:
+
+- **Control plane:** `tunnel_sessions.expiresAt` is the authority. Expired sessions can't get a reconnect token
+  ("This preview's time is up"), the stale sweep ends them, and gateway reports for them are answered with *terminate*.
+- **Gateway:** the access policy it receives on connect and with every heartbeat carries `expiresAt`. The gateway
+  refuses requests and WebSocket upgrades from that moment and closes the tunnel with its own timer, without waiting
+  for a heartbeat. Visitors then get a 410 *This preview has expired* page. Gateways from before this change ignore
+  the field and close the tunnel at their next heartbeat (about 20 s later).
+- **Restarts and reconnects:** the deadline lives in the database, so a restarted gateway or a CLI reconnecting
+  with a still-valid connect token is refused.
+
+Statuses in the dashboard: **Connected**, **Reconnecting** (the CLI dropped and is coming back), **Expired** (its
+time ran out) and **Offline** (it ended because the CLI or computer went away). "Share again" starts a new session.
+`QUOTA_SESSIONS_PER_DAY` caps how many previews a user can start per 24 hours, so short free sessions can't be
+restarted without limit.
+
 ## Live previews, analytics and session control (Phase 4)
 
 The dashboard (**Live Previews**, preview details, project pages, **Analytics**, Overview) reads only real data
@@ -294,7 +324,8 @@ The gateway keeps its per-request limits in memory, so they cost no network roun
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `QUOTA_ACTIVE_PREVIEWS_PER_USER` | 5 | Shares running at once per user |
-| `QUOTA_MAX_SHARE_HOURS` | 24 | A share ends by itself after this |
+| `QUOTA_MAX_SHARE_HOURS` | 24 | Longest free session (at most 24). Developers choose 5 min, 15 min, 30 min, 1 h, 12 h or 24 h; older CLI / VS Code versions that don't choose get this |
+| `QUOTA_SESSIONS_PER_DAY` | 100 | New previews one user may start per rolling 24 hours (stops short free sessions from being restarted without limit) |
 | `QUOTA_DAILY_BANDWIDTH_MB` | 10240 | Preview traffic per workspace per UTC day. New shares are refused, and live ones end at their next heartbeat (event `QUOTA_EXCEEDED`) |
 | `GATEWAY_MAX_TUNNELS`, `GATEWAY_MAX_STREAMS_PER_TUNNEL`, `GATEWAY_RPS_PER_TUNNEL`, `GATEWAY_RPS_PER_IP`, `GATEWAY_MAX_REQUEST_BODY_BYTES`, `GATEWAY_MAX_RESPONSE_BYTES` | see `tunnel/gateway/config.ts` | Per-gateway connection and request limits |
 

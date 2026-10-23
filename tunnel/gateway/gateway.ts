@@ -47,6 +47,8 @@ type Tunnel = {
   totals: ConnectionCounters;
   /** Who may open the preview. null until the control plane confirms it: requests then get 503 (fail closed). */
   policy: AccessPolicy | null;
+  /** Fires when the session's time runs out (policy.expiresAt). */
+  expiryTimer: NodeJS.Timeout | null;
   closed: boolean;
 };
 
@@ -76,6 +78,8 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
   /** Sessions stopped by the control plane: refused at connect time even with a still-valid connect token. */
   const blockedSessions = new Map<string, number>();
   let undelivered: GatewayEvent[] = [];
+  /** Labels whose time ran out here: visitors get "expired" instead of "not found" (bounded, in memory). */
+  const expiredLabels = new Map<string, number>();
   const startedAt = Date.now();
 
   function isBlocked(sessionId: string) {
@@ -222,7 +226,7 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
 
     const verdict = await checkAccess({ sessionId: tunnel.sessionId, password: form.get("password") ?? "", clientIp: ip });
     if (!verdict) return sendLogin(req, res, 503, "unavailable", next);
-    if (verdict.policy) tunnel.policy = verdict.policy;
+    if (verdict.policy) setPolicy(tunnel, verdict.policy);
     if (verdict.ok) {
       const { value, maxAge } = signAccess(accessKey, tunnel.label, verdict.policy);
       log("info", "preview access granted", { label: tunnel.label });
@@ -239,10 +243,48 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
     let applied = 0;
     for (const tunnel of tunnels.values()) {
       if (tunnel.sessionId !== sessionId) continue;
-      tunnel.policy = policy;
+      setPolicy(tunnel, policy);
       applied++;
     }
     return applied;
+  }
+
+  // ------------------------------------------------------- session time limits
+
+  const timeUp = (tunnel: Tunnel) => tunnel.policy?.expiresAt !== undefined && Date.now() >= tunnel.policy.expiresAt;
+
+  function markExpired(label: string) {
+    expiredLabels.set(label, Date.now() + 24 * 60 * 60 * 1000);
+    if (expiredLabels.size > 100_000) {
+      for (const [l, until] of expiredLabels) if (until <= Date.now()) expiredLabels.delete(l);
+    }
+  }
+
+  function isExpiredLabel(label: string) {
+    const until = expiredLabels.get(label);
+    if (until === undefined) return false;
+    if (until > Date.now()) return true;
+    expiredLabels.delete(label);
+    return false;
+  }
+
+  /** The session's time ran out: stop serving now (the control plane records it at the disconnect report). */
+  function expire(tunnel: Tunnel) {
+    markExpired(tunnel.label);
+    closeTunnel(tunnel, "time limit reached");
+  }
+
+  /** Applies the control plane's policy, and (re)arms the deadline timer from its expiresAt. */
+  function setPolicy(tunnel: Tunnel, policy: AccessPolicy) {
+    tunnel.policy = policy;
+    if (tunnel.expiryTimer) clearTimeout(tunnel.expiryTimer);
+    tunnel.expiryTimer = null;
+    if (policy.expiresAt === undefined) return;
+    const ms = policy.expiresAt - Date.now();
+    if (ms <= 0) return expire(tunnel);
+    // setTimeout holds at most ~24.8 days; sessions are far shorter, and a renewal re-arms it.
+    tunnel.expiryTimer = setTimeout(() => expire(tunnel), Math.min(ms, 2_147_483_000));
+    tunnel.expiryTimer.unref();
   }
 
   function writeRawError(socket: Duplex, kind: GatewayErrorKind) {
@@ -268,7 +310,8 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
   function admit(req: http.IncomingMessage, label: string): { tunnel: Tunnel } | { error: GatewayErrorKind } {
     if (!ipRate.take(clientIp(req))) return { error: "rate-limited" };
     const tunnel = tunnels.get(label);
-    if (!tunnel || tunnel.closed) return { error: "not-found" };
+    if (tunnel && !tunnel.closed && timeUp(tunnel)) expire(tunnel);
+    if (!tunnel || tunnel.closed) return { error: isExpiredLabel(label) ? "expired" : "not-found" };
     if (!tunnelRate.take(label)) return { error: "rate-limited" };
     if (tunnel.activeStreams >= config.limits.maxStreamsPerTunnel) return { error: "busy" };
     return { tunnel };
@@ -450,6 +493,7 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
       activeStreams: 0,
       totals: { bytesIn: 0, bytesOut: 0, requests: 0 },
       policy: null,
+      expiryTimer: null,
       closed: false,
     };
     session.on("close", () => closeTunnel(tunnel, "connection closed"));
@@ -466,7 +510,8 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
       return;
     }
     if (tunnel.closed) return;
-    tunnel.policy = action?.policy ?? null;
+    if (action?.policy) setPolicy(tunnel, action.policy);
+    if (tunnel.closed) return; // its time already ran out
 
     // A reconnect replaces a half-dead previous connection for the same session.
     const previous = tunnels.get(claims.label);
@@ -549,6 +594,7 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
   function closeTunnel(tunnel: Tunnel, reason: string) {
     if (tunnel.closed) return;
     tunnel.closed = true;
+    if (tunnel.expiryTimer) clearTimeout(tunnel.expiryTimer);
     if (tunnels.get(tunnel.label) === tunnel) tunnels.delete(tunnel.label);
     if (!tunnel.session.destroyed) tunnel.session.destroy();
     tunnel.socket.destroy();
@@ -578,8 +624,11 @@ export function createGateway(config: GatewayConfig, deps: { log?: Logger; repor
     if (!verdict) return;
     for (const t of live) {
       const action = verdict.sessions[t.sessionId];
-      if (action?.action === "terminate") closeTunnel(t, `terminated by control plane: ${action.reason ?? ""}`);
-      else if (action?.policy) t.policy = action.policy;
+      if (action?.action === "terminate") {
+        if (action.reason === "expired") markExpired(t.label);
+        closeTunnel(t, `terminated by control plane: ${action.reason ?? ""}`);
+      }
+      else if (action?.policy) setPolicy(t, action.policy);
     }
   }
   const heartbeatTimer = setInterval(() => void heartbeat(), config.heartbeatIntervalMs);
@@ -704,7 +753,8 @@ function parsePolicy(body: string): AccessPolicy | null {
   try {
     const p = JSON.parse(body) as Partial<AccessPolicy>;
     if ((p.mode !== "public" && p.mode !== "password") || !Number.isInteger(p.version) || !Number.isInteger(p.ttlS) || (p.ttlS ?? 0) <= 0) return null;
-    return { mode: p.mode, version: p.version as number, ttlS: p.ttlS as number };
+    if (p.expiresAt !== undefined && !(Number.isSafeInteger(p.expiresAt) && p.expiresAt > 0)) return null;
+    return { mode: p.mode, version: p.version as number, ttlS: p.ttlS as number, ...(p.expiresAt !== undefined ? { expiresAt: p.expiresAt } : {}) };
   } catch {
     return null;
   }

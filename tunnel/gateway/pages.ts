@@ -11,7 +11,8 @@ export type GatewayErrorKind =
   | "busy"
   | "bad-request"
   | "protected"
-  | "unavailable";
+  | "unavailable"
+  | "expired";
 
 const PAGES: Record<GatewayErrorKind, { status: number; title: string; body: string }> = {
   "not-found": { status: 404, title: "This preview link isn't active", body: "The link may be mistyped, or the developer has stopped sharing." },
@@ -25,6 +26,7 @@ const PAGES: Record<GatewayErrorKind, { status: number; title: string; body: str
   "bad-request": { status: 400, title: "Bad request", body: "The request couldn't be understood." },
   protected: { status: 401, title: "Password required", body: "This preview is password protected. Open it in a browser to enter the password." },
   unavailable: { status: 503, title: "This preview is starting", body: "Localians is still confirming this preview. Try again in a few seconds." },
+  expired: { status: 410, title: "This preview has expired", body: "The developer's sharing time for this link ended. Ask them for a new link." },
 };
 
 export const statusFor = (kind: GatewayErrorKind) => PAGES[kind].status;

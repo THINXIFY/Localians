@@ -17,6 +17,8 @@ import { EVENT_LABEL, EVENT_TONE, METERING_NOTE, shareCommand, STATUS_HELP } fro
 import { NotFoundError } from "@/server/errors";
 import { getPreviewDetail } from "@/server/previews";
 import { requireUser } from "@/server/session";
+import { Countdown } from "@/components/app/previews/Countdown";
+import { durationLabel } from "@tunnel/shared/durations";
 import { renderTime } from "@/server/time";
 
 async function load(userId: string, sessionId: string) {
@@ -74,7 +76,8 @@ export default async function PreviewDetailPage({ params }: { params: Promise<{ 
     { label: "Started", value: <Stamp date={p.createdAt} /> },
     { label: p.active ? "Connected for" : "Was connected for", value: connectedFor(p, renderedAt) ?? "Never connected" },
     ...(p.disconnectedAt ? [{ label: "Stopped", value: <Stamp date={p.disconnectedAt} /> }] : []),
-    ...(p.active ? [{ label: "Link expires", value: <Stamp date={p.expiresAt} /> }] : []),
+    ...(p.durationMinutes ? [{ label: "Duration", value: durationLabel(p.durationMinutes) }] : []),
+    ...(p.active ? [{ label: "Link expires", value: <Countdown expiresAt={p.expiresAt} /> }] : []),
   ];
   // Technical fields, collapsed by default.
   const advanced = [

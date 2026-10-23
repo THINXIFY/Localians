@@ -67,14 +67,17 @@ const envInt = (name: string, fallback: number) => {
 /**
  * Usage limits, configurable per deployment:
  * - QUOTA_ACTIVE_PREVIEWS_PER_USER (default 5) previews shared at the same time,
- * - QUOTA_MAX_SHARE_HOURS (default 24) before a share ends by itself,
+ * - QUOTA_MAX_SHARE_HOURS (default 24, at most 24): longest free session (dashboard/CLI offer 5 minutes – 24 hours),
+ * - QUOTA_SESSIONS_PER_DAY (default 100) new previews per user per rolling 24 hours, so restarting short free
+ *   sessions can't churn through resources without limit,
  * - QUOTA_DAILY_BANDWIDTH_MB (default 10240) of preview traffic per workspace per UTC day.
  * Per-gateway connection limits (tunnels, streams, request sizes, rates) are set on the gateway.
  */
 export function quotas() {
   return {
     activePreviewsPerUser: envInt("QUOTA_ACTIVE_PREVIEWS_PER_USER", 5),
-    maxShareMs: envInt("QUOTA_MAX_SHARE_HOURS", 24) * 60 * 60 * 1000,
+    maxShareMs: Math.min(envInt("QUOTA_MAX_SHARE_HOURS", 24), 24) * 60 * 60 * 1000,
+    sessionsPerDay: envInt("QUOTA_SESSIONS_PER_DAY", 100),
     dailyBandwidthBytes: envInt("QUOTA_DAILY_BANDWIDTH_MB", 10_240) * 1024 * 1024,
   };
 }
