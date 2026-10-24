@@ -53,7 +53,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Scroll-reveal styles only hide content once JavaScript runs, so pages are always readable without it. */}
         <script dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.js=''" }} />
       </head>
-      <body className="min-h-dvh">
+      {/* Browser extensions (e.g. ColorZilla's cz-shortcut-listen) add attributes to <body> before React loads; this
+          only ignores attribute differences on this element, not on anything inside it. */}
+      <body className="min-h-dvh" suppressHydrationWarning>
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[#070907]"
