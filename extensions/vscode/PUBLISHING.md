@@ -91,8 +91,8 @@ Tags and release files are never replaced; to fix a bad release, publish a new v
 ### Releasing a new version on the website (e.g. 0.2.0)
 
 The 0.2.0 candidate is `extensions/vscode/dist/localians-0.2.0.vsix` (copy kept in
-`~/.cache/localians-vsix-release/0.2.0/`; SHA-256 in the `.sha256` file next to it). It is **not** on the website yet:
-the site keeps serving 0.1.0 until the owner approves. To release it:
+`~/.cache/localians-vsix-release/0.2.0/`; SHA-256 in the `.sha256` file next to it). Released on the website on 2026-10-24
+(the owner approved it; 0.1.0 stays hosted for old links). The steps, for the next version:
 
 1. Copy `localians-0.2.0.vsix` and `localians-0.2.0.vsix.sha256` into `public/downloads/vscode/` (keep 0.1.0 there too, so
    old links keep working).

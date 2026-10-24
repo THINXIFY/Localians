@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // the public asset before the website's Download button is enabled.
 
 const root = path.resolve(__dirname, "..", "..");
-const TAG = "vscode-v0.1.0";
+const TAG = "vscode-v0.2.0";
 let tmp: string;
 let vsix: string;
 let sha: string;
@@ -20,8 +20,8 @@ let configFile: string;
 beforeAll(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "localians-release-test-"));
   // The released file the website describes (the source may already be a newer, unreleased version).
-  vsix = path.join(tmp, "localians-0.1.0.vsix");
-  fs.copyFileSync(path.join(root, "public", "downloads", "vscode", "localians-0.1.0.vsix"), vsix);
+  vsix = path.join(tmp, "localians-0.2.0.vsix");
+  fs.copyFileSync(path.join(root, "public", "downloads", "vscode", "localians-0.2.0.vsix"), vsix);
   sha = crypto.createHash("sha256").update(fs.readFileSync(vsix)).digest("hex");
   // The real config, with this build's checksum (the real one pins the actual release candidate).
   configFile = path.join(tmp, "vscode-extension.ts");
@@ -69,12 +69,12 @@ describe("draft-vsix-release", () => {
     expect(result.out).toContain("NOT public");
     expect(result.out + result.err).not.toContain("test-token-123");
     const create = gh.calls.find((c) => c.method === "POST" && c.url.endsWith("/releases"))!;
-    expect(JSON.parse(create.body.toString())).toMatchObject({ tag_name: TAG, draft: true, prerelease: false, name: "Localians for VS Code 0.1.0" });
+    expect(JSON.parse(create.body.toString())).toMatchObject({ tag_name: TAG, draft: true, prerelease: false, name: "Localians for VS Code 0.2.0" });
     expect(JSON.parse(create.body.toString()).body).toContain(sha);
     const uploads = gh.calls.filter((c) => c.url.startsWith("/upload"));
-    expect(uploads.map((u) => decodeURIComponent(u.url.split("name=")[1]))).toEqual(["localians-0.1.0.vsix", "localians-0.1.0.vsix.sha256"]);
+    expect(uploads.map((u) => decodeURIComponent(u.url.split("name=")[1]))).toEqual(["localians-0.2.0.vsix", "localians-0.2.0.vsix.sha256"]);
     expect(uploads[0].body.equals(fs.readFileSync(vsix))).toBe(true);
-    expect(uploads[1].body.toString()).toBe(`${sha}  localians-0.1.0.vsix\n`);
+    expect(uploads[1].body.toString()).toBe(`${sha}  localians-0.2.0.vsix\n`);
     // Only reads, one draft creation and two uploads: no PATCH/PUT/DELETE, so nothing can be published or replaced.
     expect(gh.calls.every((c) => ["GET", "POST"].includes(c.method))).toBe(true);
     expect(gh.calls.every((c) => c.url.startsWith("/upload") || c.auth === "Bearer test-token-123")).toBe(true);
@@ -94,7 +94,7 @@ describe("draft-vsix-release", () => {
 
     const other = path.join(tmp, "other");
     fs.mkdirSync(other, { recursive: true });
-    const tampered = path.join(other, "localians-0.1.0.vsix");
+    const tampered = path.join(other, "localians-0.2.0.vsix");
     fs.writeFileSync(tampered, Buffer.concat([fs.readFileSync(vsix), Buffer.from("x")]));
     const gh = await github();
     const wrong = await run("draft-vsix-release.mjs", [tampered], { GITHUB_TOKEN: "t", GITHUB_API_URL: gh.url });
@@ -106,7 +106,7 @@ describe("draft-vsix-release", () => {
 });
 
 describe("verify-vsix-release", () => {
-  const assetPath = `/THINXIFY/Localians/releases/download/${TAG}/localians-0.1.0.vsix`;
+  const assetPath = `/THINXIFY/Localians/releases/download/${TAG}/localians-0.2.0.vsix`;
   async function host(files: Record<string, Buffer | number>) {
     return serve((req, res) => {
       const entry = files[req.url ?? ""];
@@ -116,7 +116,7 @@ describe("verify-vsix-release", () => {
   }
 
   it("accepts a public asset whose bytes, .sha256 file and package contents all agree", async () => {
-    const server = await host({ [assetPath]: fs.readFileSync(vsix), [`${assetPath}.sha256`]: Buffer.from(`${sha}  localians-0.1.0.vsix\n`) });
+    const server = await host({ [assetPath]: fs.readFileSync(vsix), [`${assetPath}.sha256`]: Buffer.from(`${sha}  localians-0.2.0.vsix\n`) });
     const result = await run("verify-vsix-release.mjs", ["--url", `${server.url}${assetPath}`], {});
     await server.close();
     expect(result.code, result.err).toBe(0);
@@ -134,7 +134,7 @@ describe("verify-vsix-release", () => {
     expect(wrong.code).toBe(1);
     expect(wrong.err).toContain("SHA-256");
 
-    const noSidecar = await host({ [assetPath]: fs.readFileSync(vsix), [`${assetPath}.sha256`]: Buffer.from(`${"0".repeat(64)}  localians-0.1.0.vsix\n`) });
+    const noSidecar = await host({ [assetPath]: fs.readFileSync(vsix), [`${assetPath}.sha256`]: Buffer.from(`${"0".repeat(64)}  localians-0.2.0.vsix\n`) });
     const mismatch = await run("verify-vsix-release.mjs", ["--url", `${noSidecar.url}${assetPath}`], {});
     await noSidecar.close();
     expect(mismatch.err).toContain(".sha256");

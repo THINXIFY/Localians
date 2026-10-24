@@ -15,7 +15,7 @@ export const vscodeExtension = {
   displayName: "Localians — Share Localhost",
   /** Shown to visitors (the Marketplace publisher's display name). */
   publisherName: "THINXIFY",
-  version: "0.1.0",
+  version: "0.2.0",
   /** Minimum VS Code version. */
   minVscode: "1.90",
   marketplace: {
@@ -29,15 +29,15 @@ export const vscodeExtension = {
    * every build differs by timestamps); the site's copy and the GitHub Release asset must both be that file.
    */
   vsix: {
-    version: "0.1.0",
-    fileName: "localians-0.1.0.vsix",
+    version: "0.2.0",
+    fileName: "localians-0.2.0.vsix",
     /** The GitHub Release asset (a mirror). `released` stays false until that release is public. */
-    url: "https://github.com/THINXIFY/Localians/releases/download/vscode-v0.1.0/localians-0.1.0.vsix",
-    sha256: "b9fc9fbe3677eedb546d6ca3c33df56d7914790b8c0c58a9df085f10995cded8",
-    size: "40 KB",
+    url: "https://github.com/THINXIFY/Localians/releases/download/vscode-v0.2.0/localians-0.2.0.vsix",
+    sha256: "9be64b8f74b21de1d61d2e1243e4652ebdeccc10cf3b37d5bb53e169611f25e3",
+    size: "57 KB",
     released: false,
     /** Served by this website from public/ (with a .sha256 file next to it). */
-    hostedPath: "/downloads/vscode/localians-0.1.0.vsix",
+    hostedPath: "/downloads/vscode/localians-0.2.0.vsix",
     hosted: true,
   },
 } as const;
