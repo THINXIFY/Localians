@@ -32,8 +32,8 @@ const capabilities: { icon: LucideIcon; title: string; text: string }[] = [
 
 const steps = [
   { n: "01", title: "Install the extension", text: "From the Marketplace (coming soon), or by hand from a downloaded .vsix file." },
-  { n: "02", title: "Connect your account", text: "Click Connect to Localians. Your browser opens once so you can approve VS Code." },
-  { n: "03", title: "Share your app", text: "Start your dev server, click it under Local apps, choose who can open it, and send the copied link." },
+  { n: "02", title: "Sign in once", text: "Open Localians in the activity bar and click Sign In to Localians. Approve the one-time code in your browser." },
+  { n: "03", title: "Share your app", text: "Start your dev server: Localians finds it. Check the project, click Share App, and send the copied link." },
 ];
 
 export default function VsCodeExtensionPage() {
@@ -126,15 +126,23 @@ export default function VsCodeExtensionPage() {
 
         {/* ------------------------------------------------------------ screenshots */}
         <section aria-label="The extension in VS Code" className="relative border-t border-line py-14 sm:py-20">
-          <div className="container-x grid gap-4 sm:grid-cols-2 lg:gap-6">
+          <div className="container-x grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {[
-              { src: "/images/vscode/welcome-view.png", alt: "The Localians sidebar in VS Code with a Connect to Localians button", w: 440, h: 260, caption: "Connect once" },
-              { src: "/images/vscode/previews.png", alt: "A connected, password protected preview listed in the Localians sidebar", w: 440, h: 160, caption: "Manage your previews" },
+              { src: "/images/vscode/welcome.png", alt: "The Localians sidebar in VS Code: Welcome to Localians, with a Sign In to Localians button and a Getting started guide", caption: "Sign in once" },
+              { src: "/images/vscode/share-form.png", alt: "The sidebar with the running Next.js app detected, a new project, password protection, a 30-minute link and the Share App button", caption: "Pick your app, click Share App" },
+              { src: "/images/vscode/two-previews.png", alt: "Two live previews in the sidebar, each with its port, link, Copy Link, Open and Stop", caption: "Several apps at once" },
             ].map((shot, i) => (
               <Reveal key={shot.src} delay={i * 0.06}>
                 <figure className="surface hairline-top flex h-full flex-col overflow-hidden">
-                  <div className="flex flex-1 items-center justify-center bg-black/30 p-4 sm:p-6">
-                    <Image src={shot.src} alt={shot.alt} width={shot.w} height={shot.h} sizes="(min-width: 640px) 440px, 90vw" className="h-auto w-full max-w-[440px] rounded-lg border border-line" />
+                  <div className="flex flex-1 items-start justify-center bg-black/30 p-4 sm:p-6">
+                    <Image
+                      src={shot.src}
+                      alt={shot.alt}
+                      width={375}
+                      height={949}
+                      sizes="(min-width: 1024px) 300px, (min-width: 640px) 45vw, 90vw"
+                      className="h-auto max-h-[560px] w-full max-w-[300px] rounded-lg border border-line object-cover object-top"
+                    />
                   </div>
                   <figcaption className="border-t border-line px-5 py-3 text-[13px] text-fg-2">{shot.caption}</figcaption>
                 </figure>

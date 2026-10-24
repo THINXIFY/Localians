@@ -27,6 +27,8 @@ export const fake = {
   answers: [] as (string | undefined)[],
   statusBars: [] as { text: string; command?: string; visible: boolean; disposed: boolean }[],
   treeViews: [] as { id: string; provider: { getChildren(e?: unknown): unknown[] }; visible: boolean; disposed: boolean }[],
+  /** Webview views the extension registered, and (once resolved) what they received and sent. */
+  webviews: [] as FakeWebviewView[],
   config: new Map<string, unknown>(),
   opened: [] as string[],
   clipboard: "",
@@ -40,6 +42,7 @@ export const fake = {
     this.answers = [];
     this.statusBars = [];
     this.treeViews = [];
+    this.webviews = [];
     this.config.clear();
     this.opened = [];
     this.clipboard = "";
@@ -97,8 +100,52 @@ export class TreeItem {
 }
 export const Uri = {
   parse: (value: string) => ({ toString: () => value, value }),
-  file: (fsPath: string) => ({ fsPath, scheme: "file" }),
+  file: (fsPath: string) => ({ fsPath, path: fsPath, scheme: "file", toString: () => `file://${fsPath}` }),
+  joinPath: (base: { path?: string; fsPath?: string }, ...parts: string[]) => {
+    const p = [base.path ?? base.fsPath ?? "", ...parts].join("/");
+    return { fsPath: p, path: p, scheme: "file", toString: () => `file://${p}` };
+  },
 };
+
+/** A webview view: what the extension set on it, what it posted, and a way to send it messages. */
+export class FakeWebviewView {
+  readonly posted: unknown[] = [];
+  private readonly received = new EventEmitter<unknown>();
+  private readonly visibility = new EventEmitter<void>();
+  private readonly disposed = new EventEmitter<void>();
+  visible = true;
+  readonly webview = {
+    options: {} as Record<string, unknown>,
+    html: "",
+    cspSource: "https://fake.vscode-cdn.net",
+    asWebviewUri: (uri: { path: string }) => ({ toString: () => `https://fake.vscode-cdn.net${uri.path}` }),
+    postMessage: async (message: unknown) => {
+      this.posted.push(message);
+      return true;
+    },
+    onDidReceiveMessage: this.received.event,
+  };
+  onDidChangeVisibility = this.visibility.event;
+  onDidDispose = this.disposed.event;
+  constructor(
+    readonly id: string,
+    readonly provider: { resolveWebviewView(view: unknown): unknown },
+  ) {}
+  /** What VS Code does when the view is first shown. */
+  resolve() {
+    this.provider.resolveWebviewView(this);
+    return this;
+  }
+  /** A message from the page (as the page's script would send it). */
+  send(message: unknown) {
+    this.received.fire(message);
+  }
+  /** The last state the extension posted. */
+  get state() {
+    const last = [...this.posted].reverse().find((m) => (m as { type?: string }).type === "state") as { state: Record<string, unknown> } | undefined;
+    return last?.state;
+  }
+}
 
 const grantTrust = new EventEmitter<void>();
 const configChanged = new EventEmitter<{ affectsConfiguration: (s: string) => boolean }>();
@@ -115,6 +162,11 @@ export const window = {
     const view = { id, provider: options.treeDataProvider, visible: false, disposed: false, onDidChangeVisibility: new EventEmitter<{ visible: boolean }>().event, dispose() { view.disposed = true; } };
     fake.treeViews.push(view);
     return view;
+  },
+  registerWebviewViewProvider: (id: string, provider: { resolveWebviewView(view: unknown): unknown }) => {
+    const view = new FakeWebviewView(id, provider);
+    fake.webviews.push(view);
+    return { dispose() {} };
   },
   showInformationMessage: message("info"),
   showWarningMessage: message("warn"),

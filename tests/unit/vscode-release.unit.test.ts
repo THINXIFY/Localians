@@ -1,4 +1,4 @@
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
@@ -11,7 +11,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // the public asset before the website's Download button is enabled.
 
 const root = path.resolve(__dirname, "..", "..");
-const extensionRoot = path.join(root, "extensions", "vscode");
 const TAG = "vscode-v0.1.0";
 let tmp: string;
 let vsix: string;
@@ -20,8 +19,9 @@ let configFile: string;
 
 beforeAll(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "localians-release-test-"));
-  execFileSync(process.execPath, [path.join(extensionRoot, "scripts", "package.mjs"), "--out-dir", tmp], { cwd: extensionRoot, stdio: "pipe" });
+  // The released file the website describes (the source may already be a newer, unreleased version).
   vsix = path.join(tmp, "localians-0.1.0.vsix");
+  fs.copyFileSync(path.join(root, "public", "downloads", "vscode", "localians-0.1.0.vsix"), vsix);
   sha = crypto.createHash("sha256").update(fs.readFileSync(vsix)).digest("hex");
   // The real config, with this build's checksum (the real one pins the actual release candidate).
   configFile = path.join(tmp, "vscode-extension.ts");

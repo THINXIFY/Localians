@@ -5,7 +5,7 @@ export type Credentials = {
   /** Revocable CLI-style access token. Kept in SecretStorage only; never logged or shown. */
   token: string;
   expiresAt: string;
-  user: { email: string; name: string };
+  user: { email: string; name: string; username?: string | null; id?: string };
   workspace: { id: string; name: string };
 };
 
@@ -112,7 +112,22 @@ export class Auth {
     return { revoked };
   }
 
-  async forget() {
+  /** Saves an updated copy (username from the server, a renewed expiry). Same server, same token only. */
+  async update(credentials: Credentials) {
+    await this.secrets.store(SECRET_KEY, JSON.stringify(credentials));
+  }
+
+  /** Forgets the saved sign-in; with `token`, only if that is still the saved one (a newer sign-in is kept). */
+  async forget(token?: string) {
+    if (token) {
+      let saved: string | undefined;
+      try {
+        saved = (JSON.parse((await this.secrets.get(SECRET_KEY)) ?? "null") as Credentials | null)?.token;
+      } catch {
+        saved = undefined;
+      }
+      if (saved && saved !== token) return;
+    }
     await this.secrets.delete(SECRET_KEY);
   }
 }

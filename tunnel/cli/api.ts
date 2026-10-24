@@ -11,6 +11,8 @@ export type ApiProject = {
   hasPassword?: boolean;
   /** The project's custom link (Preview Pass); absent from older servers. */
   customUrl?: string | null;
+  /** What the project may do now (newer servers): free preview state, Preview Pass, and whether it can be shared. */
+  plan?: { pass: boolean; passEndsAt: string | null; free: "available" | "active" | "used" | "limit_reached"; freeEndsAt: string | null; canShare: boolean } | null;
 };
 
 /** The signed-in account. id (LOC-…) and username come from newer servers. */

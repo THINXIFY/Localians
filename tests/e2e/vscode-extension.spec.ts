@@ -14,7 +14,7 @@ test("extension page: hero, capabilities, steps, and only real buttons are enabl
   for (const h of ["Share local ports", "Secure HTTPS links", "Your Localians account", "Copy and manage links", "Project detection", "Access and timing"]) {
     await expect(page.getByRole("heading", { level: 3, name: h })).toBeVisible();
   }
-  for (const step of ["Install the extension", "Connect your account", "Share your app"]) await expect(page.getByRole("heading", { level: 3, name: step })).toBeVisible();
+  for (const step of ["Install the extension", "Sign in once", "Share your app"]) await expect(page.getByRole("heading", { level: 3, name: step })).toBeVisible();
 
   const actions = page.getByTestId("vscode-actions");
   await expect(actions.getByRole("link", { name: "View Documentation" })).toHaveAttribute("href", "/docs/vscode");
@@ -94,7 +94,7 @@ test("extension page: SEO, structured data and sitemap", async ({ page, request 
 test("docs page, docs index, footer, homepage and dashboard all lead to the extension", async ({ page }) => {
   await page.goto("/docs/vscode");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Share localhost from VS Code");
-  for (const h of ["Install", "Connect", "Share an app", "Password protection", "Commands", "Settings", "Troubleshooting"]) await expect(page.getByRole("heading", { level: 2, name: h })).toBeVisible();
+  for (const h of ["Install", "Connect", "Share an app", "Several apps at once", "Password protection", "Stop sharing and sign out", "Commands", "Settings", "Troubleshooting"]) await expect(page.getByRole("heading", { level: 2, name: h })).toBeVisible();
   await expect(page.getByTestId("vsix-card")).toContainText(vscodeExtension.vsix.sha256);
   await expect(page.getByTestId("vsix-updates-note")).toBeVisible();
   if (!installable && !downloadable) await expect(page.locator("main")).toContainText("Coming soon");

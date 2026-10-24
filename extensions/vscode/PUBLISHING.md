@@ -88,6 +88,19 @@ file (or rebuild, copy the new file and its `.sha256` to `public/downloads/vscod
 
 Tags and release files are never replaced; to fix a bad release, publish a new version.
 
+### Releasing a new version on the website (e.g. 0.2.0)
+
+The 0.2.0 candidate is `extensions/vscode/dist/localians-0.2.0.vsix` (copy kept in
+`~/.cache/localians-vsix-release/0.2.0/`; SHA-256 in the `.sha256` file next to it). It is **not** on the website yet:
+the site keeps serving 0.1.0 until the owner approves. To release it:
+
+1. Copy `localians-0.2.0.vsix` and `localians-0.2.0.vsix.sha256` into `public/downloads/vscode/` (keep 0.1.0 there too, so
+   old links keep working).
+2. In `src/lib/vscode-extension.ts` set `version` and `vsix.version` to 0.2.0, and `vsix.fileName`, `vsix.url`,
+   `vsix.hostedPath`, `vsix.sha256` and `vsix.size` to the new file's (the unit tests check the hosted file against them).
+3. Run the site tests, commit, push and deploy. The `/docs/vscode` guide and the extension page already describe 0.2.0's
+   sidebar, so deploy them together with this step.
+
 ## 5. After publishing on the Marketplace: the website
 
 In `src/lib/vscode-extension.ts` set `marketplace.published = true` (and keep the VSIX section). **Install from Marketplace** then becomes a link

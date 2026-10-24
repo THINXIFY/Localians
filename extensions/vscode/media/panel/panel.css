@@ -1,0 +1,534 @@
+/* Localians sidebar panel. Colours come from the VS Code theme (light, dark, high contrast); the electric-lime accent
+   is used only for the primary action and the "live" dot. Sized for narrow sidebars. */
+:root {
+  --lime: #b8ff3b;
+  --lime-ink: #0b0f0a;
+  --border: var(--vscode-widget-border, var(--vscode-panel-border, rgba(128, 128, 128, 0.35)));
+  --muted: var(--vscode-descriptionForeground);
+  --live: var(--vscode-testing-iconPassed, #3fb950);
+  --warn: var(--vscode-editorWarning-foreground, #cca700);
+  --error: var(--vscode-errorForeground, #f14c4c);
+  --radius: 6px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 0 12px 16px;
+  color: var(--vscode-foreground);
+  background: transparent;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+  line-height: 1.45;
+}
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 10px;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 0.92em;
+}
+.mono {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.92em;
+}
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.loading {
+  padding: 8px 0;
+}
+
+/* --- buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn.wide {
+  width: 100%;
+  min-height: 30px;
+}
+.btn.primary {
+  background: var(--lime);
+  color: var(--lime-ink);
+  font-weight: 600;
+}
+.btn.primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.btn.secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+.btn.secondary:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--vscode-foreground);
+  border-color: var(--border);
+}
+.btn.ghost:hover:not(:disabled),
+.icon-btn:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.15));
+}
+.btn.danger {
+  background: transparent;
+  color: var(--error);
+  border-color: var(--border);
+}
+.btn.danger:hover:not(:disabled) {
+  background: var(--vscode-inputValidation-errorBackground, rgba(241, 76, 76, 0.12));
+}
+.btn:disabled,
+.icon-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.text-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+.text-btn:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+}
+.icon-btn.spinning .icon {
+  animation: spin 1s linear infinite;
+}
+:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+@media (forced-colors: active) {
+  .btn.primary {
+    background: ButtonFace;
+    color: ButtonText;
+    border-color: ButtonText;
+  }
+}
+body.vscode-high-contrast .btn.primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: var(--vscode-contrastBorder);
+}
+
+/* --- welcome / sign in --- */
+.welcome,
+.waiting {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0 4px;
+}
+.welcome h1,
+.waiting h1 {
+  font-size: 1.25em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.welcome .lead {
+  color: var(--muted);
+}
+.mark {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--lime);
+  color: var(--lime-ink);
+}
+.mark .icon {
+  width: 18px;
+  height: 18px;
+}
+.code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 1.5em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  user-select: all;
+}
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--muted);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .icon-btn.spinning .icon {
+    animation: none;
+  }
+}
+
+/* --- account --- */
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.who-text {
+  min-width: 0;
+}
+.who .name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-left: 16px;
+}
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.dot.on {
+  background: var(--live);
+}
+
+/* --- sections & fields --- */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.section h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.label {
+  font-size: 0.92em;
+  color: var(--muted);
+}
+select,
+input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  padding: 3px 6px;
+  border: 1px solid var(--vscode-dropdown-border, var(--vscode-input-border, var(--border)));
+  border-radius: 4px;
+  background: var(--vscode-dropdown-background, var(--vscode-input-background));
+  color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
+  font: inherit;
+}
+input[type="text"] {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border-color: var(--vscode-input-border, var(--border));
+}
+.with-button {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.choice.disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.choice input {
+  margin: 2px 0 0;
+}
+.choice .icon {
+  margin-top: 2px;
+}
+.choice-text {
+  display: flex;
+  flex-direction: column;
+}
+.plan {
+  font-size: 0.92em;
+  color: var(--muted);
+}
+.plan.pass {
+  color: var(--vscode-foreground);
+}
+.plan.warn {
+  color: var(--warn);
+}
+details.options,
+details.guide {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+details > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details > summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  opacity: 0.8;
+}
+details[open] > summary::before {
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  details > summary::before {
+    transition: none;
+  }
+}
+.summary-value {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+details.options > :not(summary) {
+  margin: 4px 8px 8px;
+}
+.custom-url .mono {
+  word-break: break-all;
+}
+
+/* --- empty / notices --- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--vscode-textLink-foreground);
+  border-radius: 3px;
+  background: var(--vscode-textBlockQuote-background, rgba(128, 128, 128, 0.1));
+}
+.notice.success {
+  border-left-color: var(--live);
+}
+.notice.warning {
+  border-left-color: var(--warn);
+}
+.notice.error {
+  border-left-color: var(--error);
+}
+
+/* --- previews --- */
+.previews {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.preview.ended {
+  opacity: 0.8;
+}
+.preview-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  font-size: 0.92em;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.status.connected .dot {
+  background: var(--live);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--live) 25%, transparent);
+}
+.status.connecting .dot,
+.status.reconnecting .dot {
+  background: var(--warn);
+}
+.status.reconnecting {
+  color: var(--warn);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+}
+.tag.pass {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+}
+.url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vscode-textLink-foreground);
+}
+.url.struck {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* --- guide & links --- */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 8px 8px;
+  padding: 0;
+  list-style: none;
+}
+.steps li {
+  display: flex;
+  gap: 8px;
+}
+.step-n {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 0.85em;
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.preview .actions {
+  gap: 4px;
+}
+.preview .btn {
+  min-height: 24px;
+  padding: 2px 7px;
+}

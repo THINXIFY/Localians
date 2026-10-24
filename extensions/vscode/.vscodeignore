@@ -1,8 +1,11 @@
-# Only the bundle, icons, README, CHANGELOG and license go into the .vsix.
+# Only the bundle, icons, the sidebar panel's script and styles, the walkthrough, README, CHANGELOG and license go into the .vsix.
 **
 !dist/extension.js
 !media/icon.png
 !media/activity.svg
+!media/panel/panel.js
+!media/panel/panel.css
+!media/walkthrough/*.md
 !README.md
 !CHANGELOG.md
 !LICENSE.md

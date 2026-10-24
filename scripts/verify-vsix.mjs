@@ -26,7 +26,16 @@ const ALLOWED = new Set([
   "extension/dist/extension.js",
   "extension/media/icon.png",
   "extension/media/activity.svg",
+  // The sidebar panel (a webview) and the Getting Started walkthrough (0.2.0+).
+  "extension/media/panel/panel.js",
+  "extension/media/panel/panel.css",
+  "extension/media/walkthrough/sign-in.md",
+  "extension/media/walkthrough/run-app.md",
+  "extension/media/walkthrough/share.md",
+  "extension/media/walkthrough/copy-link.md",
 ]);
+// Files a 0.1.x package didn't have yet (verifying an older release must still work).
+const SINCE_0_2 = new Set([...ALLOWED].filter((name) => name.includes("/panel/") || name.includes("/walkthrough/")));
 const SECRET_PATTERNS = [/-----BEGIN [A-Z ]*PRIVATE KEY/, /\bghp_[A-Za-z0-9]{30,}/, /\bre_[A-Za-z0-9_]{20,}/, /\bAKIA[0-9A-Z]{16}\b/, /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/, /\b(?:BETTER_AUTH_SECRET|DATABASE_URL|RESEND_API_KEY|TUNNEL_TOKEN_SECRET|GATEWAY_API_SECRET|VSCE_PAT)\s*[=:]/];
 
 const problems = [];
@@ -62,10 +71,15 @@ if (!problems.length) {
   const entries = await readZip(file);
   const names = [...entries.keys()];
   for (const name of names) check(ALLOWED.has(name), `unexpected file in the package: ${name}`);
-  for (const name of ALLOWED) check(entries.has(name), `missing from the package: ${name}`);
-
   const text = (name) => entries.get(name)?.toString("utf8") ?? "";
   const manifest = JSON.parse(text("extension/package.json") || "{}");
+  const legacy = /^0\.1\./.test(manifest.version ?? "");
+  for (const name of ALLOWED) if (!(legacy && SINCE_0_2.has(name))) check(entries.has(name), `missing from the package: ${name}`);
+  if (!legacy) {
+    // The panel builds its page with DOM APIs only, and its HTML shell allows nothing but its own files.
+    const panel = text("extension/media/panel/panel.js");
+    check(!/\binnerHTML\b|\bouterHTML\b|insertAdjacentHTML|\beval\s*\(|new Function\s*\(/.test(panel), "the panel script must not use innerHTML/eval");
+  }
   const sidecar = `${file}.sha256`;
 
   check(manifest.publisher === "thinxify" && manifest.name === "localians", `extension id is ${manifest.publisher}.${manifest.name}, expected thinxify.localians`);
@@ -85,6 +99,7 @@ if (!problems.length) {
   check(bundle.includes(JSON.stringify(PRODUCTION_API_URL)), `the bundle doesn't reference ${PRODUCTION_API_URL}`);
   check(!/(localhost|127\.0\.0\.1):3001|preview\.localhost/.test(bundle), "a development server address is baked into the bundle");
   check(!/sourceMappingURL=/.test(bundle), "the bundle references a source map");
+  if (!legacy) check(bundle.includes("default-src 'none'") && bundle.includes("script-src 'nonce-"), "the panel's Content Security Policy is missing from the bundle");
 
   const readme = text("extension/readme.md");
   const images = [...readme.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((m) => m[1]);

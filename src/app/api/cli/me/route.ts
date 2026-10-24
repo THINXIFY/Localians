@@ -2,6 +2,7 @@ import { ProjectStatus } from "@/generated/prisma/enums";
 import { getTunnelConfig, previewUrl, quotas } from "@/server/cli/config";
 import { json, withCliAuth } from "@/server/cli/http";
 import { prisma } from "@/server/db";
+import { getProjectPlanSummaries } from "@/server/plans";
 
 /** Who the CLI is signed in as (with username), its login expiry and limits, plus the workspace's active projects (for `share` to pick from). */
 export const GET = withCliAuth(async (_request, auth) => {
@@ -29,12 +30,15 @@ export const GET = withCliAuth(async (_request, auth) => {
   });
   // Access is reported as public/password (+ whether a password exists); the hash itself never leaves the server.
   const config = getTunnelConfig();
+  // What each project may do right now (free preview / Preview Pass), so clients only offer what is allowed.
+  const plans = await getProjectPlanSummaries(workspace.projects.map((p) => ({ id: p.id, workspaceId: workspace.id })), auth.userId);
   const projects = workspace.projects.map(({ accessMode, accessPasswordHash, previewName, ...p }) => ({
     ...p,
     access: accessMode === "PASSWORD" ? ("password" as const) : ("public" as const),
     hasPassword: accessPasswordHash !== null,
     // The project's custom link (Preview Pass), if it has one.
     customUrl: previewName?.status === "ACTIVE" && config ? previewUrl(config, previewName.name) : null,
+    plan: plans.get(p.id) ?? null,
   }));
   return json({
     user: auth.user,

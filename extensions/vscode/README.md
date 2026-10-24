@@ -3,41 +3,65 @@
 Share the app running on your computer with a secure HTTPS link — public, or protected with a password. Right from
 VS Code: no terminal commands, no deploys, nothing else to install.
 
-**Install → open your project → click Share → send the link.**
+**Click Localians → Sign In once → pick your running app → Share App → copy the link.**
 
 ## Install
 
 - **Marketplace:** search for **Localians** in the Extensions view (publisher: THINXIFY), or run
   `ext install thinxify.localians` in the Command Palette's quick open (`Ctrl+P` / `Cmd+P`).
-- **From a file:** download `localians-<version>.vsix` from the extension's
-  [releases](https://github.com/THINXIFY/Localians/releases), check it against the `.sha256` file next to it, then run
-  **Extensions: Install from VSIX…** from the Command Palette and choose the file.
+- **From a file:** download `localians-<version>.vsix` from [localians.com/vscode-extension](https://localians.com/vscode-extension#download),
+  check it against the SHA-256 shown there, then in the Extensions view open **… (Views and More Actions) → Install from VSIX…**
+  and choose the file.
 
-You need a free Localians account; the extension signs you in through your browser the first time.
+You need a free Localians account. Then click the **Localians** icon in the activity bar; **Localians: Getting Started**
+walks you through the four steps.
 
-![Connect to Localians](media/screenshots/welcome-view.png)
+## Sign in
 
-## How it works
+Click **Sign In to Localians**. Your browser opens the approval page and the sidebar shows **Waiting for sign in…**
+with a one-time code (**Copy Code** and **Open Browser Again** are there if you need them). Check that the browser shows
+the same code and approve it — the sidebar updates by itself. Nothing to copy or paste.
 
-1. **Connect to Localians.** Your browser opens once so you can approve VS Code. That's the whole setup.
-2. **Start your app** as usual (`npm run dev`, `python manage.py runserver`, …).
-3. **Click it under _Local apps_** (or run **Localians: Share App**). Pick a project — the one that already uses that
-   port is suggested, or create one named after your app — choose who can open it, and how long the link works:
+![Welcome to Localians](media/screenshots/welcome.png)
 
-   ![Public or password protected](media/screenshots/access-choice.png)
+The sidebar then shows your username and **Connected**, with **Switch Account** and **Sign Out**. The status bar shows
+**Localians: Connected** (or **Localians: 2 Live** while you share); click it to open the sidebar.
 
-4. **Your link is ready** and copied to the clipboard. Send it to anyone.
+## Share an app
 
-By default a link works until the project's free 24-hour preview (or its Preview Pass) ends; pick a shorter time to
-stop it sooner. If a project's free preview is over, the extension says so and links to the dashboard, where a Preview
-Pass adds more days and a custom URL. Which one applies is always decided by Localians, never by the extension.
+1. **Start your app** as usual (`npm run dev`, `python manage.py runserver`, …).
+2. Under **Your Local App**, pick it in **Running app** (Localians finds it), or choose **Enter a port…**.
+3. Check the **Project** — the one you used for this app before, or the one that uses its port, is selected;
+   otherwise a new project named after your app is suggested.
+4. Optional: open **Options** to make it **Password protected** (you type the password in VS Code's own masked box) or
+   to choose how long the link works.
+5. Click **Share App**.
 
-   ![Shared](media/screenshots/shared-notification.png)
+![Pick your app and share it](media/screenshots/share-form.png)
 
-Your previews stay listed in the sidebar with their status. Copy the link, open it, add a password or stop sharing
-from there, the status bar, or the Command Palette.
+The preview appears under **Active Previews** once Localians confirms the tunnel is serving, and its link is copied
+for you. By default a link works until the project's free 24-hour preview (or its Preview Pass) ends; longer lengths
+are only offered with a pass. When a project's free preview is over, **Share App** becomes **Renew Preview Pass**,
+which opens that project's plan page. Which plan applies is always decided by Localians, never by the extension.
 
-![Previews](media/screenshots/previews.png)
+## Several apps at once
+
+Click **Share Another App** and share the next one the same way. Each preview has its own project, port, link,
+timer and access, with **Copy Link**, **Open** and **Stop** — stopping one leaves the others running. Previews started
+from a terminal (`npx localians share`) are listed too, and your account's limit on previews running at the same time
+applies everywhere.
+
+![Two live previews](media/screenshots/two-previews.png)
+
+## Stop sharing and sign out
+
+**Stop** ends a preview right away — its link stops working. **Sign Out** stops the previews this window started,
+revokes this computer's access and forgets the token (it asks first when something is live). Closing the VS Code window
+also stops the previews it started.
+
+The sidebar follows your VS Code theme, light or dark:
+
+![Light theme](media/screenshots/welcome-light.png)
 
 ## Finds your running apps
 
@@ -68,12 +92,14 @@ until you pick an app and confirm.
 
 | Command | |
 | --- | --- |
-| **Localians: Share App** | Pick a running app and share it (also in the status bar) |
+| **Localians: Open Localians** | Show the Localians sidebar (also the status bar entry) |
+| **Localians: Sign In** / **Sign Out** / **Switch Account** | Your account |
+| **Localians: Share App** | Share a running app step by step, without the sidebar |
+| **Localians: Copy Preview Link** / **Open Preview** | For a running preview |
 | **Localians: Stop Sharing** | Stop a preview; its link stops working immediately |
-| **Localians: Copy Preview Link** / **Open Preview** | For the current preview |
 | **Localians: Set Preview Password** | Protect a preview, or change its password |
 | **Localians: Open Dashboard** | Projects, analytics and every preview, in the browser |
-| **Localians: Connect to Localians** / **Sign Out** / **Switch Account** | Account |
+| **Localians: Getting Started** | The four-step guide |
 
 ## Settings
 
@@ -89,9 +115,23 @@ until you pick an app and confirm.
 VS Code 1.90 or newer, on Windows, macOS or Linux. No Localians CLI or other install needed — the extension includes
 the same tunnel client as the [`localians` CLI](https://github.com/THINXIFY/Localians/tree/main/tunnel/cli).
 
+## Troubleshooting
+
+- **"No running local application found"** or **"Nothing is running on localhost:3000"** — start your dev server and
+  check that the port opens in your browser, then click **Retry Detection** (or **Enter Port Manually**).
+- **"This app is already being shared"** — its preview is under Active Previews; copy or stop it there.
+- **"You've reached your active preview limit"** — stop another preview (here, in a terminal or in the dashboard), or
+  review your plan.
+- **"Connection interrupted. Reconnecting…"** — your network or computer paused; the link comes back by itself while
+  VS Code and your app keep running.
+- **"Your preview period has ended"** — click **Renew Preview Pass**, or choose another project.
+- **"Your sign-in expired or was revoked"** — click **Sign In** again.
+- Anything else: **Localians: Show Log** (tokens and passwords are never written to it), and
+  [localians.com/docs/troubleshooting](https://localians.com/docs/troubleshooting).
+
 ## Help
 
-- [Getting started](https://localians.com/docs/getting-started) · [Troubleshooting](https://localians.com/docs/troubleshooting)
+- [VS Code guide](https://localians.com/docs/vscode) · [Getting started](https://localians.com/docs/getting-started) · [Troubleshooting](https://localians.com/docs/troubleshooting)
 - Issues: [github.com/THINXIFY/Localians/issues](https://github.com/THINXIFY/Localians/issues)
 
 Developed by [Thinxify Technologies](https://thinxify.com).

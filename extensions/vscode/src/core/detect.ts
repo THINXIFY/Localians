@@ -208,7 +208,10 @@ export function suggestProjectName(app: AppSuggestion, workspaceApps: WorkspaceA
   if (app.name) return app.name;
   const same = workspaceApps.filter((w) => app.framework && w.framework && sameFamily(w.framework, app.framework));
   if (same.length === 1) return same[0].name;
-  if (workspaceApps.length === 1) return workspaceApps[0].name;
+  // The workspace's only app, unless the running app is clearly something else (another framework).
+  const only = workspaceApps.length === 1 ? workspaceApps[0] : null;
+  if (only && !(app.framework && only.framework && !sameFamily(only.framework, app.framework))) return only.name;
+  if (only) return app.title?.trim().slice(0, 80) || `${app.framework} app`;
   return fallback;
 }
 

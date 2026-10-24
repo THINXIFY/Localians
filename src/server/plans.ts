@@ -98,6 +98,52 @@ export async function getProjectPlan(project: { id: string; workspaceId: string 
   return { pass, passEndsAt: passes.end, lastPassEndedAt: passes.lastEnded, free, share };
 }
 
+/**
+ * What a client may offer for each project right now (CLI/VS Code `/me`): the same answer as getProjectPlan, for many
+ * projects in three queries. `share` null: nothing can be shared until a Preview Pass (free_used) or the free allowance
+ * resets (free_limit).
+ */
+export async function getProjectPlanSummaries(projects: { id: string; workspaceId: string }[], userId: string, now = new Date(), db: Db = prisma) {
+  const ids = projects.map((p) => p.id);
+  if (!ids.length) return new Map<string, PlanSummary>();
+  const [passes, grants] = await Promise.all([
+    db.previewPass.findMany({
+      where: { projectId: { in: ids }, status: "ACTIVE", endsAt: { gt: new Date(now.getTime() - NAME_GRACE_MS) } },
+      orderBy: { startsAt: "asc" },
+      select: { projectId: true, startsAt: true, endsAt: true },
+    }),
+    db.freePreviewGrant.findMany({ where: { projectId: { in: ids } }, select: { projectId: true, endsAt: true } }),
+  ]);
+  const needsCaps = projects.find((p) => !grants.some((g) => g.projectId === p.id));
+  const caps = needsCaps ? await freeCaps(db, needsCaps.workspaceId, userId, now) : null;
+  const out = new Map<string, PlanSummary>();
+  for (const p of projects) {
+    const mine = passes.filter((x) => x.projectId === p.id);
+    const current = mine.find((x) => x.startsAt <= now && x.endsAt > now);
+    let passEnd = current?.endsAt ?? null;
+    if (passEnd) for (const x of mine) if (x.startsAt <= passEnd && x.endsAt > passEnd) passEnd = x.endsAt;
+    const grant = grants.find((g) => g.projectId === p.id);
+    const free: PlanSummary["free"] = grant ? (grant.endsAt > now ? "active" : "used") : caps ? "limit_reached" : "available";
+    out.set(p.id, {
+      pass: Boolean(passEnd),
+      passEndsAt: passEnd?.toISOString() ?? null,
+      free,
+      freeEndsAt: grant && grant.endsAt > now ? grant.endsAt.toISOString() : null,
+      canShare: Boolean(passEnd) || free === "active" || free === "available",
+    });
+  }
+  return out;
+}
+export type PlanSummary = {
+  /** A Preview Pass covers this project now (until passEndsAt, renewals included). */
+  pass: boolean;
+  passEndsAt: string | null;
+  free: "available" | "active" | "used" | "limit_reached";
+  freeEndsAt: string | null;
+  /** Whether a new share is allowed right now. */
+  canShare: boolean;
+};
+
 export class PlanError extends Error {
   constructor(
     readonly code: "free_used" | "free_limit" | "invalid_duration" | "plan_required",

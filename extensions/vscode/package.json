@@ -1,8 +1,8 @@
 {
   "name": "localians",
   "displayName": "Localians — Share Localhost",
-  "description": "Share the app running on your computer with a secure HTTPS preview link — public or password protected. One click, no terminal.",
-  "version": "0.1.0",
+  "description": "Share the app running on your computer with a secure HTTPS preview link — public or password protected. Sign in once, pick your app, click Share.",
+  "version": "0.2.0",
   "publisher": "thinxify",
   "license": "SEE LICENSE IN LICENSE.md",
   "pricing": "Free",
@@ -65,21 +65,21 @@
     "views": {
       "localians": [
         {
-          "id": "localians.main",
-          "name": "Share",
+          "type": "webview",
+          "id": "localians.panel",
+          "name": "Localians",
           "icon": "media/activity.svg",
           "contextualTitle": "Localians"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "localians.main",
-        "contents": "Share the app running on your computer with a secure HTTPS link — public or password protected.\n[Connect to Localians](command:localians.login)\nYour browser opens once to approve VS Code. [How it works](https://localians.com/docs/getting-started)",
-        "when": "!localians.signedIn"
-      }
-    ],
     "commands": [
+      {
+        "command": "localians.focus",
+        "title": "Open Localians",
+        "category": "Localians",
+        "icon": "$(broadcast)"
+      },
       {
         "command": "localians.share",
         "title": "Share App",
@@ -130,7 +130,7 @@
       },
       {
         "command": "localians.login",
-        "title": "Connect to Localians",
+        "title": "Sign In",
         "category": "Localians",
         "icon": "$(sign-in)"
       },
@@ -147,7 +147,7 @@
       },
       {
         "command": "localians.help",
-        "title": "Help",
+        "title": "Documentation",
         "category": "Localians",
         "icon": "$(question)"
       },
@@ -155,71 +155,45 @@
         "command": "localians.showLog",
         "title": "Show Log",
         "category": "Localians"
+      },
+      {
+        "command": "localians.gettingStarted",
+        "title": "Getting Started",
+        "category": "Localians",
+        "icon": "$(book)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "localians.share",
-          "when": "view == localians.main && localians.signedIn",
+          "command": "localians.refresh",
+          "when": "view == localians.panel && localians.signedIn",
           "group": "navigation@1"
         },
         {
-          "command": "localians.refresh",
-          "when": "view == localians.main && localians.signedIn",
+          "command": "localians.gettingStarted",
+          "when": "view == localians.panel",
           "group": "navigation@2"
         },
         {
           "command": "localians.openDashboard",
-          "when": "view == localians.main && localians.signedIn",
+          "when": "view == localians.panel && localians.signedIn",
           "group": "1_links@1"
         },
         {
           "command": "localians.help",
-          "when": "view == localians.main",
+          "when": "view == localians.panel",
           "group": "1_links@2"
         },
         {
           "command": "localians.switchAccount",
-          "when": "view == localians.main && localians.signedIn",
+          "when": "view == localians.panel && localians.signedIn",
           "group": "2_account@1"
         },
         {
           "command": "localians.logout",
-          "when": "view == localians.main && localians.signedIn",
+          "when": "view == localians.panel && localians.signedIn",
           "group": "2_account@2"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "localians.share",
-          "when": "view == localians.main && viewItem == app",
-          "group": "inline"
-        },
-        {
-          "command": "localians.copyLink",
-          "when": "view == localians.main && viewItem =~ /^share\\./",
-          "group": "inline@1"
-        },
-        {
-          "command": "localians.openPreview",
-          "when": "view == localians.main && viewItem =~ /^share\\./",
-          "group": "inline@2"
-        },
-        {
-          "command": "localians.stop",
-          "when": "view == localians.main && viewItem =~ /^share\\.(live|remote)/",
-          "group": "inline@3"
-        },
-        {
-          "command": "localians.reconnect",
-          "when": "view == localians.main && viewItem == share.ended",
-          "group": "inline@3"
-        },
-        {
-          "command": "localians.protect",
-          "when": "view == localians.main && viewItem =~ /^share\\.live/",
-          "group": "1_share@1"
         }
       ],
       "commandPalette": [
@@ -306,7 +280,60 @@
           "description": "Log every forwarded request (method, path, status) to the Localians output. Never logs tokens or passwords."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "start",
+        "title": "Get started with Localians",
+        "description": "Share your localhost apps securely in seconds: sign in, run your app, share, copy the link.",
+        "steps": [
+          {
+            "id": "signIn",
+            "title": "Sign in",
+            "description": "Connect your Localians account. Your browser opens once to approve VS Code.\n[Sign In to Localians](command:localians.login)",
+            "media": {
+              "markdown": "media/walkthrough/sign-in.md"
+            },
+            "completionEvents": [
+              "onContext:localians.signedIn"
+            ]
+          },
+          {
+            "id": "runApp",
+            "title": "Run your app",
+            "description": "Start your development server normally, for example `npm run dev`.\n[Open a Terminal](command:workbench.action.terminal.new)",
+            "media": {
+              "markdown": "media/walkthrough/run-app.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.terminal.new"
+            ]
+          },
+          {
+            "id": "share",
+            "title": "Share",
+            "description": "Choose your running port in the Localians sidebar and click Share App.\n[Open Localians](command:localians.focus)",
+            "media": {
+              "markdown": "media/walkthrough/share.md"
+            },
+            "completionEvents": [
+              "onContext:localians.sharing"
+            ]
+          },
+          {
+            "id": "copyLink",
+            "title": "Copy the link",
+            "description": "Send the HTTPS preview link to anyone.\n[Copy Preview Link](command:localians.copyLink)",
+            "media": {
+              "markdown": "media/walkthrough/copy-link.md"
+            },
+            "completionEvents": [
+              "onCommand:localians.copyLink"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "build": "node scripts/build.mjs",

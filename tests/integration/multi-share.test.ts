@@ -243,3 +243,36 @@ describe("logins: who, renewal, logout, switching accounts", () => {
     expect((refused as Error).message).not.toMatch(/alice/i);
   });
 });
+
+describe("plans in /me (what clients may offer per project)", () => {
+  it("agree with the full plan check for free-available, free-running, free-used and Preview Pass projects", async () => {
+    const { getProjectPlan, getProjectPlanSummaries } = await import("@/server/plans");
+    const { user } = await createVerifiedUser("Plan Reader");
+    const token = (await cliLogin(user.id)).access_token;
+    const fresh = await createProject(user.id, project("Fresh", 4501));
+    const running = await createProject(user.id, project("Running", 4502));
+    const used = await createProject(user.id, project("Used", 4503));
+    const paid = await createProject(user.id, project("Paid", 4504));
+    await prisma.freePreviewGrant.create({ data: { projectId: running.id, workspaceId: running.workspaceId, userId: user.id, startedAt: new Date(), endsAt: new Date(Date.now() + DAY) } });
+    await prisma.freePreviewGrant.create({ data: { projectId: used.id, workspaceId: used.workspaceId, userId: user.id, startedAt: new Date(Date.now() - 2 * DAY), endsAt: new Date(Date.now() - DAY) } });
+    await prisma.freePreviewGrant.create({ data: { projectId: paid.id, workspaceId: paid.workspaceId, userId: user.id, startedAt: new Date(Date.now() - 2 * DAY), endsAt: new Date(Date.now() - DAY) } });
+    const { pass } = await grantPass({ projectId: paid.id, source: "ADMIN", actor: { type: "ADMIN" } });
+
+    const all = [fresh, running, used, paid];
+    const summaries = await getProjectPlanSummaries(all, user.id);
+    for (const p of all) {
+      const full = await getProjectPlan(p, user.id);
+      const s = summaries.get(p.id)!;
+      expect(s.canShare, p.name).toBe(full.share.tier !== null);
+      expect(s.pass, p.name).toBe(Boolean(full.passEndsAt));
+      expect(s.free, p.name).toBe(full.free.state);
+    }
+    const me = await createApi(controlPlane.url, token, "test").me();
+    const byName = Object.fromEntries(me.projects.map((p) => [p.name, p.plan]));
+    // Three free windows were just used in this workspace (the default allowance per 30 days), so a fresh project waits.
+    expect(byName.Fresh).toMatchObject({ free: "limit_reached", pass: false, canShare: false });
+    expect(byName.Running).toMatchObject({ free: "active", pass: false, canShare: true });
+    expect(byName.Used).toMatchObject({ free: "used", pass: false, canShare: false });
+    expect(byName.Paid).toMatchObject({ pass: true, canShare: true, passEndsAt: pass.endsAt.toISOString() });
+  });
+});

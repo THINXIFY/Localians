@@ -84,9 +84,10 @@ async function seedPhase(e: Env) {
   assert.equal(config.get("hostHeader"), "rewrite");
   assert.equal(config.get("verboseLog"), false);
 
-  // Signed out: nothing is signed in, the welcome view (not tree rows) is what the user sees.
+  // Signed out: nothing is signed in, the sidebar shows its welcome screen.
   assert.equal(controller.credentials, null);
-  assert.deepEqual(controller.tree.getChildren(), []);
+  assert.equal(controller.panelState().phase, "signedOut");
+  assert.match(String(controller.status.text), /Localians: Signed Out/);
 
   // Commands that need an account don't throw when signed out (they offer to connect instead).
   await vscode.commands.executeCommand("localians.copyLink"); // "nothing is being shared"
@@ -107,36 +108,33 @@ async function runPhase(e: Env) {
   await until(`credentials loaded from SecretStorage (secret present after restart: ${stored ? "yes" : "NO"}, server setting: ${vscode.workspace.getConfiguration("localians").get("serverUrl")})`, () => controller.credentials?.user.email === e.email, 5000);
   assert.equal(controller.credentials.apiUrl, e.server);
 
-  // 2. Account, projects and the running app are found.
+  // 2. Account, projects and the running app are found (what the sidebar shows).
   await controller.refresh(true);
   assert.ok(controller.me.projects.some((p: { id: string }) => p.id === e.projectId), "the project is listed");
   await until("the local app is detected", () => controller.apps.some((a: { port: number }) => a.port === e.appPort));
-  const sections = controller.tree.getChildren() as { label: string }[];
-  assert.deepEqual(
-    sections.map((s) => String(s.label)),
-    ["Previews", "Local apps", "Account"],
-  );
-  const appRows = controller.tree.getChildren(sections[1]) as { label: string }[];
-  assert.ok(appRows.some((r) => String(r.label).includes(`localhost:${e.appPort}`)), "the app row is in the tree");
-  const accountRows = (controller.tree.getChildren(sections[2]) as { label: string; description?: string }[]).map((r) => `${r.label} ${r.description ?? ""}`).join(" | ");
-  assert.ok(accountRows.includes(e.email), "the account row shows who is signed in");
+  const state = controller.panelState();
+  assert.equal(state.phase, "signedIn");
+  assert.equal(state.account.email, e.email, "the sidebar shows who is signed in");
+  assert.ok(state.apps.some((a: { port: number }) => a.port === e.appPort), "the app is offered in the sidebar");
+  assert.ok(state.projects.some((p: { id: string }) => p.id === e.projectId), "the project is offered");
+  assert.ok(!JSON.stringify(state).includes(controller.credentials.token), "the sidebar's state never contains the token");
 
   // 3. Share: connected only when confirmed, link copied, served through the gateway.
   const project = controller.me.projects.find((p: { id: string }) => p.id === e.projectId);
   const app = controller.apps.find((a: { port: number }) => a.port === e.appPort);
-  void controller.connect(app, project, 60); // resolves when its "Sharing…" notification is dismissed: don't await
+  void controller.connect(app, project, 60, "command"); // resolves when its "Sharing…" notification is dismissed: don't await
   const share = await until("the share connects", () => controller.shares.list().find((s: { status: string }) => s.status === "connected"));
   assert.match(share.publicUrl, /^http:\/\/[a-z2-7]{12}\./);
   assert.equal(share.durationMinutes, 60);
   await until("the link is on the clipboard", async () => (await vscode.env.clipboard.readText()) === share.publicUrl);
-  assert.match(String(controller.status.text), new RegExp(`Sharing :${e.appPort}`));
+  assert.match(String(controller.status.text), /Localians: 1 Live/);
   const served = await visit(e.gatewayPort, share.publicUrl, "/?q=in-vscode");
   assert.equal(served.status, 200);
   assert.ok(served.body.includes("q=in-vscode"), "the app is served through the preview link");
-  const live = controller.tree.getChildren(controller.tree.getChildren()[0]) as { label: string }[];
-  assert.ok(live.some((r) => String(r.label).includes(e.projectName)), "the preview is listed with its project");
+  const live = controller.panelState().previews as { project: string; port: number; status: string; url: string }[];
+  assert.ok(live.some((p) => p.project === e.projectName && p.port === e.appPort && p.status === "connected" && p.url === share.publicUrl), "the preview is listed with its project");
 
-  // 4. Copy through the command (as the tree's inline button does), then stop: the link stops working.
+  // 4. Copy through the command (as the sidebar's Copy Link does), then stop: the link stops working.
   await vscode.env.clipboard.writeText("something else");
   await vscode.commands.executeCommand("localians.copyLink", { kind: "share", sessionId: share.sessionId });
   assert.equal(await vscode.env.clipboard.readText(), share.publicUrl);
@@ -145,7 +143,7 @@ async function runPhase(e: Env) {
   await until("the link no longer works", async () => (await visit(e.gatewayPort, share.publicUrl, "/")).status === 404);
 
   // 5. A revoked sign-in is noticed and everything is cleaned up (the user is asked to connect again).
-  void controller.connect(app, project, 60);
+  void controller.connect(app, project, 60, "command");
   const second = await until("the second share connects", () => controller.shares.list().find((s: { status: string; sessionId: string }) => s.status === "connected" && s.sessionId !== share.sessionId));
   const revoked = await fetch(`${e.server}/api/cli/logout`, { method: "POST", headers: { authorization: `Bearer ${controller.credentials.token}` } });
   assert.equal(revoked.status, 200);
@@ -153,7 +151,7 @@ async function runPhase(e: Env) {
   await until("the extension drops the revoked sign-in", () => controller.credentials === null);
   assert.equal(await controller.context.secrets.get(SECRET_KEY), undefined, "the revoked token is removed from SecretStorage");
   await until("the share ended with the sign-in", () => controller.shares.get(second.sessionId)?.status === "ended" || controller.shares.list().length === 0);
-  assert.deepEqual(controller.tree.getChildren(), [], "signed out again: the welcome view is shown");
+  assert.equal(controller.panelState().phase, "signedOut", "signed out again: the welcome screen is shown");
   assert.match(String(controller.status.text), /Localians/);
 
   // 6. Sign in again with a fresh token (as the real flow stores it) and leave a share running: the test then closes
@@ -163,7 +161,7 @@ async function runPhase(e: Env) {
   controller.credentials = await controller.auth.load(e.server);
   assert.ok(controller.credentials, "the new sign-in loads");
   await controller.refresh(true);
-  void controller.connect(app, controller.me.projects.find((p: { id: string }) => p.id === e.projectId), 60);
+  void controller.connect(app, controller.me.projects.find((p: { id: string }) => p.id === e.projectId), 60, "command");
   const last = await until("the final share connects", () => controller.shares.list().find((s: { status: string }) => s.status === "connected"));
   fs.writeFileSync(e.resultFile, JSON.stringify({ sessionId: last.sessionId, publicUrl: last.publicUrl }));
 }

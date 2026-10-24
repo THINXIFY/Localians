@@ -10,13 +10,17 @@ import { routes } from "@/lib/site";
 const root = path.resolve(__dirname, "..", "..");
 const extensionRoot = path.join(root, "extensions", "vscode");
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, "package.json"), "utf8")) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+/** "0.2.0" → a comparable number (major, minor, patch below 1000). */
+const semver = (v: string) => v.split(".").reduce((n, part) => n * 1000 + Number(part), 0);
 
 describe("website ↔ extension consistency (nothing on the site can point at something that doesn't exist)", () => {
   it("the site's extension facts equal the extension's own manifest", () => {
     expect(vscodeExtension.id).toBe(`${manifest.publisher}.${manifest.name}`);
     expect(vscodeExtension.publisherName).toBe("THINXIFY");
     expect(vscodeExtension.displayName).toBe(manifest.displayName);
-    expect(vscodeExtension.version).toBe(manifest.version);
+    // The site describes the released download, which may trail the source (0.2.0 is prepared but not released yet).
+    expect(vscodeExtension.version).toBe(vscodeExtension.vsix.version);
+    expect(semver(vscodeExtension.version) <= semver(manifest.version), `released ${vscodeExtension.version} is newer than the source ${manifest.version}`).toBe(true);
     expect(`^${vscodeExtension.minVscode}.0`).toBe(manifest.engines.vscode);
     expect(vscodeExtension.marketplace.listingUrl).toBe(`https://marketplace.visualstudio.com/items?itemName=${vscodeExtension.id}`);
     expect(vscodeExtension.marketplace.installUri).toBe(`vscode:extension/${vscodeExtension.id}`);
@@ -32,8 +36,7 @@ describe("website ↔ extension consistency (nothing on the site can point at so
     expect(a.githubMirror).toBe(vsix.released);
     expect(a.comingSoon).toBe(!marketplace.published && !vsix.hosted && !vsix.released);
     // The recorded file: this extension's version, a versioned file on GitHub Releases, and a SHA-256.
-    expect(vsix.version).toBe(manifest.version);
-    expect(vsix.fileName).toBe(`localians-${manifest.version}.vsix`);
+    expect(vsix.fileName).toBe(`localians-${vsix.version}.vsix`);
     expect(vsix.url).toBe(`https://github.com/THINXIFY/Localians/releases/download/vscode-v${vsix.version}/${vsix.fileName}`);
     expect(vsix.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(vsix.size).toMatch(/^\d+ KB$/);

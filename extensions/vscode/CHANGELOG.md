@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0 — the Localians sidebar
+
+- **A Localians sidebar** (in the activity bar) for the whole flow: account and status, your running app, project,
+  options and **Share App**, every active preview with **Copy Link**, **Open** and **Stop**, a Getting started guide and
+  quick links. It follows your VS Code theme (light, dark, high contrast) and fits narrow sidebars.
+- **Sign in from the sidebar:** the one-time code is shown while you approve in the browser (**Copy Code**, **Open
+  Browser Again**, **Cancel**); the sidebar updates by itself. Your username is shown; **Switch Account** and **Sign Out**.
+- **Several apps at once:** **Share Another App**, independent previews (stopping one leaves the others running),
+  previews from a terminal listed too, and a clear message when an app is already shared or the account's limit is reached.
+- **Only what you're entitled to:** the sidebar shows each project's free preview or Preview Pass; longer link lengths
+  only with a pass; **Renew Preview Pass** opens the project's plan page when the free preview is over. Reserved custom
+  URLs are shown.
+- **Better project matching:** the project you used for an app before, or the one using its port; never a project that
+  belongs to another port.
+- **Clear messages with a next step** instead of server errors (app not running, preview period ended, preview limit,
+  connection interrupted, signed out).
+- **Status bar:** Localians: Signed Out / Connected / N Live — click it to open the sidebar.
+- **Getting Started walkthrough** (Localians: Getting Started) and new commands **Open Localians** and **Getting Started**;
+  **Connect to Localians** is now **Sign In**.
+- Security: the sidebar is a webview with a strict Content Security Policy (only its own files, no remote content);
+  every message from it is validated; tokens and passwords never reach it (passwords are typed in VS Code's own
+  masked input).
+
 ## 0.1.0 — first release
 
 - Connect to Localians with one click (browser approval; the token is kept in VS Code's SecretStorage).
