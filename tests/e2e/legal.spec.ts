@@ -16,14 +16,14 @@ test("contact page offers only the email address", async ({ page }) => {
   await expect(main.locator('a[href^="tel:"], a[href*="twitter.com"], a[href*="linkedin.com"], a[href*="facebook.com"], a[href*="instagram.com"], a[href*="github.com"]')).toHaveCount(0);
 });
 
-for (const [path, title, sectionCount] of [
-  ["/privacy-policy", "Privacy Policy", 14],
-  ["/terms", "Terms of Service", 16],
+for (const [path, title, sectionCount, date] of [
+  ["/privacy-policy", "Privacy Policy", 14, "October 24, 2026"],
+  ["/terms", "Terms of Service", 16, "October 23, 2026"],
 ] as const) {
   test(`${title}: effective date, contact, table of contents and sections`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
-    await expect(page.locator("main")).toContainText("Effective date: October 23, 2026");
+    await expect(page.locator("main")).toContainText(`Effective date: ${date}`);
     await expect(page.getByRole("main").getByRole("link", { name: "hello@thinxify.com" }).first()).toHaveAttribute("href", MAIL);
     await expect(page.locator("main section[id]")).toHaveCount(sectionCount);
     // Each table-of-contents link points at a real section.
@@ -36,7 +36,8 @@ for (const [path, title, sectionCount] of [
 test("privacy policy tells the truth about analytics, preview traffic and payments", async ({ page }) => {
   await page.goto("/privacy-policy");
   const main = page.locator("main");
-  await expect(main).toContainText("does not use Google Analytics");
+  await expect(main).toContainText("Google Analytics cookies (optional)");
+  await expect(main).toContainText("until you accept, analytics and advertising storage are off and no analytics cookies are set");
   await expect(main).toContainText("Preview content passes through our servers");
   await expect(main).toContainText("public and permanent");
   await expect(main).not.toContainText("100% secure");

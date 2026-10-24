@@ -8,11 +8,11 @@ export type LegalSection = { id: string; title: string; body: ReactNode };
 export const EFFECTIVE_DATE = "October 23, 2026";
 
 /** "Effective date · Contact" line shown under a legal page's title. */
-export function LegalMeta() {
+export function LegalMeta({ date = EFFECTIVE_DATE }: { date?: string }) {
   return (
     <p className="mt-5 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[12.5px] text-fg-3">
       <span>
-        Effective date: <span className="text-fg-2">{EFFECTIVE_DATE}</span>
+        Effective date: <span className="text-fg-2">{date}</span>
       </span>
       <span>
         Contact:{" "}

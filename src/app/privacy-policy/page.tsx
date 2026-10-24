@@ -66,7 +66,7 @@ function buildSections(payments: boolean): LegalSection[] {
             <strong>Usage and technical information:</strong> when a preview connected, disconnected or expired and why; the number of requests and the amount of data
             a preview transferred, in short time buckets; and an activity trail of important actions such as passes being activated or accounts being suspended. IP addresses
             are also used, briefly, as keys for rate limiting (sign-in attempts, CLI requests and preview-password attempts). Our servers record errors as structured logs
-            that include the request path but not headers, cookies or bodies.
+            that include the request path but not headers, cookies or bodies. Website usage measured by Google Analytics is described under Cookies and similar technologies.
           </li>
           <li>
             <strong>Upgrade orders and payment records:</strong> for a Preview Pass order, the Order ID, project, amount, currency and network, any custom URL you
@@ -132,6 +132,7 @@ function buildSections(payments: boolean): LegalSection[] {
           <li>protect the service: rate limiting, detecting abuse and sign-in attacks, enforcing our <LegalLink href={routes.terms}>Terms of Service</LegalLink> and suspending accounts or previews when necessary;</li>
           <li>verify upgrade payments, review them, and activate, extend or revoke passes and custom URLs;</li>
           <li>monitor reliability and fix errors;</li>
+          <li>understand how the website is used (Google Analytics, with cookies only if you accept; see Cookies and similar technologies);</li>
           <li>send service emails, such as verification, password-reset, security and order messages. We don&apos;t send marketing email;</li>
           <li>meet legal obligations and respond to valid legal requests where they apply.</li>
         </ul>
@@ -144,7 +145,7 @@ function buildSections(payments: boolean): LegalSection[] {
     title: "Cookies and similar technologies",
     body: (
       <>
-        <p>Localians uses only the cookies and browser storage it needs to work:</p>
+        <p>Localians uses the cookies and browser storage it needs to work, and, only if you accept, Google Analytics cookies:</p>
         <ul>
           <li>
             <strong>Sign-in session cookie.</strong> When you sign in, we set an HTTP-only session cookie (named with a <code className="font-mono">__Host-localians</code> prefix on the live
@@ -154,17 +155,26 @@ function buildSections(payments: boolean): LegalSection[] {
             <strong>Preview access cookie.</strong> On a password-protected preview, a visitor who enters the correct password receives an HTTP-only cookie for that preview only.
           </li>
           <li>
-            <strong>Local browser storage.</strong> The dashboard may remember your last sharing choices in your browser&apos;s local storage. It is not sent to us.
+            <strong>Local browser storage.</strong> The dashboard may remember your last sharing choices in your browser&apos;s local storage, and the website remembers your cookie choice
+            there. It is not sent to us.
+          </li>
+          <li>
+            <strong>Google Analytics cookies (optional).</strong> If you click <em>Accept</em> in the cookie banner, Google Analytics sets cookies (such as <code className="font-mono">_ga</code>)
+            to count visits and see which pages are used, for up to two years.
           </li>
         </ul>
         <p>
-          <strong>Analytics and advertising.</strong> We checked our code: Localians does not use Google Analytics, Google AdSense or other advertising products, and does not
-          include third-party analytics, advertising or tracking scripts or cookies on the website. We use Google Search Console to verify ownership of our site, which doesn&apos;t
-          place tracking cookies on your visit. If we add analytics or advertising later, we&apos;ll update this section first and ask for consent where the law requires it.
+          <strong>Analytics.</strong> Our website pages include the Google tag (Google Analytics 4, provided by Google). It runs in Google&apos;s Consent Mode: until you accept, analytics and
+          advertising storage are off and no analytics cookies are set, although Google may still receive basic, cookieless signals about the page view (such as the page, time, browser type
+          and an approximate location derived from your IP address) that it doesn&apos;t link to you with cookies. If you accept, Google Analytics also receives usage information such as pages
+          viewed, referrer, device and browser details, linked by its cookies. We use this only to understand and improve the website. We don&apos;t use Google advertising products or Google
+          Signals, and we never send your account details, email address or preview content to Google Analytics. Google processes this data under its own terms and privacy policy, and it may
+          be processed outside your country.
         </p>
         <p>
-          Because we only use cookies that are strictly necessary to provide the service you ask for, we don&apos;t show a cookie consent banner. You can block or delete cookies in your browser,
-          but you then won&apos;t be able to stay signed in. Applications you share through Localians may set their own cookies; those are governed by that app&apos;s own policies.
+          <strong>Your choice.</strong> The banner asks before any analytics cookies are set, and you can change your mind at any time with <em>Cookie settings</em> at the bottom of every page.
+          Declining doesn&apos;t affect how Localians works. You can also block or delete cookies in your browser, but blocking our own cookies means you won&apos;t be able to stay signed in.
+          Applications you share through Localians may set their own cookies; those are governed by that app&apos;s own policies.
         </p>
       </>
     ),
@@ -178,6 +188,7 @@ function buildSections(payments: boolean): LegalSection[] {
         <ul>
           <li><strong>Hosting and infrastructure:</strong> Localians runs on a virtual private server from Hostinger, which hosts our web app, gateway and database. Your account data, preview metadata and preview traffic in transit are processed on that infrastructure.</li>
           <li><strong>Email delivery:</strong> Resend sends our service emails (verification, password reset, order and security messages), so it receives your email address, name and the content of those messages. Support mail you send to <MailLink /> is handled by our email provider for that mailbox.</li>
+          <li><strong>Website analytics:</strong> Google provides Google Analytics on our website pages, as described in Cookies and similar technologies. With your consent it receives usage information linked by its cookies; without it, only cookieless signals.</li>
           <li><strong>Sign-in:</strong> if you choose GitHub sign-in, GitHub provides us with your profile details under its own privacy terms.</li>
           <li><strong>Blockchain data:</strong> to verify a payment, our server queries a public BNB Smart Chain node. That query contains the transaction hash and wallet addresses, which are already public on the blockchain. See below.</li>
         </ul>
@@ -327,7 +338,7 @@ export default async function PrivacyPolicyPage() {
       intro={
         <>
           How Localians collects, uses and protects information when you share your localhost.
-          <LegalMeta />
+          <LegalMeta date="October 24, 2026" />
         </>
       }
       width="wide"

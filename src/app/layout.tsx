@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { MotionProvider } from "@/components/ui/MotionProvider";
 import { ScrollbarGlow } from "@/components/ui/ScrollbarGlow";
+import { ConsentBanner } from "@/components/ui/ConsentBanner";
+import { GA_MEASUREMENT_ID, googleTagBootstrap } from "@/lib/analytics";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -50,6 +52,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
+        {/* Google tag (gtag.js), with Consent Mode: no analytics cookies until the visitor accepts (src/lib/analytics.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: googleTagBootstrap }} />
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
         {/* Scroll-reveal styles only hide content once JavaScript runs, so pages are always readable without it. */}
         <script dangerouslySetInnerHTML={{ __html: "document.documentElement.dataset.js=''" }} />
       </head>
@@ -64,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <MotionProvider>{children}</MotionProvider>
         <ScrollbarGlow />
+        <ConsentBanner />
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/ui/ConsentBanner";
 import { DEVELOPER } from "@/components/ui/Credit";
 import { Logo } from "@/components/ui/Logo";
 import { footerColumns } from "@/lib/site";
@@ -39,7 +40,10 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-[13px] text-fg-3 sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 Localians. All rights reserved.</p>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>© 2026 Localians. All rights reserved.</span>
+            <CookieSettingsButton className="text-fg-2 underline-offset-4 transition-colors duration-200 hover:text-fg hover:underline" />
+          </p>
           <p>
             Built by{" "}
             <a href={DEVELOPER.url} target="_blank" rel="noopener noreferrer" className="text-fg-2 underline-offset-4 transition-colors duration-200 hover:text-fg hover:underline">

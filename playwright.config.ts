@@ -36,6 +36,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
+    // Visitors who already answered the cookie banner (so it never covers what a test clicks); consent.spec.ts starts without.
+    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: "localians-cookie-consent", value: "denied" }] }] },
     launchOptions: { executablePath: chromiumExecutable() },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
