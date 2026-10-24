@@ -64,3 +64,7 @@ Requires Node.js 20 or newer on Windows, macOS or Linux. Docs: https://github.co
 
 MIT — see [LICENSE](LICENSE). This license covers the `localians` CLI package only; the Localians service is not
 open source.
+
+## Release notes
+
+See [CHANGELOG.md](CHANGELOG.md).

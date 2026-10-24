@@ -12,8 +12,9 @@ export const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "localians-e2e-")
  */
 const CLI_PATH = process.env.LOCALIANS_E2E_CLI ?? path.join(TUNNEL_E2E.root, "tunnel/cli/dist/localians.js");
 
-export function runCli(args: string[], cwd = TUNNEL_E2E.root) {
-  const proc: ChildProcess = spawn(process.execPath, [CLI_PATH, ...args], {
+/** `cliPath`: another CLI build (e.g. an older published version, for compatibility checks). */
+export function runCli(args: string[], cwd = TUNNEL_E2E.root, cliPath = CLI_PATH) {
+  const proc: ChildProcess = spawn(process.execPath, [cliPath, ...args], {
     cwd,
     env: {
       ...(Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "FORCE_COLOR")) as NodeJS.ProcessEnv),

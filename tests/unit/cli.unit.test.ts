@@ -149,7 +149,7 @@ describe("npm package: release build", () => {
     const packed = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], { cwd: path.join(root, "tunnel/cli"), encoding: "utf8", shell: process.platform === "win32" });
     expect(packed.status, packed.stderr).toBe(0);
     const files = (JSON.parse(packed.stdout) as { files: { path: string }[] }[])[0].files.map((f) => f.path).sort();
-    expect(files).toEqual(["LICENSE", "README.md", "dist/localians.js", "package.json"]);
+    expect(files).toEqual(["CHANGELOG.md", "LICENSE", "README.md", "dist/localians.js", "package.json"]);
   }, 60_000);
 });
 

@@ -29,6 +29,11 @@ if (!problems.length) {
   check(pkg.bin?.localians === "dist/localians.js", 'package.json "bin" must map localians to dist/localians.js');
   check(/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(pkg.version), `invalid version "${pkg.version}"`);
   check(pkg.license === "MIT" && pkg.files?.includes("LICENSE"), 'package.json must declare "license": "MIT" and publish LICENSE');
+  const changelog = path.join(root, "tunnel/cli/CHANGELOG.md");
+  check(
+    pkg.files?.includes("CHANGELOG.md") && fs.existsSync(changelog) && fs.readFileSync(changelog, "utf8").includes(`\n## ${pkg.version}\n`),
+    `tunnel/cli/CHANGELOG.md needs a "## ${pkg.version}" entry (and must be in package.json "files")`,
+  );
   const license = path.join(root, "tunnel/cli/LICENSE");
   check(fs.existsSync(license) && fs.readFileSync(license, "utf8").startsWith("MIT License"), "tunnel/cli/LICENSE is missing or not the MIT license");
 

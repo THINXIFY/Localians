@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, type KeyboardEvent } from "react";
+import { DisclosureChevron, summaryClasses } from "@/components/ui/Disclosure";
 import { cn } from "@/lib/cn";
 import { Command } from "./Command";
 
@@ -42,13 +43,11 @@ export function InstallBeta({ localGateway, defaultOpen = false }: { localGatewa
 
   return (
     <details className="group rounded-xl border border-line bg-tint/[0.015]" open={defaultOpen}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[13.5px] text-fg-2 marker:hidden">
+      <summary className={cn(summaryClasses, "flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-[13.5px] text-fg-2 transition-colors hover:bg-tint/[0.02]")}>
         <span>
           <strong className="font-medium text-fg">Don&apos;t have the Localians command yet?</strong> One-time setup (beta)
         </span>
-        <span aria-hidden="true" className="text-fg-3 transition-transform group-open:rotate-90">
-          ›
-        </span>
+        <DisclosureChevron className="size-3.5" />
       </summary>
       <div className="flex flex-col gap-3 border-t border-line px-4 py-4 text-[13px] leading-relaxed text-fg-2">
         <p>

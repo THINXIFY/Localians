@@ -1,10 +1,11 @@
 "use client";
 
-import { AlertTriangle, ArrowUpRight, Check, ChevronRight, Clock, Globe, Link2, Lock, Plus, RefreshCw, Shuffle, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, Clock, Globe, Link2, Lock, Plus, RefreshCw, Shuffle, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { buttonClasses } from "@/components/ui/Button";
+import { DisclosureChevron, summaryClasses } from "@/components/ui/Disclosure";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import type { PaymentInfo, PlanSummary } from "@/lib/plans";
@@ -622,9 +623,9 @@ export function ShareWizard({
           ) : null}
 
           <details className="group rounded-xl border border-line" open={waitingLong && phase === "waiting" ? true : undefined}>
-            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-[13px] text-fg-2 hover:text-fg [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="size-3.5 text-fg-3 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+            <summary className={cn(summaryClasses, "flex items-center justify-between gap-2 rounded-xl px-4 py-2.5 text-[13px] text-fg-2 transition-colors hover:bg-tint/[0.02] hover:text-fg")}>
               Help &amp; advanced
+              <DisclosureChevron className="size-3.5" />
             </summary>
             <div className="flex flex-col gap-3 border-t border-line px-4 py-3 text-[13px] leading-relaxed text-fg-2">
               <ul className="list-disc space-y-1 pl-5">

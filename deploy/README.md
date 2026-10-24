@@ -298,17 +298,21 @@ Accounts aren't linked automatically by email address.
 
 ## 10. CLI on npm **[owner approval required]**
 
+The package is published on npm as `localians` (MIT, owned by the `localians` npm account). Versions and release
+notes are in `tunnel/cli/CHANGELOG.md`. To release a new version:
+
 ```bash
+# 1. Bump tunnel/cli/package.json "version" and add a "## <version>" section to tunnel/cli/CHANGELOG.md.
 npm run cli:release                     # bakes in https://localians.com; refuses non-public URLs
-cd tunnel/cli && npm pack --dry-run     # expect 3 files: dist/localians.js, README.md, package.json
+cd tunnel/cli && npm pack --dry-run     # expect 5 files: CHANGELOG.md, LICENSE, README.md, dist/localians.js, package.json
+npm publish                             # from the npm account that owns `localians` (prepack re-runs the checks)
+npm view localians version              # confirm
 ```
 
-Before publishing:
-1. Choose a license (currently `UNLICENSED`).
-2. Remove `"private": true`.
-3. Run `npm publish` from the npm account that will own `localians`.
-
-The package is published (`localians@0.1.0`, MIT). Set `LOCALIANS_CLI_PUBLISHED=1` in `web.env` and deploy to make the dashboard show `npx localians …`.
+`prepack` (scripts/verify-cli-package.mjs) refuses a development build, a non-production default server, anything
+that looks like a secret, a version mismatch, or a version without a changelog entry. Deploy the website after the
+new version is on npm when the dashboard or docs mention new commands. Set `LOCALIANS_CLI_PUBLISHED=1` in `web.env`
+so the dashboard shows `npx localians …`.
 (CLIs built by `deploy.sh` on the server also point at `https://localians.com`.)
 
 ## 11. Operations

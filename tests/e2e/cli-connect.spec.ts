@@ -13,14 +13,56 @@ async function expectCommands(page: Page) {
   }
 }
 
-test("Settings → CLI and Share App show the CLI commands, sign-in status and account, never a token", async ({ page }) => {
+/** The Share App guide: closed, with its title, description and a visible chevron that turns when it opens. */
+async function expectClosedGuide(page: Page) {
+  const guide = page.getByTestId("cli-connect");
+  const summary = guide.locator("summary");
+  await expect(summary).toContainText("Connect Localians CLI");
+  await expect(summary).toContainText("Login, manage your account and share apps from your terminal.");
+  await expect(guide).not.toHaveAttribute("open", "");
+  await expect(guide.getByTestId("cli-commands")).toBeHidden();
+  const chevron = summary.locator("svg").last();
+  await expect(chevron).toBeVisible();
+  const box = (await chevron.boundingBox())!;
+  const header = (await summary.boundingBox())!;
+  expect(box.x + box.width).toBeGreaterThan(header.x + header.width - 48); // at the right end of the header
+  return { guide, summary, chevron };
+}
+
+const rotation = (el: import("@playwright/test").Locator) => el.evaluate((node) => getComputedStyle(node).rotate + "|" + getComputedStyle(node).transform);
+
+test("Settings → CLI and Share App show the CLI commands, sign-in status and account, never a token", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://localhost:3123" });
   const user = await createUserOnDashboard(page, "Cli Person");
   await page.goto("/dashboard/settings/cli");
   const card = page.getByTestId("cli-connect");
   await expect(card.getByRole("heading", { name: "Connect Localians CLI" })).toBeVisible();
   await expect(card.getByTestId("cli-status")).toHaveText("No computer connected yet");
-  await expect(card).toContainText("Windows Command Prompt, PowerShell");
+  await expect(card).toContainText("Windows CMD, PowerShell, macOS and Linux");
   await expectCommands(page);
+
+  // Share App: closed by default even before any computer is connected; opens and closes from its header.
+  await page.goto("/dashboard/share");
+  const { guide, summary, chevron } = await expectClosedGuide(page);
+  const closedRotation = await rotation(chevron);
+  await summary.click();
+  await expect(guide).toHaveAttribute("open", "");
+  await expectCommands(page);
+  await expect.poll(() => rotation(chevron)).not.toBe(closedRotation); // the chevron turns
+  await guide.getByRole("button", { name: /^Copy: .*localians whoami$/ }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^(npx )?localians whoami$/);
+  await summary.click();
+  await expect(guide).not.toHaveAttribute("open", "");
+  // Keyboard: the header is focusable and toggles with Enter.
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  await expect(guide).toHaveAttribute("open", "");
+  // Not reopened by a refresh or by navigating back.
+  await page.reload();
+  await expectClosedGuide(page);
+  await page.goto("/dashboard/previews");
+  await page.goto("/dashboard/share");
+  await expectClosedGuide(page);
 
   // A connected computer (as after `localians login`): status and account, but no token anywhere on the page.
   const [{ id: userId, username }] = (await sql(`SELECT id, username FROM users WHERE email = $1`, [user.email])).rows;
@@ -30,21 +72,30 @@ test("Settings → CLI and Share App show the CLI commands, sign-in status and a
      VALUES ($1, $2, $3, 'CLI on laptop (win32)', $4, 'lcl_abcd', now() + interval '90 days', now(), now())`,
     [`cred_${Date.now()}`, userId, workspaceId, `hash_${Date.now()}`],
   );
-  await page.reload();
+  await page.goto("/dashboard/settings/cli");
   await expect(card.getByTestId("cli-status")).toHaveText("Connected on 1 computer");
   await expect(card).toContainText(`Signed in as @${username}`);
   await expect(page.getByText("CLI on laptop (win32)")).toBeVisible();
   expect(await page.content()).not.toMatch(/lcl_[A-Za-z0-9_-]{8,}/); // only the short prefix, never a token
 
-  // Share App: the same commands, folded once a computer is connected.
+  // Share App: still closed when a computer is connected; inside, the same commands and the account.
   await page.goto("/dashboard/share");
-  const compact = page.getByTestId("cli-connect");
-  await expect(compact).not.toHaveAttribute("open", "");
-  await compact.getByText("Connect Localians CLI").click();
+  const connected = await expectClosedGuide(page);
+  await connected.summary.click();
   await expectCommands(page);
+  await expect(connected.guide.getByTestId("cli-status")).toHaveText("Connected on 1 computer");
 
+  // Phone: closed by default, and the open guide's commands don't overflow.
   await page.setViewportSize({ width: 375, height: 800 });
+  await page.reload();
+  const phone = await expectClosedGuide(page);
+  await phone.summary.click();
+  await expectCommands(page);
   await expectNoHorizontalOverflow(page);
+  for (const row of await page.getByTestId("cli-commands").locator("li").all()) {
+    const box = (await row.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+  }
   await page.goto("/dashboard/settings/cli");
   await expectNoHorizontalOverflow(page);
 });

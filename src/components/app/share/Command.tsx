@@ -5,11 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { cn } from "@/lib/cn";
 
-/** A terminal command with a copy button. `size="lg"` is the wizard's main command. */
-export function Command({ value, label, size = "md", className }: { value: string; label?: string; size?: "md" | "lg"; className?: string }) {
+/** A terminal command with a copy button. `size="lg"` is the wizard's main command; `dense` centres a one-line command in a list row. */
+export function Command({ value, label, size = "md", dense = false, className }: { value: string; label?: string; size?: "md" | "lg"; dense?: boolean; className?: string }) {
   if (size === "md") {
     return (
-      <div className={cn("flex min-w-0 items-start gap-2 rounded-lg border border-line bg-bg-2 px-3 py-2", className)}>
+      <div className={cn("flex min-w-0 gap-2 rounded-lg border border-line bg-bg-2 px-3", dense ? "items-center py-1" : "items-start py-2", className)}>
         <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-[12.5px] leading-relaxed text-fg">{value}</code>
         <CopyButton value={value} label={label ?? "Copy command"} className="hover:bg-tint/[0.05]" />
       </div>

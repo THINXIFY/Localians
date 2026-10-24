@@ -11,6 +11,7 @@ import { AccessBadge } from "@/components/app/previews/AccessBadge";
 import { Card, PageHeader } from "@/components/app/Primitives";
 import { CopyLabelButton } from "@/components/app/share/Command";
 import { cliInfo } from "@/server/cli/config";
+import { DisclosureChevron, summaryClasses } from "@/components/ui/Disclosure";
 import { cn } from "@/lib/cn";
 import { formatBytes, formatDateTime, formatNumber, timeAgo } from "@/lib/format";
 import { EVENT_LABEL, EVENT_TONE, METERING_NOTE, shareCommand, STATUS_HELP } from "@/lib/previews";
@@ -158,8 +159,9 @@ export default async function PreviewDetailPage({ params }: { params: Promise<{ 
             ))}
           </dl>
           <details className="group border-t border-line">
-            <summary className="cursor-pointer list-none px-5 py-3 text-[13px] text-fg-3 hover:text-fg sm:px-6 marker:hidden">
-              <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">›</span> Advanced
+            <summary className={cn(summaryClasses, "flex items-center justify-between gap-2 px-5 py-3 text-[13px] text-fg-3 transition-colors hover:text-fg sm:px-6")}>
+              Advanced
+              <DisclosureChevron className="size-3.5" />
             </summary>
             <dl className="divide-y divide-line border-t border-line">
               {advanced.map((d) => (

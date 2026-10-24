@@ -57,7 +57,7 @@ export function cliSetupInfo() {
 }
 
 /**
- * How developers run the CLI. The `localians` package is on npm (0.1.0); a deployment shows `npx localians …` once its
+ * How developers run the CLI. The `localians` package is on npm; a deployment shows `npx localians …` once its
  * operator sets LOCALIANS_CLI_PUBLISHED=1, and the locally installed build (`localians …`) until then. A local
  * development server keeps the setting off: the npm package talks to localians.com, not to a local gateway.
  * (Deliberately not auto-detected from the npm registry: someone else could publish that name.)

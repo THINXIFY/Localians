@@ -1,5 +1,5 @@
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { DisclosureChevron, summaryClasses } from "@/components/ui/Disclosure";
 import { cn } from "@/lib/cn";
 import { formatBytes, formatDateTime, formatDuration, formatNumber, timeAgo } from "@/lib/format";
 import { type PreviewStatusValue, shareCommand } from "@/lib/previews";
@@ -117,9 +117,9 @@ export function PreviewList({ items, now, showProject = true, run = "localians" 
           )}
 
           <details className="group text-[12.5px]">
-            <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-fg-3 hover:text-fg marker:hidden">
-              <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
+            <summary className={cn(summaryClasses, "flex w-fit items-center gap-1 rounded text-fg-3 transition-colors hover:text-fg")}>
               More details
+              <DisclosureChevron className="size-3.5" />
             </summary>
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
               <Meta label="Connected for" value={connectedFor(p, now) ?? "—"} />

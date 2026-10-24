@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { DisclosureChevron, summaryClasses } from "@/components/ui/Disclosure";
+import { cn } from "@/lib/cn";
 import { formatBytes, formatCount, formatNumber } from "@/lib/format";
 
 export type ColumnPoint = { start: string; value: number };
@@ -144,7 +146,10 @@ export function ColumnChart({ title, points, binMs, unit }: { title: string; poi
       </div>
       <figcaption className="sr-only">{title}</figcaption>
       <details className="text-[12.5px] text-fg-2">
-        <summary className="w-fit cursor-pointer text-fg-3 hover:text-fg">Show data table</summary>
+        <summary className={cn(summaryClasses, "flex w-fit items-center gap-1 rounded text-fg-3 transition-colors hover:text-fg")}>
+          Show data table
+          <DisclosureChevron className="size-3.5" />
+        </summary>
         <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-line">
           <table className="w-full text-left">
             <caption className="sr-only">{title} by period (UTC)</caption>

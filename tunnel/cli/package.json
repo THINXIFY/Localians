@@ -1,6 +1,6 @@
 {
   "name": "localians",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Share your localhost with a secure HTTPS preview link — public or password protected.",
   "license": "MIT",
   "bin": {
@@ -9,6 +9,7 @@
   "files": [
     "dist/localians.js",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {

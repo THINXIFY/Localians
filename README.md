@@ -41,7 +41,7 @@ The table below maps the main parts of the codebase:
 | --- | --- | --- |
 | Web app / control plane | `src/` | Marketing site, auth, dashboard, project management, CLI + tunnel APIs (Next.js) |
 | Tunnel gateway | `tunnel/gateway/` | Long-running service that serves preview hosts and accepts CLI tunnels |
-| CLI | `tunnel/cli/` | `localians login / share / status / logout` (npm package `localians`, not yet published) |
+| CLI | `tunnel/cli/` | `localians login / share / whoami / status / logout` (npm package `localians`) |
 | Shared protocol | `tunnel/shared/` | Protocol constants, header sanitisation, backoff |
 
 ## Stack
@@ -417,7 +417,7 @@ Tests use the `localians_test` database (migrated and emptied on every run); the
   The CLI approval page lets users with several workspaces choose which one the computer may share into.
 - **Which server the CLI uses:** `npm run tunnel:build` bakes in `LOCALIANS_DEFAULT_API_URL` (falling back to
   `BETTER_AUTH_URL` from `.env`). Set it to the production web app before publishing the package.
-- **npx:** the package is published on npm (`localians@0.1.0`). The dashboard shows `localians …` (the linked build) until a
+- **npx:** the package is published on npm as `localians` (release notes: `tunnel/cli/CHANGELOG.md`). The dashboard shows `localians …` (the linked build) until a
   deployment sets `LOCALIANS_CLI_PUBLISHED=1`; then it shows `npx localians …`. This is deliberately a setting rather than an npm
   registry check, since someone else could publish a package with that name first.
 - **Docs:** `/docs/getting-started`, `/docs/cli`, `/docs/frameworks`, `/docs/troubleshooting`, `/docs/security`.
