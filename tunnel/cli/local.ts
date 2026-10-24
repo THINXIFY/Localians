@@ -106,18 +106,19 @@ const tidy = (name: string) => name.trim().replace(/\s+/g, " ").slice(0, 80);
  * Best-effort project name and framework for a new project, from where the command is run.
  * Walks up from `cwd` to the nearest project root (package.json, pyproject.toml, Cargo.toml, composer.json, go.mod,
  * Gemfile, …) so running from a subfolder like `src/` still finds the app. Never uses the home directory or the
- * filesystem root as a name.
+ * filesystem root as a name. `root` is that folder (where the command is run, if no manifest was found): the key the
+ * CLI remembers this app's project under.
  */
 export function detectProject(cwd: string, home = os.homedir()) {
   const stop = new Set([path.resolve(home), path.parse(path.resolve(cwd)).root]);
   let dir = path.resolve(cwd);
   for (let depth = 0; depth < 6 && !stop.has(dir); depth++) {
     const found = fromManifests(dir);
-    if (found) return { name: tidy(found.name ?? path.basename(dir)) || "My app", framework: found.framework };
+    if (found) return { name: tidy(found.name ?? path.basename(dir)) || "My app", framework: found.framework, root: dir };
     const parent = path.dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
   const here = path.resolve(cwd);
-  return { name: stop.has(here) ? "My app" : tidy(path.basename(here)) || "My app", framework: null };
+  return { name: stop.has(here) ? "My app" : tidy(path.basename(here)) || "My app", framework: null, root: here };
 }

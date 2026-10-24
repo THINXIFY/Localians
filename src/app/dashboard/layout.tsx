@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { DashboardShell } from "@/components/app/DashboardShell";
 import { ToastProvider } from "@/components/app/Toast";
+import { countLivePreviews } from "@/server/previews";
 import { getUserProfile, requireUser } from "@/server/session";
 import { getCurrentWorkspace } from "@/server/workspaces";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const session = await requireUser();
-  const [profile, workspace] = await Promise.all([getUserProfile(session.user.id), getCurrentWorkspace(session.user.id)]);
+  const [profile, workspace, livePreviews] = await Promise.all([getUserProfile(session.user.id), getCurrentWorkspace(session.user.id), countLivePreviews(session.user.id)]);
   if (!profile.onboardedAt) redirect("/onboarding");
   if (!profile.username) redirect("/username"); // accounts from before usernames, and GitHub sign-ups
 
@@ -24,6 +25,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <DashboardShell
           user={{ name: profile.name, email: profile.email, image: profile.image }}
           workspace={{ name: workspace.name, role: workspace.role, avatarUrl: workspace.avatarUrl }}
+          livePreviews={livePreviews}
         >
           {children}
         </DashboardShell>

@@ -63,9 +63,10 @@ async function cliLogin(userId: string) {
   return (await api.pollDeviceLogin(start.device_code)).access_token;
 }
 
-async function share(token: string, projectId: string) {
+/** `declaredPort`: the localhost port the CLI reports (one app per port per computer); traffic still goes to the test app. */
+async function share(token: string, projectId: string, declaredPort = app.port) {
   const api = createApi(controlPlane.url, token, "test");
-  const session = await api.createTunnel(projectId, app.port);
+  const session = await api.createTunnel(projectId, declaredPort);
   let first: string | null = session.connectToken;
   const issued: string[] = [session.connectToken];
   let hold: Promise<void> | null = null;
@@ -344,7 +345,7 @@ describe("traffic accounting", () => {
   it("meters real tunnel traffic into analytics, per project, scoped to the workspace and time range", async () => {
     const t = await sharingUser("Analyst");
     const second = await createProject(t.user.id, project("Second App"));
-    const t2 = await share(t.token, second.id);
+    const t2 = await share(t.token, second.id, app.port + 1);
     for (let i = 0; i < 7; i++) expect((await publicRequest(gatewayPort, t.host, "/big?bytes=1000")).status).toBe(200);
     for (let i = 0; i < 3; i++) await publicRequest(gatewayPort, t2.host, "/big?bytes=500");
     await publicRequest(gatewayPort, t.host, "/echo", { method: "POST", body: "x".repeat(400) });

@@ -13,6 +13,9 @@ export type ApiProject = {
   customUrl?: string | null;
 };
 
+/** The signed-in account. id (LOC-…) and username come from newer servers. */
+export type ApiUser = { id?: string; email: string; name: string; username?: string | null };
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -65,12 +68,20 @@ export function createApi(apiUrl: string, token: string | null, userAgent: strin
         { client_name: clientName },
       ),
     pollDeviceLogin: (deviceCode: string) =>
-      call<{ access_token: string; expires_at: string; user: { email: string; name: string }; workspace: { id: string; name: string } }>(
+      call<{ access_token: string; expires_at: string; user: ApiUser; workspace: { id: string; name: string } }>(
         "POST",
         "/api/cli/device/token",
         { device_code: deviceCode },
       ),
-    me: () => call<{ user: { email: string; name: string }; workspace: { id: string; name: string }; projects: ApiProject[] }>("GET", "/api/cli/me"),
+    me: () =>
+      call<{
+        user: ApiUser;
+        workspace: { id: string; name: string };
+        projects: ApiProject[];
+        /** Newer servers: when this login expires (it renews while used) and how many apps can be shared at once. */
+        credential?: { expiresAt: string };
+        limits?: { activePreviews: number };
+      }>("GET", "/api/cli/me"),
     createProject: (input: { name: string; framework: string | null; defaultPort: number }) => call<{ project: ApiProject }>("POST", "/api/cli/projects", input),
     redeemSetup: (code: string, port: number, detected?: { name: string; framework: string | null }) =>
       call<{ project: ApiProject | null; access: "public" | "password"; durationMinutes?: number | null; url?: "random" | "custom" | null }>("POST", "/api/cli/setup", {

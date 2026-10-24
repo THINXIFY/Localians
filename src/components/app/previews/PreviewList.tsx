@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { formatBytes, formatDateTime, formatDuration, formatNumber, timeAgo } from "@/lib/format";
 import { type PreviewStatusValue, shareCommand } from "@/lib/previews";
 import { Command } from "../share/Command";
-import { AccessBadge } from "./AccessBadge";
+import { AccessBadge, PlanBadge } from "./AccessBadge";
 import { Countdown } from "./Countdown";
 import { PreviewActions } from "./PreviewActions";
 import { PreviewStatusBadge } from "./PreviewStatusBadge";
@@ -23,6 +23,8 @@ export type PreviewListItem = {
   expiresAt: Date;
   endReason: string | null;
   requestCount: number;
+  /** Free preview or Preview Pass (absent for sessions from before plans). */
+  plan?: "FREE" | "PASS" | null;
   bytesIn: number;
   bytesOut: number;
   project: { id: string; name: string; access: "PUBLIC" | "PASSWORD" };
@@ -78,6 +80,7 @@ export function PreviewList({ items, now, showProject = true, run = "localians" 
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+              {p.plan ? <PlanBadge plan={p.plan} /> : null}
               <AccessBadge access={p.project.access} />
               <PreviewStatusBadge status={p.status} />
             </div>

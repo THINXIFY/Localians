@@ -39,6 +39,8 @@ export { ACTIVE_STATES } from "./lifecycle";
 export const STOPPED_FROM_DASHBOARD = "Stopped from the dashboard";
 /** endReason when a newer share of the same custom link took over. */
 export const REPLACED_BY_NEW_SHARE = "Replaced by a newer share of this link";
+/** One computer (one login) shares one app per port: a new share of the same port takes over from the old one. */
+export const REPLACED_SAME_PORT = "Replaced by a newer share of the same port from this computer";
 
 export class TunnelError extends Error {
   constructor(
@@ -143,7 +145,10 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
   if (startedToday >= limits.sessionsPerDay) {
     throw new TunnelError("too_many_sessions", `You've started ${limits.sessionsPerDay} previews in the last 24 hours. Keep one running longer, or try again later.`, 429);
   }
-  const active = await prisma.tunnelSession.count({ where: { userId: auth.userId, status: { in: ACTIVE_STATES } } });
+  // A share this one replaces (same login, same port) doesn't count against the limit.
+  const active = await prisma.tunnelSession.count({
+    where: { userId: auth.userId, status: { in: ACTIVE_STATES }, NOT: { credentialId: auth.credentialId, localPort: input.localPort } },
+  });
   if (active >= limits.activePreviewsPerUser) {
     throw new TunnelError("too_many_tunnels", `You can share up to ${limits.activePreviewsPerUser} apps at once. Stop another share first.`, 429);
   }
@@ -166,6 +171,17 @@ export async function createTunnelSession(auth: CliAuth, input: { projectId: str
             await endSession(tx, { id: old.id, workspaceId: project.workspaceId }, { status: "REVOKED", reason: REPLACED_BY_NEW_SHARE, event: TunnelEventType.REVOKED });
             replaced.push(old);
           }
+        }
+        // The same computer re-sharing a port (a restarted or crashed terminal): the old session can't be serving
+        // anything else, so it ends here instead of lingering until its heartbeat goes stale. Other ports, projects and
+        // computers are never touched.
+        const samePort = await tx.tunnelSession.findMany({
+          where: { credentialId: auth.credentialId, localPort: input.localPort, status: { in: ACTIVE_STATES } },
+          select: { id: true, gatewayId: true, project: { select: { workspaceId: true } } },
+        });
+        for (const old of samePort) {
+          await endSession(tx, { id: old.id, workspaceId: old.project.workspaceId }, { status: "REVOKED", reason: REPLACED_SAME_PORT, event: TunnelEventType.REVOKED });
+          replaced.push(old);
         }
         const created = await tx.tunnelSession.create({
           data: {
@@ -234,6 +250,9 @@ export async function reissueConnectToken(auth: CliAuth, sessionId: string) {
           ? "This preview's time is up. Run `localians share` again to start a new one."
           : session.endReason === REPLACED_BY_NEW_SHARE
             ? "A newer share of this link took over. This one has stopped."
+          : session.endReason === REPLACED_SAME_PORT
+            ? `A newer share of localhost:${session.localPort} from this computer took over. This one has stopped.`
+
           : "This share has ended. Run `localians share` again for a new link.";
     throw new TunnelError("session_ended", message, 410);
   }

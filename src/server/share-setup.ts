@@ -67,7 +67,7 @@ export type SetupInput = z.infer<typeof setupInputSchema>;
 
 export class SetupError extends Error {
   constructor(
-    readonly code: "setup_invalid" | "setup_expired" | "setup_used" | "plan_required",
+    readonly code: "setup_invalid" | "setup_wrong_account" | "setup_expired" | "setup_used" | "plan_required",
     message: string,
   ) {
     super(message);
@@ -118,9 +118,11 @@ export async function updateShareSetup(userId: string, setupId: string, input: S
 export async function redeemShareSetup(auth: CliAuth, code: string, port: number, detected?: { name?: string; framework?: string | null }) {
   if (!setupCodePattern.test(code)) throw new SetupError("setup_invalid", "That setup code isn't valid. Copy the command again from the dashboard.");
   const setup = await prisma.shareSetup.findUnique({ where: { codeHash: sha256(code) } });
-  // Same answer for "doesn't exist" and "belongs to someone else".
-  if (!setup || setup.userId !== auth.userId || setup.workspaceId !== auth.workspaceId) {
-    throw new SetupError("setup_invalid", "That setup code isn't valid for this login. Copy the command again from the dashboard.");
+  if (!setup) throw new SetupError("setup_invalid", "That setup code isn't valid. Copy the command again from the dashboard.");
+  // Only signed-in callers get here, and the code itself is unguessable: saying "another account" (never which one)
+  // tells them to switch logins instead of retrying. Nothing about that account is revealed.
+  if (setup.userId !== auth.userId || setup.workspaceId !== auth.workspaceId) {
+    throw new SetupError("setup_wrong_account", "This setup code belongs to another account. Sign in with the correct account or generate a new code.");
   }
   if (setup.expiresAt <= new Date()) throw new SetupError("setup_expired", "That setup code expired. Copy a fresh command from the dashboard.");
   // Never let a "protected" choice quietly turn into a public preview.

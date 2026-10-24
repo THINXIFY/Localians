@@ -7,7 +7,8 @@ import { PreviewList } from "@/components/app/previews/PreviewList";
 import { EmptyState, PageHeader, StatCard } from "@/components/app/Primitives";
 import { ButtonLink } from "@/components/ui/Button";
 import { formatBytes, formatCount } from "@/lib/format";
-import { METERING_NOTE } from "@/lib/previews";
+import { METERING_NOTE, shareCommand } from "@/lib/previews";
+import { Command } from "@/components/app/share/Command";
 import { cliInfo } from "@/server/cli/config";
 import { listPreviews, getPreviewSummary, type PreviewFilter, SUMMARY_WINDOW_DAYS } from "@/server/previews";
 import { getProjectOptions } from "@/server/projects";
@@ -60,9 +61,15 @@ export default async function LivePreviewsPage({ searchParams }: { searchParams:
         actions={
           <div className="flex items-center gap-3">
             <LiveUpdates since={renderedAt} />
-            <ButtonLink href="/dashboard/share" size="sm">
+            {summary.active.length ? (
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 text-[12.5px] font-medium text-accent-ink" data-testid="live-count">
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+                {summary.active.length} live
+              </span>
+            ) : null}
+            <ButtonLink href={summary.active.length ? "/dashboard/share#share-another" : "/dashboard/share"} size="sm">
               <Share2 className="size-3.5" aria-hidden="true" />
-              Share a Local App
+              {summary.active.length ? "Share Another App" : "Share a Local App"}
             </ButtonLink>
           </div>
         }
@@ -78,12 +85,15 @@ export default async function LivePreviewsPage({ searchParams }: { searchParams:
         <EmptyState
           icon={<Radio className="size-5" aria-hidden="true" />}
           title="Nothing shared yet."
-          description="Share a local app to get a preview link you can send to anyone. It takes three steps."
+          description="Start your app, then run one command in its folder. Each app you share gets its own link; run the command again in another terminal to share more."
           action={
-            <ButtonLink href="/dashboard/share">
-              <Share2 className="size-4" aria-hidden="true" />
-              Share a Local App
-            </ButtonLink>
+            <div className="flex w-full max-w-[420px] flex-col items-center gap-3">
+              <Command value={shareCommand(3000, undefined, cli.run)} label="Copy share command" className="w-full" />
+              <ButtonLink href="/dashboard/share">
+                <Share2 className="size-4" aria-hidden="true" />
+                Share a Local App
+              </ButtonLink>
+            </div>
           }
         />
       ) : (

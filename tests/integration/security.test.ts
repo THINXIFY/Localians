@@ -275,7 +275,12 @@ describe("share setup codes", () => {
 
     const { user: other } = await createVerifiedUser("Setup Thief");
     const otherApi = createApi(controlPlane.url, await cliLogin(other.id), "test");
-    await expect(otherApi.redeemSetup(setup.code, app.port)).rejects.toMatchObject({ status: 404 });
+    // Another account's code: told to switch accounts (nothing about that account is revealed).
+    await expect(otherApi.redeemSetup(setup.code, app.port)).rejects.toMatchObject({
+      status: 403,
+      code: "setup_wrong_account",
+      message: "This setup code belongs to another account. Sign in with the correct account or generate a new code.",
+    });
 
     const api = createApi(controlPlane.url, token, "test");
     const redeemed = await api.redeemSetup(setup.code, app.port);
@@ -351,7 +356,12 @@ describe("quotas and shared rate limits", () => {
     const p = await createProject(user.id, project("Quota App"));
     const token = await cliLogin(user.id);
     const t = await share(token, p.id);
-    await expect(createApi(controlPlane.url, token, "test").createTunnel(p.id, app.port)).rejects.toMatchObject({ status: 429, code: "too_many_tunnels" });
+    const api = createApi(controlPlane.url, token, "test");
+    await expect(api.createTunnel(p.id, app.port + 1)).rejects.toMatchObject({ status: 429, code: "too_many_tunnels" });
+    // Re-sharing the same port from the same login (a restarted terminal) replaces it, so it isn't blocked by the quota.
+    const again = await api.createTunnel(p.id, app.port);
+    expect((await prisma.tunnelSession.findUniqueOrThrow({ where: { id: t.session.sessionId } })).endReason).toBe("Replaced by a newer share of the same port from this computer");
+    await api.closeTunnel(again.sessionId);
     t.agent.stop();
   });
 

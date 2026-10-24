@@ -52,7 +52,7 @@ export function CliCredentialsPanel({ credentials }: { credentials: Row[] }) {
         </ul>
       ) : (
         <p className="rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-[13.5px] text-fg-2">
-          No CLI logins yet. Run <code className="font-mono text-fg">localians login</code> in your terminal to connect one.
+          No CLI logins yet. Run the sign-in command above in your terminal to connect one.
         </p>
       )}
     </SettingsPanel>

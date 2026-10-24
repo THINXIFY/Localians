@@ -44,6 +44,7 @@ const previewSelect = {
   bytesIn: true,
   bytesOut: true,
   requestCount: true,
+  planTier: true,
   project: { select: { id: true, name: true, slug: true, defaultPort: true, status: true, accessMode: true } },
 } satisfies Prisma.TunnelSessionSelect;
 
@@ -51,6 +52,8 @@ type PreviewRow = Prisma.TunnelSessionGetPayload<{ select: typeof previewSelect 
 
 export type Preview = {
   id: string;
+  /** The plan the preview runs on: the project's free preview or its Preview Pass. */
+  plan: "FREE" | "PASS" | null;
   label: string;
   /** Served on the project's custom name (Preview Pass) rather than a random link. */
   customName: string | null;
@@ -133,6 +136,7 @@ function toPreview(row: PreviewRow, live: LiveTunnels | null, userId: string, wo
     bytesIn: Number(row.bytesIn),
     bytesOut: Number(row.bytesOut),
     requestCount: row.requestCount,
+    plan: row.planTier === "PASS" ? "PASS" : row.planTier === "FREE" ? "FREE" : null,
     canStop: isActive(row.status) && canStopSession(row, userId, workspace),
     project: { id: row.project.id, name: row.project.name, slug: row.project.slug, defaultPort: row.project.defaultPort, archived: row.project.status === "ARCHIVED", access: row.project.accessMode },
   };
@@ -197,6 +201,12 @@ export async function listPreviews(
 
 /** Rolling window for the request/bandwidth figures outside the Analytics page. */
 export const SUMMARY_WINDOW_DAYS = 7;
+
+/** Previews running in the user's current workspace (the dashboard nav badge). Cheap: no sweep, no gateway call. */
+export async function countLivePreviews(userId: string) {
+  const { where } = await scope(userId);
+  return prisma.tunnelSession.count({ where: { AND: [where, { status: { in: ACTIVE_STATES } }, { expiresAt: { gt: new Date() } }] } });
+}
 
 export async function getPreviewSummary(userId: string) {
   const { workspace, where } = await scope(userId);

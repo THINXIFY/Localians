@@ -3,8 +3,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HELP } from "@tunnel/cli/args";
-import { browserCommand } from "@tunnel/cli/commands";
+import { HELP, parseCli } from "@tunnel/cli/args";
+import { browserCommand, cliCommand, displayName } from "@tunnel/cli/commands";
+import { accountKey, findMapping, forgetProject, saveMapping } from "@tunnel/cli/store";
 import { detectProject } from "@tunnel/cli/local";
 
 const root = path.resolve(__dirname, "..", "..");
@@ -26,12 +27,12 @@ describe("project name detection (no more 'localians-web' for everyone)", () => 
 
   it("uses package.json, strips npm scopes and detects the framework", () => {
     const d = dir("home/shop", { "package.json": JSON.stringify({ name: "@acme/storefront", dependencies: { next: "16" } }) });
-    expect(detectProject(d, home)).toEqual({ name: "storefront", framework: "NEXTJS" });
+    expect(detectProject(d, home)).toEqual({ name: "storefront", framework: "NEXTJS", root: d });
   });
 
   it("walks up from a subfolder to the project root", () => {
     const d = dir("home/blog", { "package.json": JSON.stringify({ name: "my-blog", devDependencies: { vite: "8" } }), "src/components/.keep": "" });
-    expect(detectProject(path.join(d, "src", "components"), home)).toEqual({ name: "my-blog", framework: "REACT_VITE" });
+    expect(detectProject(path.join(d, "src", "components"), home)).toEqual({ name: "my-blog", framework: "REACT_VITE", root: d }); // the root is remembered, not the subfolder
   });
 
   it("reads Python, Rust, PHP and Go manifests", () => {
@@ -43,14 +44,14 @@ describe("project name detection (no more 'localians-web' for everyone)", () => 
   });
 
   it("falls back to the project folder's name, never the home folder or the drive root", () => {
-    expect(detectProject(dir("home/Client Portal", { "index.html": "<h1>hi</h1>" }), home)).toEqual({ name: "Client Portal", framework: null });
-    expect(detectProject(dir("home/plain-folder"), home)).toEqual({ name: "plain-folder", framework: null });
-    expect(detectProject(home, home)).toEqual({ name: "My app", framework: null });
+    expect(detectProject(dir("home/Client Portal", { "index.html": "<h1>hi</h1>" }), home)).toMatchObject({ name: "Client Portal", framework: null });
+    expect(detectProject(dir("home/plain-folder"), home)).toMatchObject({ name: "plain-folder", framework: null });
+    expect(detectProject(home, home)).toMatchObject({ name: "My app", framework: null });
     expect(detectProject(path.parse(tmp).root, home).name).toBe("My app");
   });
 
   it("survives a broken package.json", () => {
-    expect(detectProject(dir("home/broken", { "package.json": "{ not json" }), home)).toEqual({ name: "broken", framework: null });
+    expect(detectProject(dir("home/broken", { "package.json": "{ not json" }), home)).toMatchObject({ name: "broken", framework: null });
   });
 });
 
@@ -103,14 +104,21 @@ describe("npm package: release build", () => {
 
   it("runs without a server flag and gives clear, offline errors (production-compatible settings, no secrets)", () => {
     const config = fs.mkdtempSync(path.join(tmp, "config-"));
-    const env = { ...process.env, NO_COLOR: "1", LOCALIANS_CONFIG_DIR: config, LOCALIANS_API_URL: "" };
+    // Not via npx (the test runner may be): drop npm_command, whatever its case on Windows.
+    const env = Object.fromEntries(Object.entries({ ...process.env, NO_COLOR: "1", LOCALIANS_CONFIG_DIR: config, LOCALIANS_API_URL: "" }).filter(([k]) => k.toLowerCase() !== "npm_command")) as NodeJS.ProcessEnv;
     const status = spawnSync(process.execPath, [bundle, "status"], { encoding: "utf8", env });
     expect(status.status).toBe(3);
-    expect(status.stdout).toContain("Not logged in");
+    expect(status.stderr).toContain("You're not signed in.");
+    expect(status.stderr).toContain("Run: localians login");
+    const whoami = spawnSync(process.execPath, [bundle, "whoami"], { encoding: "utf8", env });
+    expect(whoami.status).toBe(3);
+    expect(whoami.stderr).toContain("You're not signed in.");
+    // Through npx, hints say how to run it again from there (npm sets npm_command=exec).
+    expect(spawnSync(process.execPath, [bundle, "whoami"], { encoding: "utf8", env: { ...env, npm_command: "exec" } }).stderr).toContain("Run: npx localians login");
     // Nothing on port 1: stops before any network call, with the beginner-friendly message.
     const share = spawnSync(process.execPath, [bundle, "share", "1"], { encoding: "utf8", env });
     expect(share.status).toBe(4);
-    expect(share.stderr).toContain("We couldn't find a website running on port 1. Start your app and try again.");
+    expect(share.stderr).toContain("Nothing is running on localhost:1. Start your app and try again.");
     const usage = spawnSync(process.execPath, [bundle, "share", "abc"], { encoding: "utf8", env });
     expect(usage.status).toBe(2);
     expect(usage.stderr).toContain('"abc" isn\'t a valid port');
@@ -143,4 +151,64 @@ describe("npm package: release build", () => {
     const files = (JSON.parse(packed.stdout) as { files: { path: string }[] }[])[0].files.map((f) => f.path).sort();
     expect(files).toEqual(["LICENSE", "README.md", "dist/localians.js", "package.json"]);
   }, 60_000);
+});
+
+describe("commands and options", () => {
+  const cmd = (argv: string[]) => parseCli(argv);
+
+  it("knows login, whoami, status, logout and share; help covers them and how to share several apps", () => {
+    for (const command of ["login", "whoami", "status", "logout"]) expect(cmd([command])).toMatchObject({ kind: "command", command, port: null });
+    expect(cmd(["share", "3000"])).toMatchObject({ kind: "command", command: "share", port: 3000, options: { newProject: false } });
+    expect(cmd(["whoami", "extra"])).toEqual({ kind: "error", message: '"whoami" doesn\'t take arguments.' });
+    expect(cmd(["--help"])).toEqual({ kind: "help" });
+    for (const text of ["whoami", "logout", "--new", "--name", "own terminal", "Switch accounts"]) expect(HELP).toContain(text);
+  });
+
+  it("--new creates a project (optionally --name), and can't be mixed with --project or --setup", () => {
+    expect(cmd(["share", "8000", "--new", "--name", "  My   API "])).toMatchObject({ options: { newProject: true, name: "My API" } });
+    expect(cmd(["share", "8000", "--name", "x"])).toMatchObject({ kind: "error", message: expect.stringContaining("with --new") });
+    expect(cmd(["share", "8000", "--new", "--project", "shop"])).toMatchObject({ kind: "error", message: expect.stringContaining("not both") });
+    expect(cmd(["share", "8000", "--new", "--setup", "abc"])).toMatchObject({ kind: "error" });
+    expect(cmd(["login", "--new"])).toMatchObject({ kind: "error", message: "--new and --name only apply to share." });
+  });
+
+  it("hints use `npx localians` when run through npx, `localians` otherwise (same text in CMD, PowerShell and shells)", () => {
+    expect(cliCommand({ npm_command: "exec" })).toBe("npx localians");
+    expect(cliCommand({})).toBe("localians");
+    expect(displayName({ email: "a@b.test", name: "A", username: "ana" })).toBe("@ana");
+    expect(displayName({ email: "a@b.test", name: "A" })).toBe("a@b.test");
+  });
+});
+
+describe("remembered projects (per account, per app folder and port)", () => {
+  const original = process.env.LOCALIANS_CONFIG_DIR;
+  beforeAll(() => (process.env.LOCALIANS_CONFIG_DIR = dir("config-mappings")));
+  afterAll(() => (original === undefined ? delete process.env.LOCALIANS_CONFIG_DIR : (process.env.LOCALIANS_CONFIG_DIR = original)));
+
+  const alice = accountKey({ apiUrl: "https://localians.com/", workspace: { id: "ws_a", name: "A" }, user: { id: "LOC-000001", email: "a@x.test", name: "A" } });
+  const bob = accountKey({ apiUrl: "https://localians.com", workspace: { id: "ws_b", name: "B" }, user: { id: "LOC-000002", email: "b@x.test", name: "B" } });
+  const shop = dir("apps/shop");
+  const api = dir("apps/api");
+
+  it("remembers the project for a folder and port, for that account only", () => {
+    saveMapping(alice, shop, 3000, { id: "p_shop", name: "Shop" });
+    saveMapping(alice, api, 8000, { id: "p_api", name: "API" });
+    expect(findMapping(alice, shop, 3000)).toMatchObject({ projectId: "p_shop", projectName: "Shop", port: 3000 });
+    expect(findMapping(alice, api, 8000)?.projectId).toBe("p_api");
+    expect(findMapping(bob, shop, 3000)).toBeNull(); // another account never sees it
+    expect(fs.readFileSync(path.join(process.env.LOCALIANS_CONFIG_DIR!, "projects.json"), "utf8")).not.toMatch(/lcl_|token/i);
+  });
+
+  it("follows an app that moved port, but not when the folder has several apps", () => {
+    expect(findMapping(alice, shop, 3001)?.projectId).toBe("p_shop");
+    saveMapping(alice, shop, 5173, { id: "p_admin", name: "Shop admin" });
+    expect(findMapping(alice, shop, 4000)).toBeNull(); // ambiguous: ask instead of guessing
+    expect(findMapping(alice, shop, 5173)?.projectId).toBe("p_admin");
+  });
+
+  it("forgets a project that no longer exists", () => {
+    forgetProject(alice, "p_shop");
+    expect(findMapping(alice, shop, 3000)?.projectId).not.toBe("p_shop");
+    expect(findMapping(alice, api, 8000)?.projectId).toBe("p_api");
+  });
 });

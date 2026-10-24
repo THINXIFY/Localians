@@ -6,13 +6,17 @@ export const HELP = `Usage: localians <command> [options]
 
 Commands:
   share <port>          Share the app running on localhost:<port> (signs you in first if needed)
-  login                 Sign in to Localians through your browser
-  status                Show your login and active shares
+  login                 Sign in to Localians through your browser (a one-time code)
+  whoami                Show which account this computer is signed in to
+  status                Show your login and everything this computer is sharing
   logout                Sign out and revoke this computer's CLI access
 
 Options for share:
-  --project <id|slug>   Project to share under (default: the project that uses this port)
-  -y, --yes             Create a project for this app without asking, if none uses the port
+  --project <id|slug>   Project to share under (default: the one remembered for this folder,
+                        else the project that uses this port; you choose if several do)
+  --new                 Create a new project for this app (named after it, or --name)
+  --name <name>         Name for the new project (with --new)
+  -y, --yes             Don't ask: create a project for this app if none uses the port
   --setup <code>        Use the project, access and duration chosen in the dashboard's Share App page
   -d, --duration <time> How long to share: 5m, 15m, 30m, 1h, 12h or 24h (default 24h;
                         3d or 7d with a Preview Pass). The link stops working after that
@@ -27,13 +31,18 @@ Global options:
   --version             Print the CLI version
 
 Examples:
+  npx localians login                        Sign in once on this computer
   npx localians share 3000                   Share a Next.js / React app on port 3000
-  npx localians share 5173                   Share a Vite app
+  npx localians share 5173                   Share a Vite app (in another terminal: both stay live)
   npx localians share 3000 --duration 1h     Share for one hour
   npx localians share 3000 --project shop    Share under an existing project
+  npx localians share 8000 --new --name API  Share under a new project called "API"
+  npx localians whoami                       Check which account you're signed in to
   npx localians status                       See what this computer is sharing
 
+Share several apps at once: run one "localians share" per app, each in its own terminal.
 Stop sharing: press Ctrl+C in the window where "localians share" is running.
+Switch accounts: "localians logout", then "localians login".
 `;
 
 export type ParsedCli =
@@ -42,7 +51,7 @@ export type ParsedCli =
   | { kind: "error"; message: string }
   | {
       kind: "command";
-      command: "login" | "share" | "status" | "logout";
+      command: Command;
       port: number | null;
       options: {
         apiUrl?: string;
@@ -53,8 +62,14 @@ export type ParsedCli =
         browser: boolean;
         verbose: boolean;
         yes: boolean;
+        /** --new: create a new project (named --name, or after the app). */
+        newProject: boolean;
+        name?: string;
       };
     };
+
+const COMMANDS = ["login", "share", "status", "whoami", "logout"] as const;
+type Command = (typeof COMMANDS)[number];
 
 export function parseCli(argv: string[]): ParsedCli {
   let parsed;
@@ -72,6 +87,8 @@ export function parseCli(argv: string[]): ParsedCli {
         "no-browser": { type: "boolean" },
         verbose: { type: "boolean", short: "v" },
         yes: { type: "boolean", short: "y" },
+        new: { type: "boolean" },
+        name: { type: "string" },
         help: { type: "boolean", short: "h" },
         version: { type: "boolean" },
       },
@@ -84,9 +101,7 @@ export function parseCli(argv: string[]): ParsedCli {
   if (values.help || positionals.length === 0 || positionals[0] === "help") return { kind: "help" };
 
   const [command, ...rest] = positionals;
-  if (command !== "login" && command !== "share" && command !== "status" && command !== "logout") {
-    return { kind: "error", message: `Unknown command "${command}".` };
-  }
+  if (!(COMMANDS as readonly string[]).includes(command)) return { kind: "error", message: `Unknown command "${command}".` };
 
   const hostHeader = values["host-header"] ?? "rewrite";
   if (hostHeader !== "rewrite" && hostHeader !== "preserve") return { kind: "error", message: `--host-header must be "rewrite" or "preserve".` };
@@ -108,6 +123,12 @@ export function parseCli(argv: string[]): ParsedCli {
     durationMinutes = minutes;
   }
 
+  if ((values.new || values.name !== undefined) && command !== "share") return { kind: "error", message: "--new and --name only apply to share." };
+  if (values.name !== undefined && !values.new) return { kind: "error", message: "--name names a new project: use it with --new." };
+  if (values.new && values.project) return { kind: "error", message: "Use --project for an existing project, or --new for a new one, not both." };
+  if (values.new && values.setup) return { kind: "error", message: "--setup already says which project to use; leave out --new." };
+  if (values.name !== undefined && !values.name.trim()) return { kind: "error", message: "--name can't be empty." };
+
   let port: number | null = null;
   if (command === "share") {
     if (rest.length !== 1) return { kind: "error", message: "Usage: localians share <port>   (for example: localians share 3000)" };
@@ -119,7 +140,7 @@ export function parseCli(argv: string[]): ParsedCli {
 
   return {
     kind: "command",
-    command,
+    command: command as Command,
     port,
     options: {
       apiUrl: values["api-url"],
@@ -130,6 +151,8 @@ export function parseCli(argv: string[]): ParsedCli {
       browser: !values["no-browser"],
       verbose: Boolean(values.verbose),
       yes: Boolean(values.yes),
+      newProject: Boolean(values.new),
+      name: values.name?.trim().replace(/\s+/g, " ").slice(0, 80),
     },
   };
 }

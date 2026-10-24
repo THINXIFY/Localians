@@ -44,7 +44,7 @@ test("new developer shares a password-protected app: Select Project → Enter Po
 
   const wrong = runCli(["share", "4399"], nextApp);
   expect(await wrong.exited).toBe(4);
-  expect(wrong.output).toContain("We couldn't find a website running on port 4399. Start your app and try again.");
+  expect(wrong.output).toContain("Nothing is running on localhost:4399. Start your app and try again.");
 
   // First run on a new computer: the browser approval opens (here: we follow the link), then it carries on by itself.
   const args = copied.replace(/^localians\s+/, "").split(/\s+/);
@@ -111,10 +111,11 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   expect((await client.goto(publicUrl))?.status()).toBe(401);
   await expect(client.getByRole("heading", { name: "This preview is password protected" })).toBeVisible();
 
-  // ---- The setup code was single-use --------------------------------------------------------------
-  const reused = runCli(args, nextApp);
-  expect(await reused.exited).not.toBe(0);
-  expect(reused.output).toContain("already used");
+  // ---- The same command again while it runs: this computer already shares that port ----------------
+  const twice = runCli(args, nextApp);
+  expect(await twice.exited).toBe(2);
+  expect(twice.output).toContain(`localhost:4310 is already being shared from this computer`);
+  expect(twice.output).toContain(publicUrl);
 
   // ---- Stop Sharing ---------------------------------------------------------------------------------
   await page.goto("/dashboard/previews");
@@ -126,6 +127,11 @@ test("new developer shares a password-protected app: Select Project → Enter Po
   await expect(page.getByText("Sharing stopped. The link no longer reaches your app.")).toBeVisible();
   expect((await client.goto(publicUrl))?.status()).toBe(404);
   expect(await share.exited).not.toBe(0);
+
+  // ---- The setup code was single-use --------------------------------------------------------------
+  const reused = runCli(args, nextApp);
+  expect(await reused.exited).not.toBe(0);
+  expect(reused.output).toContain("already used");
 
   // ---- Mobile ------------------------------------------------------------------------------------
   await page.setViewportSize({ width: 390, height: 844 });

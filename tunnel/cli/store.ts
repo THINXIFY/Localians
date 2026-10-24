@@ -1,13 +1,14 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { ApiUser } from "./api";
 
 export type Credentials = {
   apiUrl: string;
   /** CLI access token. Never printed. */
   token: string;
   expiresAt: string;
-  user: { email: string; name: string };
+  user: ApiUser;
   workspace: { id: string; name: string };
   createdAt: string;
 };
@@ -33,6 +34,7 @@ export function configDir() {
 }
 
 const credentialsPath = () => path.join(configDir(), "credentials.json");
+const projectsPath = () => path.join(configDir(), "projects.json");
 const sharesDir = () => path.join(configDir(), "shares");
 
 function ensureDir(dir: string) {
@@ -101,4 +103,59 @@ export function readShares(): ShareRecord[] {
     }
   }
   return out;
+}
+
+// ------------------------------------------------------------------ project mappings
+
+/**
+ * Which project an app is shared under, remembered per account (server + workspace + user) so a later
+ * `localians share` picks the same project again, and another account never sees or uses these choices.
+ * Keyed by the app's folder (its project root) and port. Holds ids and names only, no secrets.
+ */
+export type ProjectMapping = { projectId: string; projectName: string; port: number; updatedAt: string };
+type MappingFile = { version: 1; accounts: Record<string, Record<string, ProjectMapping>> };
+
+export function accountKey(credentials: Pick<Credentials, "apiUrl" | "workspace" | "user">) {
+  return `${credentials.apiUrl.replace(/\/+$/, "")}|${credentials.workspace.id}|${credentials.user.id ?? credentials.user.email.toLowerCase()}`;
+}
+
+/** Case-insensitive on Windows and macOS (their default filesystems are). */
+function folderKey(folder: string) {
+  const resolved = path.resolve(folder);
+  return process.platform === "win32" || process.platform === "darwin" ? resolved.toLowerCase() : resolved;
+}
+
+function readMappings(): MappingFile {
+  try {
+    const value = JSON.parse(fs.readFileSync(projectsPath(), "utf8")) as MappingFile;
+    if (value?.version === 1 && value.accounts && typeof value.accounts === "object") return value;
+  } catch {
+    // missing or unreadable: start over
+  }
+  return { version: 1, accounts: {} };
+}
+
+/** The project remembered for this folder and port; else the folder's only remembered project (the app moved port). */
+export function findMapping(account: string, folder: string, port: number): ProjectMapping | null {
+  const mine = readMappings().accounts[account] ?? {};
+  const exact = mine[`${folderKey(folder)}#${port}`];
+  if (exact) return exact;
+  const sameFolder = Object.entries(mine).filter(([key]) => key.slice(0, key.lastIndexOf("#")) === folderKey(folder));
+  return sameFolder.length === 1 ? sameFolder[0][1] : null;
+}
+
+export function saveMapping(account: string, folder: string, port: number, project: { id: string; name: string }) {
+  const file = readMappings();
+  const mine = (file.accounts[account] ??= {});
+  mine[`${folderKey(folder)}#${port}`] = { projectId: project.id, projectName: project.name, port, updatedAt: new Date().toISOString() };
+  writePrivate(projectsPath(), file);
+}
+
+/** Forgets a project that no longer exists (or was archived) for this account. */
+export function forgetProject(account: string, projectId: string) {
+  const file = readMappings();
+  const mine = file.accounts[account];
+  if (!mine) return;
+  for (const [key, value] of Object.entries(mine)) if (value.projectId === projectId) delete mine[key];
+  writePrivate(projectsPath(), file);
 }

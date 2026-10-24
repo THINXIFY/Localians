@@ -6,7 +6,7 @@ import { pageMetadata, breadcrumbs } from "@/lib/seo";
 import { JsonLd } from "@/components/seo/JsonLd";
 
 export const metadata: Metadata = pageMetadata({
-  title: "CLI Guide: localians share, login, status and logout",
+  title: "CLI Guide: share, login, whoami, status and logout",
   description: "Reference for the Localians CLI: share a local port over HTTPS, choose the project, protect it, check status and stop sharing. Windows, macOS and Linux.",
   path: routes.cliGuide,
 });
@@ -30,7 +30,7 @@ export default function CliGuidePage() {
         <p>
           You need Node.js 20 or newer. Run the CLI straight from npm, with nothing to install:
         </p>
-        <CodeLine>npx npx localians share 3000</CodeLine>
+        <CodeLine>npx localians share 3000</CodeLine>
         <p>
           Or install it once and use the shorter <code className="font-mono">localians</code> command everywhere below:
         </p>
@@ -47,7 +47,11 @@ export default function CliGuidePage() {
         <ol>
           <li>Checks that something is running on that port on your computer.</li>
           <li>If this computer isn&apos;t signed in yet (or its login expired), opens your browser to approve it, then carries on.</li>
-          <li>Picks the project that uses this port. If there isn&apos;t one, it asks: create a project named after your app, or use an existing one.</li>
+          <li>
+            Picks the project: the one you used last time for this app folder and port, else the project that uses this port (it asks you to confirm the
+            first time, and lets you choose if several do). If there isn&apos;t one, it asks: create a project named after your app, or use an existing one.
+            It never quietly attaches an app to the wrong project.
+          </li>
           <li>Prints your preview link, the workspace and whether the link is public or password protected, and keeps it online until you stop.</li>
         </ol>
         <p>
@@ -60,10 +64,28 @@ export default function CliGuidePage() {
           password) you chose there, so the CLI asks nothing. It works once, within 30 minutes, and only for your own login.
         </p>
         <p>
-          <strong>Project selection:</strong> pass <code className="font-mono">--project &lt;name-or-id&gt;</code> to choose one explicitly. In scripts
-          (no interactive terminal), add <code className="font-mono">--yes</code> to allow creating a project automatically.
+          <strong>Project selection:</strong> pass <code className="font-mono">--project &lt;name-or-id&gt;</code> to choose one explicitly, or{" "}
+          <code className="font-mono">--new</code> (with an optional <code className="font-mono">--name</code>) to create a new project for this app. The CLI
+          remembers your choice for this folder and port, separately for each account, so next time it just shares. In scripts (no interactive terminal), add{" "}
+          <code className="font-mono">--yes</code> to allow creating a project automatically.
         </p>
         <CodeLine>npx localians share 5173 --project client-dashboard</CodeLine>
+        <CodeLine>npx localians share 8000 --new --name &quot;Billing API&quot;</CodeLine>
+
+        <h2>Sharing several apps at once</h2>
+        <p>
+          Run one <code className="font-mono">localians share</code> per app, each in its own terminal. Every share gets its own project, link, timer and
+          public or password setting, and runs independently: stopping, reconnecting or losing one never affects the others.
+        </p>
+        <CodeLine>npx localians share 3000</CodeLine>
+        <CodeLine>npx localians share 5173</CodeLine>
+        <CodeLine>npx localians share 8000</CodeLine>
+        <p>
+          One computer shares each port once: if a port is already being shared from another terminal, the CLI shows that link instead of starting a
+          second one. If that terminal crashed, sharing the port again takes over from it. An account can share up to 5 apps at the same time (the
+          server&apos;s limit, configurable by its operator with <code className="font-mono">QUOTA_ACTIVE_PREVIEWS_PER_USER</code>); each project still has
+          its own free preview window or Preview Pass, so more projects never mean more free time for one project.
+        </p>
         <p>
           <strong>Preview time:</strong> every project gets one free 24-hour preview window, starting with its first share; restarting or reconnecting
           stays within it. A Preview Pass adds more days for one project. By default a share runs until that window ends — add{" "}
@@ -96,10 +118,16 @@ export default function CliGuidePage() {
         <h2>localians login</h2>
         <p>
           Signs this computer in without sharing anything. <code className="font-mono">share</code> does this for you when needed, so you rarely need it.
-          You approve the computer in your browser; the CLI gets its own access token (never your dashboard session), valid for 90 days and
-          revocable any time in Settings → CLI. If you belong to more than one workspace, the approval page asks which one this computer may share into.
+          It shows a one-time code and opens your browser to approve it (with <code className="font-mono">--no-browser</code>, open the printed link
+          yourself). The CLI gets its own access token (never your dashboard session): it renews itself while you use it, expires after 90 days unused,
+          and can be revoked any time in Settings → CLI. If you belong to more than one workspace, the approval page asks which one this computer may
+          share into. If you&apos;re already signed in, it says which account and changes nothing.
         </p>
         <CodeLine>npx localians login</CodeLine>
+
+        <h2>localians whoami</h2>
+        <p>Shows which account this computer is signed in to (username, email and workspace), checked with the server.</p>
+        <CodeLine>npx localians whoami</CodeLine>
 
         <h2>localians status</h2>
         <p>Shows who you&apos;re signed in as, and each preview being shared from this computer: project, local address, preview link, status and uptime.</p>
@@ -108,6 +136,11 @@ export default function CliGuidePage() {
         <h2>localians logout</h2>
         <p>Revokes this computer&apos;s access on the server and deletes it locally. Anything this computer is sharing stops.</p>
         <CodeLine>npx localians logout</CodeLine>
+        <p>
+          <strong>Switching accounts:</strong> run <code className="font-mono">logout</code>, then <code className="font-mono">login</code> and approve
+          with the other account. Projects remembered for one account are never used for another. If you run a dashboard command (with{" "}
+          <code className="font-mono">--setup</code>) that was made by a different account, the CLI says so and offers to switch.
+        </p>
 
         <h2>Managing previews in the dashboard</h2>
         <p>

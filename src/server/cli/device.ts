@@ -3,6 +3,7 @@ import { DeviceAuthStatus } from "@/generated/prisma/enums";
 import { prisma } from "../db";
 import { getCurrentWorkspace, requireMembership } from "../workspaces";
 import { CLI_TOKEN_TTL_MS, DEVICE_CODE_TTL_MS, DEVICE_POLL_INTERVAL_S, siteUrl } from "./config";
+import { CLI_USER_SELECT, cliUser, type CliUser } from "./credentials";
 import { formatUserCode, generateCliToken, generateDeviceCode, generateUserCode, normalizeUserCode, sha256 } from "./crypto";
 
 /** RFC 8628 §3.1–3.2: start a device authorization. */
@@ -39,7 +40,7 @@ export async function startDeviceAuthorization(clientName: string) {
 }
 
 type PollResult =
-  | { ok: true; accessToken: string; expiresAt: Date; user: { email: string; name: string }; workspace: { id: string; name: string } }
+  | { ok: true; accessToken: string; expiresAt: Date; user: CliUser; workspace: { id: string; name: string } }
   | { ok: false; error: "authorization_pending" | "slow_down" | "expired_token" | "access_denied" | "invalid_grant" };
 
 /** RFC 8628 §3.4–3.5: the CLI polls until the user approves or denies. */
@@ -67,9 +68,9 @@ export async function pollDeviceAuthorization(deviceCode: string): Promise<PollR
   const expiresAt = new Date(Date.now() + CLI_TOKEN_TTL_MS);
   const credential = await prisma.cliCredential.create({
     data: { userId: request.userId, workspaceId: request.workspaceId, name: request.clientName, tokenHash: hash, tokenPrefix: prefix, expiresAt },
-    select: { user: { select: { email: true, name: true } }, workspace: { select: { id: true, name: true } } },
+    select: { user: { select: CLI_USER_SELECT }, workspace: { select: { id: true, name: true } } },
   });
-  return { ok: true, accessToken: token, expiresAt, user: credential.user, workspace: credential.workspace };
+  return { ok: true, accessToken: token, expiresAt, user: cliUser(credential.user), workspace: credential.workspace };
 }
 
 /** Looks up a pending request by the code the user typed (for the approval page). */

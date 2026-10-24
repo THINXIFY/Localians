@@ -1,5 +1,5 @@
 import { HELP, parseCli } from "./args";
-import { login, logout, share, status, VERSION } from "./commands";
+import { cliCommand, login, logout, share, status, VERSION, whoami } from "./commands";
 import { EXIT, fail } from "./ui";
 
 async function main(argv: string[]) {
@@ -12,13 +12,14 @@ async function main(argv: string[]) {
       process.stdout.write(`${VERSION}\n`);
       return EXIT.ok;
     case "error":
-      fail(parsed.message, "Run `localians --help` for usage.");
+      fail(parsed.message, `Run \`${cliCommand()} --help\` for usage.`);
       return EXIT.usage;
   }
   const { command, port, options } = parsed;
   if (command === "login") return login(options);
-  if (command === "logout") return logout(options);
+  if (command === "logout") return logout();
   if (command === "status") return status(options);
+  if (command === "whoami") return whoami(options);
   return share(port!, options);
 }
 

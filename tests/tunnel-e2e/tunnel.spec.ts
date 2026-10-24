@@ -34,7 +34,18 @@ test("login → share Next.js and Vite apps → HMR through the tunnel → stop 
   await page.getByRole("button", { name: "Authorize CLI" }).click();
   await expect(page.getByRole("heading", { name: "CLI authorized" })).toBeVisible();
   expect(await login.exited).toBe(0);
-  expect(login.output).toMatch(/Logged in as e2e-/);
+  expect(login.output).toMatch(/Signed in as @\S+ \(e2e-\S+\)\. You're ready to share\./);
+
+  // Already signed in: login says so (and which account) instead of starting over; whoami checks with the server.
+  const again = runCli(["login", "--no-browser"]);
+  expect(await again.exited).toBe(0);
+  expect(again.output).toMatch(/Already signed in as @\S+/);
+  expect(again.output).not.toMatch(/Confirm this code/);
+  const whoami = runCli(["whoami"]);
+  expect(await whoami.exited).toBe(0);
+  expect(whoami.output).toMatch(/Signed in as @\S+ \(e2e-/);
+  expect(whoami.output).toMatch(/Workspace\s+\S+/);
+  expect(whoami.output).not.toMatch(/lcl_/);
 
   const credentials = fs.readFileSync(path.join(configDir, "credentials.json"), "utf8");
   expect(credentials).toMatch(/"token": "lcl_/);
@@ -91,6 +102,17 @@ test("login → share Next.js and Vite apps → HMR through the tunnel → stop 
   const viteShare = runCli(["share", "5174", "--yes"], path.join(TUNNEL_E2E.root, "examples/vite-app"));
   const [, viteUrl] = await viteShare.waitFor(/Preview link\s+(https:\/\/[a-z2-7]{12}\.preview\.localhost:8643)/, 60_000);
   expect(viteUrl).not.toBe(publicUrl);
+
+  // ---- Both shares run in parallel; a second share of a port that's already shared is refused -----
+  const both = runCli(["status"]);
+  expect(await both.exited).toBe(0);
+  expect(both.output).toContain("2 apps shared from this computer");
+  expect(both.output).toContain(publicUrl);
+  expect(both.output).toContain(viteUrl);
+  const duplicate = runCli(["share", "4310", "--yes"], path.join(TUNNEL_E2E.root, "examples/next-app"));
+  expect(await duplicate.exited).toBe(2);
+  expect(duplicate.output).toContain(`localhost:4310 is already being shared from this computer (next-sample-app): ${publicUrl}`);
+  expect((await (await visitor(browser)).goto(publicUrl))?.status()).toBe(200); // the original keeps serving
   const vv = await visitor(browser);
   await vv.goto(viteUrl);
   await expect(vv.locator("#message")).toHaveText("Vite message v1");
@@ -107,6 +129,9 @@ test("login → share Next.js and Vite apps → HMR through the tunnel → stop 
   await expect.poll(async () => (await v.goto(publicUrl))?.status(), { timeout: 15_000 }).toBe(404);
   await expect(v.getByRole("heading", { name: "This preview link isn't active" })).toBeVisible();
   await expect(v.getByText("Sample store")).toHaveCount(0);
+  // …and only that one: the Vite share is still live.
+  expect((await vv.goto(viteUrl))?.status()).toBe(200);
+  await expect(vv.locator("#message")).toHaveText("Vite message v2 (hot)");
 
   viteShare.proc.kill();
   await viteShare.exited;
@@ -115,7 +140,8 @@ test("login → share Next.js and Vite apps → HMR through the tunnel → stop 
   // ---- Logout revokes the credential and removes it locally -----------------------------------
   const logout = runCli(["logout"]);
   expect(await logout.exited).toBe(0);
-  expect(logout.output).toMatch(/Logged out/);
+  expect(logout.output).toMatch(/Signed out of @\S+/);
+  expect(logout.output).toContain("This computer's CLI access was revoked.");
   expect(logout.output).not.toMatch(/Couldn't reach/);
   expect(fs.existsSync(path.join(configDir, "credentials.json"))).toBe(false);
   await page.goto("/dashboard/settings/cli");

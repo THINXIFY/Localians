@@ -16,7 +16,7 @@ describe("CLI argument parsing", () => {
       kind: "command",
       command: "share",
       port: 3000,
-      options: { apiUrl: undefined, project: "shop", hostHeader: "preserve", browser: true, verbose: true, yes: false },
+      options: { apiUrl: undefined, project: "shop", hostHeader: "preserve", browser: true, verbose: true, yes: false, newProject: false, name: undefined },
     });
   });
 

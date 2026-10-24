@@ -24,13 +24,20 @@ project and password already chosen.
 | `localians share <port>` | Share `localhost:<port>` (signs in first if needed) |
 | `localians share <port> --setup <code>` | Use the project and access chosen in the dashboard's Share App page |
 | `localians share <port> --project <name>` | Share under a specific project |
-| `localians login` | Sign this computer in |
-| `localians status` | Show your login and what this computer is sharing |
+| `localians share <port> --new [--name <name>]` | Share under a new project |
+| `localians login` | Sign this computer in (a one-time code approved in your browser) |
+| `localians whoami` | Show which account this computer is signed in to |
+| `localians status` | Show your login and everything this computer is sharing |
 | `localians logout` | Sign out and revoke this computer's access |
 
 Options: `-d, --duration <time>` (an earlier auto-stop: `5m`, `15m`, `30m`, `1h`, `12h` or `24h`, plus `3d` or `7d` with a
 7-Day Preview Pass; by default the link works until the project's free window or pass ends), `-y, --yes` (create a project without asking, for scripts), `--host-header preserve`, `-v, --verbose`,
 `--no-browser`, `--api-url <url>` (only needed for a self-hosted server). Run `localians --help` for details.
+
+Several apps at once: run one `localians share <port>` per app, each in its own terminal. Each gets its own project,
+link, timer and access, and stopping one leaves the others running (up to 5 at once per account by default). The CLI
+remembers which project each app folder and port uses, per account. Switch accounts with `localians logout`, then
+`localians login`.
 
 Exit codes: `0` ok, `1` other error, `2` usage, `3` login needed, `4` nothing running on that port, `5` Localians unreachable.
 

@@ -38,7 +38,8 @@ function useSignOut() {
   };
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+/** `live`: previews running right now, shown as a count on Live Previews. */
+function NavLinks({ onNavigate, live = 0 }: { onNavigate?: () => void; live?: number }) {
   const pathname = usePathname();
   return (
     <ul className="flex flex-col gap-0.5">
@@ -57,6 +58,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className={cn("size-4 shrink-0", active ? "text-accent-ink" : "text-fg-3 group-hover:text-fg-2")} aria-hidden="true" />
               <span className="flex-1">{item.label}</span>
+              {item.href === "/dashboard/previews" && live > 0 ? (
+                <span
+                  className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/15 px-1.5 font-mono text-[11px] font-medium text-accent-ink"
+                  aria-label={`${live} live`}
+                  data-testid="nav-live-count"
+                >
+                  {live}
+                </span>
+              ) : null}
             </Link>
           </li>
         );
@@ -65,7 +75,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function SidebarContent({ user, onNavigate }: { user: ShellUser; onNavigate?: () => void }) {
+function SidebarContent({ user, live, onNavigate }: { user: ShellUser; live?: number; onNavigate?: () => void }) {
   const signOut = useSignOut();
   return (
     <div className="flex h-full flex-col">
@@ -73,7 +83,7 @@ function SidebarContent({ user, onNavigate }: { user: ShellUser; onNavigate?: ()
         <Wordmark height={22} variant="theme" priority />
       </Link>
       <nav aria-label="Dashboard" className="flex-1 overflow-y-auto px-3 py-2">
-        <NavLinks onNavigate={onNavigate} />
+        <NavLinks onNavigate={onNavigate} live={live} />
         <Link
           href="/docs/troubleshooting"
           onClick={onNavigate}
@@ -108,7 +118,7 @@ function SidebarContent({ user, onNavigate }: { user: ShellUser; onNavigate?: ()
   );
 }
 
-export function DashboardShell({ user, workspace, children }: { user: ShellUser; workspace: ShellWorkspace; children: ReactNode }) {
+export function DashboardShell({ user, workspace, livePreviews = 0, children }: { user: ShellUser; workspace: ShellWorkspace; livePreviews?: number; children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const signOut = useSignOut();
 
@@ -128,7 +138,7 @@ export function DashboardShell({ user, workspace, children }: { user: ShellUser;
     <div className="min-h-dvh bg-bg text-fg">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-line bg-bg-2 lg:block">
-        <SidebarContent user={user} />
+        <SidebarContent user={user} live={livePreviews} />
       </aside>
 
       {/* Mobile drawer */}
@@ -144,7 +154,7 @@ export function DashboardShell({ user, workspace, children }: { user: ShellUser;
             >
               <X className="size-4" aria-hidden="true" />
             </button>
-            <SidebarContent user={user} onNavigate={() => setDrawerOpen(false)} />
+            <SidebarContent user={user} live={livePreviews} onNavigate={() => setDrawerOpen(false)} />
           </div>
         </div>
       ) : null}
